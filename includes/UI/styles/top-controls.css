@@ -1,0 +1,56 @@
+/* Top Controls Component Styles */
+
+.top-controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.top-controls-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.top-controls-toggle-btn {
+    padding: 8px 12px;
+    background: #000;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.top-controls-toggle-btn:hover {
+    background-color: #333;
+}
+
+.top-controls-help-text {
+    font-size: 13px;
+    color: #666;
+}
+
+.top-controls-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.top-controls-label {
+    font-size: 14px;
+    color: #374151;
+}
+
+.top-controls-select {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+} 

@@ -1,0 +1,83 @@
+/* Legend Component Styles */
+
+.legend-container {
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.legend-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.legend-header svg {
+    width: 16px;
+    height: 16px;
+    color: #000;
+}
+
+.legend-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+}
+
+.legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.legend-dot.instock {
+    background: #46b450;
+}
+
+.legend-dot.outofstock {
+    background: #dc3232;
+}
+
+.legend-dot.backorder {
+    background: #ffb900;
+}
+
+.legend-dot.high-sales {
+    background: #46b450;
+}
+
+.legend-dot.medium-sales {
+    background: #ffb900;
+}
+
+.legend-dot.low-sales {
+    background: #dc3232;
+}
+
+.legend-text {
+    font-size: 13px;
+    color: #000;
+    font-weight: 500;
+} 

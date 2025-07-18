@@ -1,0 +1,189 @@
+/* Variation Table Component Styles */
+
+.variation-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.variation-table th {
+    background: #f8f9fa;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e5e5;
+    font-size: 12px;
+}
+.variation-table th:first-child{
+    width: 65px;
+}
+.variation-table th:last-child{
+    width: 100px;
+    text-align: right;
+}
+
+.variation-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+}
+
+.variation-table tr:last-child td {
+    border-bottom: none;
+}
+
+.variation-table tr:hover {
+    background: #f9fafb;
+}
+
+.variation-attributes {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.variation-sku {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.variation-stock-quantity {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.variation-stock-quantity.low {
+    color: #dc2626;
+}
+
+.variation-stock-quantity.medium {
+    color: #ea580c;
+}
+
+.variation-stock-quantity.high {
+    color: #059669;
+}
+
+.variation-stock-status {
+    display: inline-block;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.variation-stock-status.instock {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.variation-stock-status.outofstock {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.variation-stock-status.onbackorder {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.variation-price {
+    font-weight: 500;
+    color: #000;
+}
+
+.variation-sales {
+    text-align: right;
+    font-weight: 600;
+    color: #000;
+}
+
+.variation-revenue {
+    text-align: right;
+    font-weight: 600;
+    color: #000;
+}
+
+.variation-last-sale {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+/* Variation Editable Input Styles */
+.variation-stock-quantity-input {
+    width: 60px;
+    padding: 4px 6px;
+    border: 1px solid #e5e5e5;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #000;
+    background: white;
+    transition: border-color 0.2s ease;
+    text-align: center;
+}
+
+.variation-stock-quantity-input:focus {
+    border-color: #000;
+    outline: none;
+}
+
+.variation-stock-quantity-input.changed {
+    border-color: #ea580c;
+    background: #fef3c7;
+}
+
+.variation-stock-status-select {
+    width: 100px;
+    padding: 4px 6px;
+    border: 1px solid #e5e5e5;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #000;
+    background: white;
+    transition: border-color 0.2s ease;
+    cursor: pointer;
+}
+
+.variation-stock-status-select:focus {
+    border-color: #000;
+    outline: none;
+}
+
+.variation-stock-status-select.changed {
+    border-color: #ea580c;
+    background: #fef3c7;
+}
+
+/* Variation Price Input Styles */
+.variation-price-input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #000;
+    background: white;
+    transition: border-color 0.2s ease;
+    text-align: center;
+}
+
+.variation-price-input:focus {
+    border-color: #000;
+    outline: none;
+}
+
+.variation-price-input.changed {
+    border-color: #ea580c;
+    background: #fef3c7;
+}
+
+.variation-price-input::placeholder {
+    color: #9ca3af;
+    font-size: 12px;
+} 

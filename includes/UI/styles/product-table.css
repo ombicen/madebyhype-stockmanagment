@@ -1,0 +1,418 @@
+/* Product Table Component Styles */
+
+.product-table-container {
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+/* Save Controls Row */
+.save-controls-row {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e5e5e5;
+    z-index: 10;
+    padding: 12px 16px;
+    margin-bottom: 0px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.save-controls-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.save-controls-left {
+    display: flex;
+    align-items: center;
+}
+
+.changes-indicator {
+    font-size: 13px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.changes-count {
+    background: #000;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 16px;
+    text-align: center;
+}
+
+.save-controls-right {
+    display: flex;
+    gap: 8px;
+}
+
+.save-changes-btn {
+    background: #000;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.save-changes-btn:hover {
+    background: #333;
+}
+
+.save-changes-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.reset-changes-btn:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border-color: #d1d5db;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.reset-changes-btn {
+    background: white;
+    color: #000;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reset-changes-btn:hover {
+    background: #f5f5f5;
+}
+
+/* Editable Input Styles */
+.stock-quantity-input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #000;
+    background: white;
+    transition: border-color 0.2s ease;
+    text-align: center;
+}
+
+.stock-quantity-input:focus {
+    border-color: #000;
+    outline: none;
+}
+
+.stock-quantity-input.changed {
+    border-color: #ea580c;
+    background: #fef3c7;
+}
+
+.stock-status-select {
+    width: 120px;
+    padding: 6px 8px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #000;
+    background: white;
+    transition: border-color 0.2s ease;
+    cursor: pointer;
+}
+
+.stock-status-select:focus {
+    border-color: #000;
+    outline: none;
+}
+
+.stock-status-select.changed {
+    border-color: #ea580c;
+    background: #fef3c7;
+}
+
+/* Price Input Styles */
+.price-input,
+.regular-price-input,
+.sale-price-input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #000;
+    background: white;
+    transition: border-color 0.2s ease;
+    text-align: center;
+}
+
+.price-input:focus,
+.regular-price-input:focus,
+.sale-price-input:focus {
+    border-color: #000;
+    outline: none;
+}
+
+.price-input.changed,
+.regular-price-input.changed,
+.sale-price-input.changed {
+    border-color: #ea580c;
+    background: #fef3c7;
+}
+
+.price-input::placeholder,
+.regular-price-input::placeholder,
+.sale-price-input::placeholder {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.product-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.product-table th {
+    background: #f9fafb;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e5e5;
+    white-space: nowrap;
+}
+
+.product-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.product-table th.sortable:hover {
+    background: #f3f4f6;
+}
+
+.product-table th.sortable::after {
+    content: '↕';
+    position: absolute;
+    right: 8px;
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.product-table th.sort-asc::after {
+    content: '↑';
+    color: #000;
+}
+
+.product-table th.sort-desc::after {
+    content: '↓';
+    color: #000;
+}
+
+.product-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+}
+
+.product-table tr:hover {
+    background: #f9fafb;
+}
+
+.product-table tr:last-child td {
+    border-bottom: none;
+}
+
+.product-name {
+    font-weight: 500;
+    color: #000;
+    text-decoration: none;
+}
+
+.product-name:hover {
+    text-decoration: underline;
+}
+
+.product-sku {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.stock-quantity {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.stock-quantity.low {
+    color: #dc2626;
+}
+
+.stock-quantity.medium {
+    color: #ea580c;
+}
+
+.stock-quantity.high {
+    color: #059669;
+}
+
+.stock-status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.stock-status.instock {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.stock-status.outofstock {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.stock-status.onbackorder {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.price-regular {
+    font-weight: 500;
+    color: #000;
+}
+
+.price-sale {
+    color: #dc2626;
+    text-decoration: line-through;
+    font-size: 12px;
+    margin-right: 4px;
+}
+
+.price-current {
+    font-weight: 600;
+    color: #000;
+}
+
+.sales-data {
+    text-align: right;
+}
+
+.sales-total {
+    font-weight: 600;
+    color: #000;
+    font-size: 14px;
+}
+
+.sales-monthly {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.revenue-data {
+    text-align: right;
+}
+
+.revenue-total {
+    font-weight: 600;
+    color: #000;
+    font-size: 14px;
+}
+
+.revenue-monthly {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.last-sale {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.expand-variations {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #6b7280;
+    transition: all 0.2s ease;
+}
+
+.expand-variations:hover {
+    background: #f3f4f6;
+    color: #000;
+}
+
+.variation-count {
+    font-weight: 500;
+}
+
+.chevron {
+    width: 12px;
+    height: 12px;
+    transition: transform 0.2s ease;
+}
+
+.expand-variations.expanded .chevron {
+    transform: rotate(90deg);
+}
+
+.variations-row {
+    background: #f9fafb;
+}
+
+.variations-row td {
+    padding: 0;
+    border: none;
+}
+
+.variations-container {
+    padding: 0px;
+    border-top: 1px solid #e5e5e5;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+} 

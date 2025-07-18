@@ -1,0 +1,125 @@
+/* Sidebar Filters Component Styles */
+
+#filters-sidebar {
+    display: none;
+}
+
+.sidebar-filters-container {
+    width: 280px;
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 20px;
+    height: fit-content;
+    transition: all 0.3s ease;
+}
+
+.sidebar-filters-title {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #000;
+}
+
+.sidebar-filters-form {
+    margin: 0;
+}
+
+.sidebar-filter-section {
+    margin-bottom: 20px;
+}
+
+.sidebar-filter-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #000;
+    margin-bottom: 8px;
+}
+.sidebar-filter-number-input{
+
+    width: 100%;
+}
+.sidebar-filter-checkbox-container {
+    max-height: 120px;
+    overflow-y: auto;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    padding: 8px;
+    background: white;
+}
+
+.sidebar-filter-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #000;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.sidebar-filter-checkbox-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.sidebar-filter-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sidebar-filter-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.sidebar-filter-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #000;
+    background: white;
+    width: 100%;
+}
+
+.sidebar-filter-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.sidebar-filter-apply-btn {
+    flex: 1;
+    padding: 8px 16px;
+    background: #000;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.sidebar-filter-apply-btn:hover {
+    background-color: #333;
+}
+
+.sidebar-filter-clear-btn {
+    padding: 8px 16px;
+    background: white;
+    color: #000;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.sidebar-filter-clear-btn:hover {
+    background-color: #f5f5f5;
+} 

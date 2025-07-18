@@ -1,0 +1,140 @@
+/* Date Filter Component Styles */
+
+.date-filter-container {
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.date-filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.date-filter-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #000;
+}
+
+.date-filter-subtitle {
+    margin: 4px 0 0 0;
+    font-size: 13px;
+    color: #666;
+}
+
+.date-filter-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #f5f5f5;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+}
+
+.date-filter-badge svg {
+    width: 14px;
+    height: 14px;
+    color: #000;
+}
+
+.date-filter-badge-text {
+    font-size: 13px;
+    color: #000;
+    font-weight: 500;
+}
+
+.date-filter-form {
+    margin: 0;
+}
+
+.date-filter-input-group {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.date-filter-input-wrapper {
+    flex: 1;
+    min-width: 200px;
+}
+
+.date-filter-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #000;
+    margin-bottom: 6px;
+}
+
+.date-filter-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+
+}
+
+.date-filter-input {
+    width: 100%;
+    padding:10px 15px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #000;
+    background: white !important;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.date-filter-input:focus {
+    border-color: #000;
+}
+
+.date-filter-input:blur {
+    border-color: #e5e5e5;
+}
+
+.date-filter-button-group {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.date-filter-apply-btn {
+    padding: 8px 16px;
+    background: #000;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.date-filter-apply-btn:hover {
+    background-color: #333;
+}
+
+.date-filter-clear-btn {
+    padding: 8px 16px;
+    background: white;
+    color: #000;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.date-filter-clear-btn:hover {
+    background-color: #f5f5f5;
+} 

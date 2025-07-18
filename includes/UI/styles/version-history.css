@@ -1,0 +1,204 @@
+/* Version History Component Styles */
+
+.version-history-container {
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.version-history-header {
+    margin-bottom: 16px;
+}
+
+.version-history-header h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #000;
+}
+
+.version-history-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.version-history-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.version-history-empty-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.version-history-empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.version-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.version-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border: 1px solid #f3f4f6;
+    border-radius: 6px;
+    background: #f9fafb;
+    transition: all 0.2s ease;
+}
+
+.version-item:hover {
+    border-color: #e5e5e5;
+    background: white;
+}
+
+.version-info {
+    flex: 1;
+}
+
+.version-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.version-number {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+}
+
+.version-date {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.version-summary {
+    font-size: 13px;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.version-details {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.version-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.version-revert-btn {
+    padding: 6px 12px;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.version-revert-btn:hover {
+    background: #b91c1c;
+}
+
+.version-revert-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Version revert confirmation modal */
+.version-revert-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.version-revert-modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.version-revert-modal-header {
+    margin-bottom: 16px;
+}
+
+.version-revert-modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+    margin: 0 0 8px 0;
+}
+
+.version-revert-modal-message {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+}
+
+.version-revert-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.version-revert-modal-cancel {
+    padding: 8px 16px;
+    background: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.version-revert-modal-cancel:hover {
+    background: #f9fafb;
+}
+
+.version-revert-modal-confirm {
+    padding: 8px 16px;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.version-revert-modal-confirm:hover {
+    background: #b91c1c;
+}
+
+.version-revert-modal-confirm:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+} 
