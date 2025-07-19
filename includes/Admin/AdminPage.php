@@ -27,14 +27,13 @@ class AdminPage
      */
     public function add_admin_menu()
     {
-        add_menu_page(
-            __('Stock Management Page', 'madebyhype-stockmanagment'), // Page title
+        add_submenu_page(
+            'edit.php?post_type=product', // Parent slug (WooCommerce Products)
+            __('Stock Management', 'madebyhype-stockmanagment'), // Page title
             __('Stock Management', 'madebyhype-stockmanagment'), // Menu title
-            'manage_options', // Capability required
+            'manage_woocommerce', // Capability required (WooCommerce specific)
             'madebyhype-stockmanagment', // Menu slug
-            [$this, 'render_admin_page'], // Callback function
-            'dashicons-admin-generic', // Icon
-            30 // Position
+            [$this, 'render_admin_page'] // Callback function
         );
     }
 

@@ -1,0 +1,13 @@
+[patch] 
+
+# Version bump types:
+# [patch] - Bug fixes, small improvements (1.0.0 → 1.0.1)
+# [minor] - New features, backward compatible (1.0.0 → 1.1.0)  
+# [major] - Breaking changes (1.0.0 → 2.0.0)
+
+# Examples:
+# [patch] Fix sorting issue in product table
+# [minor] Add new filter functionality
+# [major] Refactor database schema
+
+# Lines starting with # will be ignored 

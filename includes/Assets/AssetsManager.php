@@ -18,7 +18,17 @@ class AssetsManager
      */
     public function enqueue_admin_scripts($hook, $plugin_file)
     {
-        if ($hook !== 'toplevel_page_madebyhype-stockmanagment') {
+        // Debug: Log the hook name to help identify the correct one
+        error_log('MadeByHype Stock Management Hook: ' . $hook);
+
+        // Check for various possible hook names
+        $valid_hooks = [
+            'toplevel_page_madebyhype-stockmanagment',  // Old main menu hook
+            'product_page_madebyhype-stockmanagment',   // WooCommerce submenu hook
+            'woocommerce_page_madebyhype-stockmanagment' // Alternative WooCommerce hook
+        ];
+
+        if (!in_array($hook, $valid_hooks)) {
             return;
         }
 
