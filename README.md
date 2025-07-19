@@ -1,4 +1,4 @@
-# Omer Stock Management Plugin
+# MadeByHype Stock Management Plugin
 
 A WordPress plugin for stock management integrated with WooCommerce, featuring a comprehensive admin interface for product stock overview with sales data, filtering, and pagination.
 
@@ -32,7 +32,7 @@ madebyhype-stockmanagment/
 ├── assets/
 │   └── images/
 │       └── chevron.svg         # Custom chevron icon
-└── omer-stockhmanagment.php    # Plugin bootstrap file
+└── madebyhype-stockmanagment.php    # Plugin bootstrap file
 ```
 
 ## Architecture Overview

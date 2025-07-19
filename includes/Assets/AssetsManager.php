@@ -40,10 +40,10 @@ class AssetsManager
         wp_enqueue_script('madebyhype-stockmanagment-js', $plugin_url . 'includes/UI/scripts/admin-ui.js', ['jquery'], '1.0.0', true);
 
         // Localize script with nonces and data
-        wp_localize_script('madebyhype-stockmanagment-js', 'omerStockData', [
+        wp_localize_script('madebyhype-stockmanagment-js', 'madebyhypeStockData', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'updateNonce' => wp_create_nonce('omer_stock_update_nonce'),
-            'revertNonce' => wp_create_nonce('omer_version_revert_nonce'),
+            'updateNonce' => wp_create_nonce('madebyhype_stock_update_nonce'),
+            'revertNonce' => wp_create_nonce('madebyhype_version_revert_nonce'),
         ]);
 
         // Enqueue inline styles
@@ -54,15 +54,15 @@ class AssetsManager
     {
         $plugin_url = plugin_dir_url(__DIR__ . '/../../');
 
-        wp_enqueue_style('omer-date-filter', $plugin_url . 'UI/styles/date-filter.css', [], '1.0.0');
-        wp_enqueue_style('omer-top-controls', $plugin_url . 'UI/styles/top-controls.css', [], '1.0.0');
-        wp_enqueue_style('omer-sidebar-filters', $plugin_url . 'UI/styles/sidebar-filters.css', [], '1.0.0');
-        wp_enqueue_style('omer-product-table', $plugin_url . 'UI/styles/product-table.css', [], '1.0.0');
-        wp_enqueue_style('omer-variation-table', $plugin_url . 'UI/styles/variation-table.css', [], '1.0.0');
-        wp_enqueue_style('omer-pagination', $plugin_url . 'UI/styles/pagination.css', [], '1.0.0');
-        wp_enqueue_style('omer-footer-info', $plugin_url . 'UI/styles/footer-info.css', [], '1.0.0');
-        wp_enqueue_style('omer-legend', $plugin_url . 'UI/styles/legend.css', [], '1.0.0');
-        wp_enqueue_style('omer-version-history', $plugin_url . 'UI/styles/version-history.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-date-filter', $plugin_url . 'UI/styles/date-filter.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-top-controls', $plugin_url . 'UI/styles/top-controls.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-sidebar-filters', $plugin_url . 'UI/styles/sidebar-filters.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-product-table', $plugin_url . 'UI/styles/product-table.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-variation-table', $plugin_url . 'UI/styles/variation-table.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-pagination', $plugin_url . 'UI/styles/pagination.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-footer-info', $plugin_url . 'UI/styles/footer-info.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-legend', $plugin_url . 'UI/styles/legend.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-version-history', $plugin_url . 'UI/styles/version-history.css', [], '1.0.0');
     }
 
 

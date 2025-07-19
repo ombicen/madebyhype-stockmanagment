@@ -9,7 +9,7 @@
     isInput = true
   ) {
     const eventType = isInput ? "input" : "change";
-    const namespace = "omerStockHandler";
+    const namespace = "madebyhypeStockHandler";
 
     // Remove existing handlers with namespace to prevent double binding
     $(selector).off(eventType + "." + namespace);
@@ -121,7 +121,7 @@
     const sidebar = $("#filters-sidebar");
     const toggleBtn = $("#toggle-sidebar");
     const toggleText = $("#sidebar-toggle-text");
-    const storageKey = "omer_stock_sidebar_state";
+    const storageKey = "madebyhype_stock_sidebar_state";
     let isSidebarVisible = false;
 
     function loadSidebarState() {
@@ -191,8 +191,8 @@
             $("#end_date").val(selectedDates[1].toISOString().split("T")[0]);
 
             // Clear preset state when user manually changes dates
-            localStorage.removeItem("omer_date_preset");
-            localStorage.removeItem("omer_date_preset_days");
+            localStorage.removeItem("madebyhype_date_preset");
+            localStorage.removeItem("madebyhype_date_preset_days");
 
             updatePresetButtonStates();
           }
@@ -234,8 +234,8 @@
       $("#end_date").val(endDateStr);
 
       // Store preset state in localStorage
-      localStorage.setItem("omer_date_preset", presetLabel);
-      localStorage.setItem("omer_date_preset_days", daysValue.toString());
+      localStorage.setItem("madebyhype_date_preset", presetLabel);
+      localStorage.setItem("madebyhype_date_preset_days", daysValue.toString());
 
       // Update button states
       updatePresetButtonStates();
@@ -253,8 +253,10 @@
 
   function updatePresetButtonStates() {
     // Get preset state from localStorage
-    const activePreset = localStorage.getItem("omer_date_preset");
-    const activePresetDays = localStorage.getItem("omer_date_preset_days");
+    const activePreset = localStorage.getItem("madebyhype_date_preset");
+    const activePresetDays = localStorage.getItem(
+      "madebyhype_date_preset_days"
+    );
 
     // Remove active class from all buttons
     $(".date-filter-preset-btn").removeClass("active");
@@ -279,8 +281,8 @@
   }
 
   function clearPresetState() {
-    localStorage.removeItem("omer_date_preset");
-    localStorage.removeItem("omer_date_preset_days");
+    localStorage.removeItem("madebyhype_date_preset");
+    localStorage.removeItem("madebyhype_date_preset_days");
     updatePresetButtonStates();
   }
 
@@ -330,13 +332,13 @@
   }
 
   function saveStockChanges() {
-    $.post(omerStockData.ajaxUrl, {
-      action: "omer_save_stock_changes",
+    $.post(madebyhypeStockData.ajaxUrl, {
+      action: "madebyhype_save_stock_changes",
       data: {
         products: changedProducts,
         variations: changedVariations,
       },
-      _wpnonce: omerStockData.updateNonce,
+      _wpnonce: madebyhypeStockData.updateNonce,
     })
       .done(function () {
         showNotification("Changes saved successfully.", "success");
@@ -425,10 +427,10 @@
   }
 
   function revertToVersion(versionNumber) {
-    $.post(omerStockData.ajaxUrl, {
-      action: "omer_revert_version",
+    $.post(madebyhypeStockData.ajaxUrl, {
+      action: "madebyhype_revert_version",
       version_id: versionNumber,
-      _wpnonce: omerStockData.revertNonce,
+      _wpnonce: madebyhypeStockData.revertNonce,
     })
       .done(function () {
         showNotification("Version reverted successfully.", "success");

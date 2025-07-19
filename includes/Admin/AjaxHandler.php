@@ -10,15 +10,15 @@ class AjaxHandler
 {
     public function init()
     {
-        add_action('wp_ajax_omer_save_stock_changes', [$this, 'save_stock_changes']);
-        add_action('wp_ajax_nopriv_omer_save_stock_changes', [$this, 'save_stock_changes']);
-        add_action('wp_ajax_omer_revert_version', [$this, 'revert_to_version']);
-        add_action('wp_ajax_nopriv_omer_revert_version', [$this, 'revert_to_version']);
+        add_action('wp_ajax_madebyhype_save_stock_changes', [$this, 'save_stock_changes']);
+        add_action('wp_ajax_nopriv_madebyhype_save_stock_changes', [$this, 'save_stock_changes']);
+        add_action('wp_ajax_madebyhype_revert_version', [$this, 'revert_to_version']);
+        add_action('wp_ajax_nopriv_madebyhype_revert_version', [$this, 'revert_to_version']);
     }
 
     public function save_stock_changes()
     {
-        check_ajax_referer('omer_stock_update_nonce');
+        check_ajax_referer('madebyhype_stock_update_nonce');
 
         if (!current_user_can('manage_woocommerce')) {
             wp_send_json_error('Insufficient permissions');
@@ -151,7 +151,7 @@ class AjaxHandler
 
     public function revert_to_version()
     {
-        check_ajax_referer('omer_version_revert_nonce');
+        check_ajax_referer('madebyhype_version_revert_nonce');
 
         if (!current_user_can('manage_woocommerce')) {
             wp_send_json_error('Insufficient permissions');

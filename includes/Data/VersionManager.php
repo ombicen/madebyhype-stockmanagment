@@ -14,7 +14,7 @@ class VersionManager
     public function __construct()
     {
         global $wpdb;
-        $this->table_name = $wpdb->prefix . 'omer_stock_versions';
+        $this->table_name = $wpdb->prefix . 'madebyhype_stock_versions';
         $this->create_table();
     }
 
