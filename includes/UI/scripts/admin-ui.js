@@ -411,6 +411,23 @@
     }).showToast();
   }
 
+  function changePerPage(value) {
+    try {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set("per_page", value);
+      currentUrl.searchParams.set("paged", 1);
+      window.location.href = currentUrl.toString();
+    } catch (error) {
+      const separator = window.location.href.includes("?") ? "&" : "?";
+      window.location.href =
+        window.location.href + separator + "per_page=" + value + "&paged=1";
+    }
+  }
+
+  $(document).on("change", "#per_page", function () {
+    changePerPage(this.value);
+  });
+
   let changedProducts = {};
   let changedVariations = {};
 
