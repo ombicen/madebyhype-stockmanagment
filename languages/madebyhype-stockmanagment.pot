@@ -1,0 +1,245 @@
+# Copyright (C) 2024 MadebyHype
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: MadeByHype Stock Management 1.0.0\n"
+"Report-Msgid-Bugs-To: https://madebyhype.se/\n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2024-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+
+#: includes/Plugin.php:123
+msgid "MadeByHype Stock Management requires WooCommerce to be installed and activated."
+msgstr ""
+
+#: includes/Admin/AdminPage.php:45
+msgid "Stock Management Page"
+msgstr ""
+
+#: includes/Admin/AdminPage.php:46
+msgid "Stock Management"
+msgstr ""
+
+#: includes/UI/UIManager.php:45
+msgid "WooCommerce is not active!"
+msgstr ""
+
+#: includes/UI/UIManager.php:45
+msgid "This plugin requires WooCommerce to be installed and activated to display products."
+msgstr ""
+
+#: includes/UI/UIManager.php:48
+msgid "Product Stock Overview"
+msgstr ""
+
+#: includes/UI/UIManager.php:49
+msgid "Below is a table showing all products with their stock information."
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:15
+msgid "Filter Sales Data"
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:16
+msgid "Select a date range to filter sales data"
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:35
+msgid "Date Range"
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:39
+msgid "1 Month"
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:42
+msgid "3 Months"
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:45
+msgid "6 Months"
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:48
+msgid "1 Year"
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:52
+msgid "Select date range..."
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:55
+msgid "Apply Filter"
+msgstr ""
+
+#: includes/UI/templates/date-filter.php:58
+msgid "Clear Filter"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:18
+msgid "changes pending"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:23
+msgid "Reset Changes"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:26
+msgid "Save All Changes"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:32
+msgid "ID"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:33
+msgid "Product Name"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:34
+msgid "SKU"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:42
+msgid "Stock Quantity"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:45
+msgid "Stock Status"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:47
+msgid "Regular Price"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:48
+msgid "Sale Price"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:56
+msgid "Total Sales"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:59
+msgid "Status"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:65
+msgid "No products found with stock information."
+msgstr ""
+
+#: includes/UI/templates/product-table.php:85
+msgid "In Stock"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:86
+msgid "Out of Stock"
+msgstr ""
+
+#: includes/UI/templates/product-table.php:87
+msgid "On Backorder"
+msgstr ""
+
+#: includes/UI/templates/top-controls.php:12
+msgid "Filters"
+msgstr ""
+
+#: includes/UI/templates/top-controls.php:14
+msgid "Use filters to narrow down products"
+msgstr ""
+
+#: includes/UI/templates/top-controls.php:17
+msgid "Items per page:"
+msgstr ""
+
+#: includes/UI/templates/sidebar-filters.php:20
+msgid "Categories"
+msgstr ""
+
+#: includes/UI/templates/sidebar-filters.php:35
+msgid "Tags"
+msgstr ""
+
+#: includes/UI/templates/sidebar-filters.php:50
+msgid "Price Range"
+msgstr ""
+
+#: includes/UI/templates/sidebar-filters.php:53
+msgid "Min"
+msgstr ""
+
+#: includes/UI/templates/sidebar-filters.php:55
+msgid "Max"
+msgstr ""
+
+#: includes/UI/templates/sidebar-filters.php:60
+msgid "Sales Range"
+msgstr ""
+
+#: includes/UI/templates/sidebar-filters.php:68
+msgid "Apply Filters"
+msgstr ""
+
+#: includes/UI/templates/sidebar-filters.php:71
+msgid "Clear All"
+msgstr ""
+
+#: includes/UI/templates/pagination.php:18
+msgid "Showing %1$s to %2$s of %3$s results"
+msgstr ""
+
+#: includes/UI/templates/footer-info.php:12
+msgid "Total Products:"
+msgstr ""
+
+#: includes/UI/templates/footer-info.php:12
+msgid "showing %s on this page"
+msgstr ""
+
+#: includes/UI/templates/legend.php:12
+msgid "Legend"
+msgstr ""
+
+#: includes/UI/templates/legend.php:18
+msgid "On Backorder / Low Stock (≤10)"
+msgstr ""
+
+#: includes/UI/templates/legend.php:24
+msgid "High Sales (≥10)"
+msgstr ""
+
+#: includes/UI/templates/legend.php:29
+msgid "Medium Sales (5-9)"
+msgstr ""
+
+#: includes/UI/templates/legend.php:34
+msgid "Low Sales (1-4)"
+msgstr ""
+
+#: includes/UI/templates/version-history.php:12
+msgid "Version History"
+msgstr ""
+
+#: includes/UI/templates/version-history.php:13
+msgid "Recent changes that can be reverted"
+msgstr ""
+
+#: includes/UI/templates/version-history.php:17
+msgid "No version history yet. Changes will appear here after saving."
+msgstr ""
+
+#: includes/UI/templates/version-history.php:25
+msgid "Version %s"
+msgstr ""
+
+#: includes/UI/templates/version-history.php:28
+msgid "Stock and price updates"
+msgstr ""
+
+#: includes/UI/templates/version-history.php:35
+msgid "Revert"
+msgstr "" 

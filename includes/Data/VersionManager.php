@@ -1,6 +1,6 @@
 <?php
 
-namespace OmerStockhmanagment\Data;
+namespace MadeByHypeStockmanagment\Data;
 
 if (!defined('ABSPATH')) {
     exit;

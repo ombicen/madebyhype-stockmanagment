@@ -1,6 +1,6 @@
 <?php
 
-namespace OmerStockhmanagment\Assets;
+namespace MadeByHypeStockmanagment\Assets;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -16,30 +16,31 @@ class AssetsManager
     /**
      * Enqueue admin scripts and styles
      */
-    public function enqueue_admin_scripts($hook)
+    public function enqueue_admin_scripts($hook, $plugin_file)
     {
-        if ($hook !== 'toplevel_page_omer-stockmanagment') {
+        if ($hook !== 'toplevel_page_madebyhype-stockmanagment') {
             return;
         }
 
-        $plugin_url = plugin_dir_url(__DIR__ . '/../../');
+        $plugin_url = plugin_dir_url($plugin_file);
+
 
         wp_enqueue_script('jquery');
 
-        // Enqueue Flatpickr and Toastify
-        wp_enqueue_style('flatpickr', 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css');
-        wp_enqueue_script('flatpickr', 'https://cdn.jsdelivr.net/npm/flatpickr', [], null, true);
-        wp_enqueue_script('toastify', 'https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.js', [], '1.12.0', true);
-        wp_enqueue_style('toastify', 'https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css', [], '1.12.0');
+        // Enqueue bundled Flatpickr and Toastify
+        wp_enqueue_style('flatpickr', $plugin_url . 'assets/styles/flatpickr.min.css', [], '1.0.0');
+        wp_enqueue_script('flatpickr', $plugin_url . 'assets/scripts/flatpickr.min.js', [], '1.0.0', true);
+        wp_enqueue_script('toastify', $plugin_url . 'assets/scripts/toastify.min.js', [], '1.12.0', true);
+        wp_enqueue_style('toastify', $plugin_url . 'assets/styles/toastify.min.css', [], '1.12.0');
 
         // Enqueue component styles
         $this->enqueue_component_styles();
 
         // Enqueue admin JS from file
-        wp_enqueue_script('omer-stockmanagment-js', $plugin_url . 'UI/scripts/admin-ui.js', ['jquery'], '1.0.0', true);
+        wp_enqueue_script('madebyhype-stockmanagment-js', $plugin_url . 'includes/UI/scripts/admin-ui.js', ['jquery'], '1.0.0', true);
 
         // Localize script with nonces and data
-        wp_localize_script('omer-stockmanagment-js', 'omerStockData', [
+        wp_localize_script('madebyhype-stockmanagment-js', 'omerStockData', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'updateNonce' => wp_create_nonce('omer_stock_update_nonce'),
             'revertNonce' => wp_create_nonce('omer_version_revert_nonce'),

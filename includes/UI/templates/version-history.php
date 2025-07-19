@@ -8,14 +8,14 @@
 ?>
 <div class="version-history-container">
     <div class="version-history-header">
-        <h3>Version History</h3>
-        <span class="version-history-subtitle">Recent changes that can be reverted</span>
+        <h3><?php _e('Version History', 'madebyhype-stockmanagment'); ?></h3>
+        <span class="version-history-subtitle"><?php _e('Recent changes that can be reverted', 'madebyhype-stockmanagment'); ?></span>
     </div>
 
     <?php if (empty($versions)): ?>
         <div class="version-history-empty">
             <div class="version-history-empty-icon">📝</div>
-            <p>No version history yet. Changes will appear here after saving.</p>
+            <p><?php _e('No version history yet. Changes will appear here after saving.', 'madebyhype-stockmanagment'); ?></p>
         </div>
     <?php else: ?>
         <div class="version-history-list">
@@ -23,11 +23,11 @@
                 <div class="version-item" data-version="<?php echo esc_attr($version['version_number']); ?>">
                     <div class="version-info">
                         <div class="version-header">
-                            <span class="version-number">Version <?php echo esc_html($version['version_number']); ?></span>
+                            <span class="version-number"><?php printf(__('Version %s', 'madebyhype-stockmanagment'), esc_html($version['version_number'])); ?></span>
                             <span class="version-date"><?php echo esc_html(date('M j, Y g:i A', strtotime($version['created_at']))); ?></span>
                         </div>
                         <div class="version-summary">
-                            <?php echo esc_html($version['description'] ?: 'Stock and price updates'); ?>
+                            <?php echo esc_html($version['description'] ?: __('Stock and price updates', 'madebyhype-stockmanagment')); ?>
                         </div>
                         <div class="version-details">
                             <?php
@@ -38,7 +38,7 @@
                     </div>
                     <div class="version-actions">
                         <button type="button" class="version-revert-btn" data-version="<?php echo esc_attr($version['version_number']); ?>">
-                            Revert
+                            <?php _e('Revert', 'madebyhype-stockmanagment'); ?>
                         </button>
                     </div>
                 </div>

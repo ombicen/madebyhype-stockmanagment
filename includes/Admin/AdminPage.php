@@ -1,6 +1,6 @@
 <?php
 
-namespace OmerStockhmanagment\Admin;
+namespace MadeByHypeStockmanagment\Admin;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -28,10 +28,10 @@ class AdminPage
     public function add_admin_menu()
     {
         add_menu_page(
-            'Stock Managment Page', // Page title
-            'Stock Managment', // Menu title
+            __('Stock Management Page', 'madebyhype-stockmanagment'), // Page title
+            __('Stock Management', 'madebyhype-stockmanagment'), // Menu title
             'manage_options', // Capability required
-            'omer-stockmanagment', // Menu slug
+            'madebyhype-stockmanagment', // Menu slug
             [$this, 'render_admin_page'], // Callback function
             'dashicons-admin-generic', // Icon
             30 // Position

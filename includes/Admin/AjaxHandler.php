@@ -1,6 +1,6 @@
 <?php
 
-namespace OmerStockhmanagment\Admin;
+namespace MadeByHypeStockmanagment\Admin;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -135,7 +135,7 @@ class AjaxHandler
         \wc_delete_product_transients();
 
         if ($success_count > 0) {
-            $version_manager = new \OmerStockhmanagment\Data\VersionManager();
+            $version_manager = new \MadeByHypeStockmanagment\Data\VersionManager();
             $version_manager->save_version($original_values, "Saved $success_count changes");
         }
 
@@ -165,7 +165,7 @@ class AjaxHandler
             return;
         }
 
-        $version_manager = new \OmerStockhmanagment\Data\VersionManager();
+        $version_manager = new \MadeByHypeStockmanagment\Data\VersionManager();
         $success = $version_manager->revert_to_version($version_number);
 
         if ($success) {

@@ -210,11 +210,18 @@
 
   function initPresetButtons(datePicker) {
     $(".date-filter-preset-btn").on("click", function () {
-      const days = parseInt($(this).data("days"));
+      const daysValue = $(this).data("days");
       const presetLabel = $(this).data("label");
       const today = new Date();
-      const startDate = new Date();
-      startDate.setDate(today.getDate() - days);
+      let startDate;
+
+      if (daysValue === "all") {
+        // Use a very early date for "All Time"
+        startDate = new Date("2000-01-01");
+      } else {
+        startDate = new Date();
+        startDate.setDate(today.getDate() - parseInt(daysValue));
+      }
 
       const startDateStr = startDate.toISOString().split("T")[0];
       const endDateStr = today.toISOString().split("T")[0];
@@ -228,7 +235,7 @@
 
       // Store preset state in localStorage
       localStorage.setItem("omer_date_preset", presetLabel);
-      localStorage.setItem("omer_date_preset_days", days.toString());
+      localStorage.setItem("omer_date_preset_days", daysValue.toString());
 
       // Update button states
       updatePresetButtonStates();
@@ -253,9 +260,15 @@
     if (activePreset && activePresetDays) {
       $(".date-filter-preset-btn").each(function () {
         const buttonLabel = $(this).data("label");
-        const buttonDays = $(this).data("days").toString();
+        const buttonDays = $(this).data("days");
 
-        if (buttonLabel === activePreset && buttonDays === activePresetDays) {
+        // Handle both numeric and 'all' cases
+        const daysMatch =
+          buttonDays === "all"
+            ? activePresetDays === "all"
+            : buttonDays.toString() === activePresetDays;
+
+        if (buttonLabel === activePreset && daysMatch) {
           $(this).addClass("active");
         }
       });

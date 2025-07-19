@@ -1,6 +1,6 @@
 <?php
 
-namespace OmerStockhmanagment;
+namespace MadeByHypeStockmanagment;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -13,9 +13,11 @@ class Plugin
     private $ui_manager;
     private $assets_manager;
     private $ajax_handler;
+    private $plugin_file;
 
-    public function __construct()
+    public function __construct($plugin_file)
     {
+        $this->plugin_file = $plugin_file;
         $this->load_dependencies();
     }
 
@@ -24,6 +26,9 @@ class Plugin
         add_action('init', [$this, 'init_plugin']);
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
+
+        // Declare HPOS compatibility
+        add_action('before_woocommerce_init', [$this, 'declare_hpos_compatibility']);
     }
 
     private function load_dependencies()
@@ -47,6 +52,12 @@ class Plugin
 
     public function init_plugin()
     {
+        // Check if WooCommerce is active
+        if (!class_exists('WooCommerce')) {
+            add_action('admin_notices', [$this, 'woocommerce_missing_notice']);
+            return;
+        }
+
         // Initialize components
         $this->admin_page->init();
         $this->data_manager->init();
@@ -68,7 +79,7 @@ class Plugin
      */
     public function enqueue_admin_scripts($hook)
     {
-        $this->assets_manager->enqueue_admin_scripts($hook);
+        $this->assets_manager->enqueue_admin_scripts($hook, $this->plugin_file);
     }
 
     /**
@@ -85,5 +96,32 @@ class Plugin
     public function get_ui_manager()
     {
         return $this->ui_manager;
+    }
+
+    /**
+     * Declare HPOS (High-Performance Order Storage) compatibility
+     */
+    public function declare_hpos_compatibility()
+    {
+        if (class_exists('\Automattic\WooCommerce\Utilities\FeaturesUtil')) {
+            \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
+                'custom_order_tables',
+                $this->plugin_file,
+                true
+            );
+        }
+    }
+
+    /**
+     * Display notice if WooCommerce is not active
+     */
+    public function woocommerce_missing_notice()
+    {
+?>
+        <div class="notice notice-error">
+            <p><?php _e('MadeByHype Stock Management requires WooCommerce to be installed and activated.', 'madebyhype-stockmanagment'); ?>
+            </p>
+        </div>
+<?php
     }
 }

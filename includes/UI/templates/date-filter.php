@@ -11,8 +11,8 @@
 <div class="date-filter-container">
     <div class="date-filter-header">
         <div>
-            <h3 class="date-filter-title">Filter Sales Data</h3>
-            <p class="date-filter-subtitle">Select a date range to filter sales data</p>
+            <h3 class="date-filter-title"><?php _e('Filter Sales Data', 'madebyhype-stockmanagment'); ?></h3>
+            <p class="date-filter-subtitle"><?php _e('Select a date range to filter sales data', 'madebyhype-stockmanagment'); ?></p>
         </div>
         <?php if ($filter_applied): ?>
             <div class="date-filter-badge">
@@ -30,39 +30,42 @@
     </div>
 
     <form method="get" action="" class="date-filter-form">
-        <input type="hidden" name="page" value="omer-stockmanagment">
+        <input type="hidden" name="page" value="madebyhype-stockmanagment">
         <input type="hidden" id="start_date" name="start_date" value="<?php echo esc_attr($start_date); ?>" />
         <input type="hidden" id="end_date" name="end_date" value="<?php echo esc_attr($end_date); ?>" />
 
         <div class="date-filter-input-group">
             <div class="date-filter-input-wrapper">
-                <label for="date-range" class="date-filter-label">Date Range</label>
+                <label for="date-range" class="date-filter-label"><?php _e('Date Range', 'madebyhype-stockmanagment'); ?></label>
 
                 <!-- Preset Buttons -->
                 <div class="date-filter-presets">
-                    <button type="button" class="date-filter-preset-btn" data-days="30" data-label="1 Month">
-                        1 Month
+                    <button type="button" class="date-filter-preset-btn" data-days="30" data-label="<?php esc_attr_e('1 Month', 'madebyhype-stockmanagment'); ?>">
+                        <?php _e('1 Month', 'madebyhype-stockmanagment'); ?>
                     </button>
-                    <button type="button" class="date-filter-preset-btn" data-days="90" data-label="3 Months">
-                        3 Months
+                    <button type="button" class="date-filter-preset-btn" data-days="90" data-label="<?php esc_attr_e('3 Months', 'madebyhype-stockmanagment'); ?>">
+                        <?php _e('3 Months', 'madebyhype-stockmanagment'); ?>
                     </button>
-                    <button type="button" class="date-filter-preset-btn" data-days="180" data-label="6 Months">
-                        6 Months
+                    <button type="button" class="date-filter-preset-btn" data-days="180" data-label="<?php esc_attr_e('6 Months', 'madebyhype-stockmanagment'); ?>">
+                        <?php _e('6 Months', 'madebyhype-stockmanagment'); ?>
                     </button>
-                    <button type="button" class="date-filter-preset-btn" data-days="365" data-label="1 Year">
-                        1 Year
+                    <button type="button" class="date-filter-preset-btn" data-days="365" data-label="<?php esc_attr_e('1 Year', 'madebyhype-stockmanagment'); ?>">
+                        <?php _e('1 Year', 'madebyhype-stockmanagment'); ?>
+                    </button>
+                    <button type="button" class="date-filter-preset-btn" data-days="all" data-label="<?php esc_attr_e('All Time', 'madebyhype-stockmanagment'); ?>">
+                        <?php _e('All Time', 'madebyhype-stockmanagment'); ?>
                     </button>
                 </div>
 
                 <div class="date-filter-input-row">
-                    <input type="text" id="date-range" placeholder="Select date range..." class="date-filter-input" />
+                    <input type="text" id="date-range" placeholder="<?php esc_attr_e('Select date range...', 'madebyhype-stockmanagment'); ?>" class="date-filter-input" />
                     <div class="date-filter-button-group">
                         <button type="submit" name="apply_filter" class="date-filter-apply-btn">
-                            Apply Filter
+                            <?php _e('Apply Filter', 'madebyhype-stockmanagment'); ?>
                         </button>
                         <?php if ($filter_applied): ?>
-                            <a href="?page=omer-stockmanagment" class="date-filter-clear-btn">
-                                Clear Filter
+                            <a href="?page=madebyhype-stockmanagment" class="date-filter-clear-btn">
+                                <?php _e('Clear Filter', 'madebyhype-stockmanagment'); ?>
                             </a>
                         <?php endif; ?>
                     </div>

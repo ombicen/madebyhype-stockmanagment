@@ -18,10 +18,10 @@
  */
 ?>
 <div id="filters-sidebar" class="sidebar-filters-container">
-    <h3 class="sidebar-filters-title">Filters</h3>
+    <h3 class="sidebar-filters-title"><?php _e('Filters', 'madebyhype-stockmanagment'); ?></h3>
 
     <form id="filters-form" method="get" action="" class="sidebar-filters-form">
-        <input type="hidden" name="page" value="omer-stockmanagment">
+        <input type="hidden" name="page" value="madebyhype-stockmanagment">
         <input type="hidden" name="start_date" value="<?php echo esc_attr($start_date); ?>">
         <input type="hidden" name="end_date" value="<?php echo esc_attr($end_date); ?>">
         <input type="hidden" name="per_page" value="<?php echo esc_attr($per_page); ?>">
@@ -30,7 +30,7 @@
 
         <!-- Categories Filter -->
         <div class="sidebar-filter-section">
-            <label class="sidebar-filter-label">Categories</label>
+            <label class="sidebar-filter-label"><?php _e('Categories', 'madebyhype-stockmanagment'); ?></label>
             <div class="sidebar-filter-checkbox-container">
                 <?php
                 $categories = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => true]);
@@ -47,7 +47,7 @@
 
         <!-- Tags Filter -->
         <div class="sidebar-filter-section">
-            <label class="sidebar-filter-label">Tags</label>
+            <label class="sidebar-filter-label"><?php _e('Tags', 'madebyhype-stockmanagment'); ?></label>
             <div class="sidebar-filter-checkbox-container">
                 <?php
                 $tags = get_terms(['taxonomy' => 'product_tag', 'hide_empty' => true]);
@@ -64,10 +64,14 @@
 
         <!-- Stock Status Filter -->
         <div class="sidebar-filter-section">
-            <label class="sidebar-filter-label">Stock Status</label>
+            <label class="sidebar-filter-label"><?php _e('Stock Status', 'madebyhype-stockmanagment'); ?></label>
             <div class="sidebar-filter-checkbox-list">
                 <?php
-                $stock_statuses = ['instock' => 'In Stock', 'outofstock' => 'Out of Stock', 'onbackorder' => 'On Backorder'];
+                $stock_statuses = [
+                    'instock' => __('In Stock', 'madebyhype-stockmanagment'),
+                    'outofstock' => __('Out of Stock', 'madebyhype-stockmanagment'),
+                    'onbackorder' => __('On Backorder', 'madebyhype-stockmanagment')
+                ];
                 foreach ($stock_statuses as $status => $label) {
                     $checked = in_array($status, $stock_filter) ? 'checked' : '';
                     echo '<label class="sidebar-filter-checkbox-item">
@@ -81,22 +85,22 @@
 
         <!-- Price Range Filter -->
         <div class="sidebar-filter-section">
-            <label class="sidebar-filter-label">Price Range</label>
+            <label class="sidebar-filter-label"><?php _e('Price Range', 'madebyhype-stockmanagment'); ?></label>
             <div class="sidebar-filter-input-group">
-                <input type="number" name="min_price" placeholder="Min"
+                <input type="number" name="min_price" placeholder="<?php esc_attr_e('Min', 'madebyhype-stockmanagment'); ?>"
                     value="<?php echo esc_attr($min_price > 0 ? $min_price : ''); ?>" class="sidebar-filter-input">
-                <input type="number" name="max_price" placeholder="Max"
+                <input type="number" name="max_price" placeholder="<?php esc_attr_e('Max', 'madebyhype-stockmanagment'); ?>"
                     value="<?php echo esc_attr($max_price > 0 ? $max_price : ''); ?>" class="sidebar-filter-input">
             </div>
         </div>
 
         <!-- Sales Range Filter -->
         <div class="sidebar-filter-section">
-            <label class="sidebar-filter-label">Sales Range</label>
+            <label class="sidebar-filter-label"><?php _e('Sales Range', 'madebyhype-stockmanagment'); ?></label>
             <div class="sidebar-filter-input-group">
-                <input type="number" name="min_sales" placeholder="Min"
+                <input type="number" name="min_sales" placeholder="<?php esc_attr_e('Min', 'madebyhype-stockmanagment'); ?>"
                     value="<?php echo esc_attr($min_sales > 0 ? $min_sales : ''); ?>" class="sidebar-filter-input">
-                <input type="number" name="max_sales" placeholder="Max"
+                <input type="number" name="max_sales" placeholder="<?php esc_attr_e('Max', 'madebyhype-stockmanagment'); ?>"
                     value="<?php echo esc_attr($max_sales > 0 ? $max_sales : ''); ?>" class="sidebar-filter-input">
             </div>
         </div>
@@ -104,10 +108,10 @@
         <!-- Filter Buttons -->
         <div class="sidebar-filter-buttons">
             <button type="submit" class="sidebar-filter-apply-btn">
-                Apply Filters
+                <?php _e('Apply Filters', 'madebyhype-stockmanagment'); ?>
             </button>
-            <a href="?page=omer-stockmanagment" class="sidebar-filter-clear-btn">
-                Clear All
+            <a href="?page=madebyhype-stockmanagment" class="sidebar-filter-clear-btn">
+                <?php _e('Clear All', 'madebyhype-stockmanagment'); ?>
             </a>
         </div>
     </form>

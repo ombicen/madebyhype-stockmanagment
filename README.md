@@ -18,7 +18,7 @@ A WordPress plugin for stock management integrated with WooCommerce, featuring a
 The plugin has been refactored into a modular architecture for better maintainability:
 
 ```
-omer-stockmanagment/
+madebyhype-stockmanagment/
 ├── includes/
 │   ├── Plugin.php              # Main plugin class (coordinator)
 │   ├── Admin/
@@ -65,7 +65,7 @@ omer-stockmanagment/
 
 ## Installation
 
-1. Upload the plugin files to `/wp-content/plugins/omer-stockmanagment/`
+1. Upload the plugin files to `/wp-content/plugins/madebyhype-stockmanagment/`
 2. Activate the plugin through the 'Plugins' menu in WordPress
 3. Ensure WooCommerce is installed and activated
 4. Access the plugin via 'Stock Management' in the admin menu
@@ -138,7 +138,3 @@ When contributing to this plugin:
 3. Maintain separation of concerns between data, UI, and assets
 4. Test thoroughly with different WooCommerce setups
 5. Ensure responsive design works on mobile devices
-
-## License
-
-This plugin is developed for internal use. Please ensure compliance with WordPress and WooCommerce licensing terms. 

@@ -15,9 +15,14 @@
 ?>
 <div class="pagination-container">
     <div class="pagination-info">
-        Showing <?php echo number_format(($current_page - 1) * $per_page + 1); ?> to
-        <?php echo number_format(min($current_page * $per_page, $total_count)); ?> of
-        <?php echo number_format($total_count); ?> results
+        <?php
+        printf(
+            __('Showing %1$s to %2$s of %3$s results', 'madebyhype-stockmanagment'),
+            number_format(($current_page - 1) * $per_page + 1),
+            number_format(min($current_page * $per_page, $total_count)),
+            number_format($total_count)
+        );
+        ?>
     </div>
 
     <div class="pagination-controls">
@@ -25,7 +30,7 @@
         // Previous page
         if ($current_page > 1):
             $prev_url = add_query_arg([
-                'page' => 'omer-stockmanagment',
+                'page' => 'madebyhype-stockmanagment',
                 'paged' => $current_page - 1,
                 'per_page' => $per_page,
                 'start_date' => $start_date,
@@ -73,7 +78,7 @@
         // Next page
         if ($current_page < $total_pages):
             $next_url = add_query_arg([
-                'page' => 'omer-stockmanagment',
+                'page' => 'madebyhype-stockmanagment',
                 'paged' => $current_page + 1,
                 'per_page' => $per_page,
                 'start_date' => $start_date,
