@@ -86,18 +86,24 @@
             <tr>
                 <td><?php echo esc_html($product['id']); ?></td>
                 <td>
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
                         <?php if (!empty($product['variations'])): ?>
                         <button class="expand-variations" data-product-id="<?php echo esc_attr($product['id']); ?>">
-                            <span class="variation-count">(<?php echo count($product['variations']); ?>)</span>
+
                             <img src="<?php echo plugin_dir_url(__DIR__) . '../../assets/images/chevron.svg'; ?>"
                                 class="chevron" alt="Toggle variations" />
                         </button>
-                        <?php endif; ?>
                         <a href="<?php echo esc_url(get_edit_post_link($product['id'])); ?>" target="_blank"
                             class="product-name">
                             <?php echo esc_html($product['name']); ?>
                         </a>
+                        <span class="variation-count">(<?php echo count($product['variations']); ?>)</span>
+                        <?php else: ?>
+                        <a href="<?php echo esc_url(get_edit_post_link($product['id'])); ?>" target="_blank"
+                            class="product-name">
+                            <?php echo esc_html($product['name']); ?>
+                        </a>
+                        <?php endif; ?>
                     </div>
                 </td>
                 <td class="product-sku"><?php echo esc_html($product['sku']); ?></td>

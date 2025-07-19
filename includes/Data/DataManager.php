@@ -23,6 +23,12 @@ class DataManager
             return $products;
         }
 
+        // Set default 1-month interval if no dates provided
+        if (empty($start_date) || empty($end_date)) {
+            $end_date = date('Y-m-d'); // Today
+            $start_date = date('Y-m-d', strtotime('-1 month')); // 1 month ago
+        }
+
         $sort_column = '';
         $sort_direction = strtoupper($sort_order) === 'ASC' ? 'ASC' : 'DESC';
 
@@ -249,6 +255,12 @@ class DataManager
 
         if (empty($product_ids)) return [];
 
+        // Set default 1-month interval if no dates provided
+        if (empty($start_date) || empty($end_date)) {
+            $end_date = date('Y-m-d'); // Today
+            $start_date = date('Y-m-d', strtotime('-1 month')); // 1 month ago
+        }
+
         $column = $is_variation ? 'variation_id' : 'product_id';
         $lookup_table = "{$wpdb->prefix}wc_order_product_lookup";
         $stats_table  = "{$wpdb->prefix}wc_order_stats";
@@ -264,11 +276,10 @@ class DataManager
               AND stats.status IN ('wc-completed', 'wc-processing')
         ";
 
-        if (!empty($start_date) && !empty($end_date)) {
-            $sql .= " AND stats.date_created BETWEEN %s AND %s";
-            $params[] = date('Y-m-d H:i:s', strtotime($start_date));
-            $params[] = date('Y-m-d H:i:s', strtotime($end_date));
-        }
+        // Always apply date filter since we now have default dates
+        $sql .= " AND stats.date_created BETWEEN %s AND %s";
+        $params[] = date('Y-m-d H:i:s', strtotime($start_date));
+        $params[] = date('Y-m-d H:i:s', strtotime($end_date));
 
         $sql .= " GROUP BY lookup.$column";
 
@@ -290,6 +301,12 @@ class DataManager
     {
         global $wpdb;
 
+        // Set default 1-month interval if no dates provided
+        if (empty($start_date) || empty($end_date)) {
+            $end_date = date('Y-m-d'); // Today
+            $start_date = date('Y-m-d', strtotime('-1 month')); // 1 month ago
+        }
+
         $lookup_table = "{$wpdb->prefix}wc_order_product_lookup";
         $stats_table  = "{$wpdb->prefix}wc_order_stats";
 
@@ -307,11 +324,10 @@ class DataManager
 
         $params = [$product_id];
 
-        if (! empty($start_date) && ! empty($end_date)) {
-            $sql .= " AND stats.date_created BETWEEN %s AND %s";
-            $params[] = date('Y-m-d H:i:s', strtotime($start_date));
-            $params[] = date('Y-m-d H:i:s', strtotime($end_date));
-        }
+        // Always apply date filter since we now have default dates
+        $sql .= " AND stats.date_created BETWEEN %s AND %s";
+        $params[] = date('Y-m-d H:i:s', strtotime($start_date));
+        $params[] = date('Y-m-d H:i:s', strtotime($end_date));
 
         $prepared_sql = $wpdb->prepare($sql, ...$params);
         $result = $wpdb->get_var($prepared_sql);

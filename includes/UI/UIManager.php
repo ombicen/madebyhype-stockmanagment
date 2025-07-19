@@ -100,7 +100,7 @@ class UIManager
     {
         // Get version manager instance
         $version_manager = new \OmerStockhmanagment\Data\VersionManager();
-        $versions = $version_manager->get_versions(4); // Get last 4 versions
+        $versions = $version_manager->get_versions(6); // Get last 4 versions
 
         // Pass version_manager to template
         $version_manager_instance = $version_manager;

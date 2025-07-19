@@ -50,10 +50,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
-    border: 1px solid #f3f4f6;
+    padding: 10px;
+    border: 1px solid #f1f1f1dd;
     border-radius: 6px;
-    background: #f9fafb;
+    background: #f9fafbdd;
     transition: all 0.2s ease;
 }
 
@@ -64,13 +64,16 @@
 
 .version-info {
     flex: 1;
+    display: flex;
+    flex-flow:row nowrap;
+    gap:10px;
 }
 
 .version-header {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 6px;
+   
 }
 
 .version-number {

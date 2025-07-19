@@ -37,6 +37,23 @@
         <div class="date-filter-input-group">
             <div class="date-filter-input-wrapper">
                 <label for="date-range" class="date-filter-label">Date Range</label>
+
+                <!-- Preset Buttons -->
+                <div class="date-filter-presets">
+                    <button type="button" class="date-filter-preset-btn" data-days="30" data-label="1 Month">
+                        1 Month
+                    </button>
+                    <button type="button" class="date-filter-preset-btn" data-days="90" data-label="3 Months">
+                        3 Months
+                    </button>
+                    <button type="button" class="date-filter-preset-btn" data-days="180" data-label="6 Months">
+                        6 Months
+                    </button>
+                    <button type="button" class="date-filter-preset-btn" data-days="365" data-label="1 Year">
+                        1 Year
+                    </button>
+                </div>
+
                 <div class="date-filter-input-row">
                     <input type="text" id="date-range" placeholder="Select date range..." class="date-filter-input" />
                     <div class="date-filter-button-group">
