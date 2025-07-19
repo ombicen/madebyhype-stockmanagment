@@ -15,7 +15,7 @@
     </div>
     <div class="top-controls-right">
         <label for="per_page" class="top-controls-label"><?php _e('Items per page:', 'madebyhype-stockmanagment'); ?></label>
-        <select id="per_page" onchange="changePerPage(this.value)" class="top-controls-select">
+        <select id="per_page" class="top-controls-select">
             <option value="20" <?php echo ($per_page == 20) ? 'selected' : ''; ?>>20</option>
             <option value="50" <?php echo ($per_page == 50) ? 'selected' : ''; ?>>50</option>
             <option value="100" <?php echo ($per_page == 100) ? 'selected' : ''; ?>>100</option>

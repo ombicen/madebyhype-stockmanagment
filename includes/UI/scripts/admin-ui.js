@@ -240,8 +240,11 @@
       // Update button states
       updatePresetButtonStates();
 
-      // Auto-submit the form
-      $(".date-filter-form").submit();
+      // Redirect with date parameters while preserving other URL params
+      redirectWithParams({
+        start_date: startDateStr,
+        end_date: endDateStr,
+      });
     });
 
     // Initialize button states
@@ -282,9 +285,36 @@
   }
 
   function initClearFilter() {
+    // Date filter clear button
     $(".date-filter-clear-btn").on("click", function (e) {
+      e.preventDefault();
       // Clear preset state from localStorage
       clearPresetState();
+
+      // Redirect to remove date parameters while preserving other URL params
+      redirectWithParams({
+        start_date: null,
+        end_date: null,
+      });
+    });
+
+    // Sidebar clear all button
+    $(".sidebar-filter-clear-btn").on("click", function (e) {
+      e.preventDefault();
+
+      // Redirect to clear all filters except sort order
+      redirectWithParams({
+        start_date: null,
+        end_date: null,
+        category_filter: null,
+        tag_filter: null,
+        stock_filter: null,
+        min_price: null,
+        max_price: null,
+        min_sales: null,
+        max_sales: null,
+        paged: 1, // Reset to first page
+      });
     });
   }
 
@@ -424,17 +454,52 @@
     }).showToast();
   }
 
-  function changePerPage(value) {
+  function redirectWithParams(params) {
     try {
       const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set("per_page", value);
-      currentUrl.searchParams.set("paged", 1);
+
+      // Add, update, or remove the provided parameters
+      Object.keys(params).forEach((key) => {
+        if (params[key] === null || params[key] === undefined) {
+          // Remove parameter if value is null or undefined
+          currentUrl.searchParams.delete(key);
+        } else {
+          // Set parameter value
+          currentUrl.searchParams.set(key, params[key]);
+        }
+      });
+
       window.location.href = currentUrl.toString();
     } catch (error) {
-      const separator = window.location.href.includes("?") ? "&" : "?";
-      window.location.href =
-        window.location.href + separator + "per_page=" + value + "&paged=1";
+      // Fallback for older browsers
+      let url = window.location.href.split("?")[0];
+      const existingParams = new URLSearchParams(window.location.search);
+
+      // Add, update, or remove the provided parameters
+      Object.keys(params).forEach((key) => {
+        if (params[key] === null || params[key] === undefined) {
+          // Remove parameter if value is null or undefined
+          existingParams.delete(key);
+        } else {
+          // Set parameter value
+          existingParams.set(key, params[key]);
+        }
+      });
+
+      const queryString = existingParams.toString();
+      if (queryString) {
+        url += "?" + queryString;
+      }
+
+      window.location.href = url;
     }
+  }
+
+  function changePerPage(value) {
+    redirectWithParams({
+      per_page: value,
+      paged: 1,
+    });
   }
 
   $(document).on("change", "#per_page", function () {
@@ -448,4 +513,7 @@
   initVersionManagement();
   initSidebarToggle();
   initDatePicker();
+
+  // Initialize save controls state on page load
+  updateSaveControls();
 })(jQuery);
