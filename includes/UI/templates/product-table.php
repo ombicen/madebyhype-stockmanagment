@@ -2,13 +2,61 @@
 
 /**
  * Product Table Template
- * 
+ *
  * @param array $products
  * @param string $start_date
  * @param string $end_date
  * @param string $sort_by
  * @param string $sort_order
+ *
+ * Note: Filter parameters are accessed via $_GET in helper functions
  */
+
+// Helper function to build complete sort query args
+function build_sort_args($overrides = [])
+{
+    // Get current URL parameters
+    $current_params = $_GET;
+
+    // Default required parameters
+    $defaults = [
+        'post_type' => 'product',
+        'page' => 'madebyhype-stockmanagment'
+    ];
+
+    // Merge current params with defaults, then apply overrides
+    $args = wp_parse_args($overrides, wp_parse_args($current_params, $defaults));
+
+    // Clean up empty values - remove empty strings, null, empty arrays, and zero values for numeric filters
+    $args = array_filter($args, function ($value, $key) {
+        // Always keep required parameters (even if empty)
+        if (in_array($key, ['post_type', 'page'])) {
+            return true;
+        }
+
+        // Remove various forms of empty values
+        if ($value === '' || $value === null || $value === [] || $value === 0 || $value === '0' || $value === false) {
+            return false;
+        }
+
+        // For arrays, check if they contain only empty values
+        if (is_array($value)) {
+            $filtered = array_filter($value, function ($item) {
+                return $item !== '' && $item !== null && $item !== 0 && $item !== '0' && $item !== false;
+            });
+            return !empty($filtered);
+        }
+
+        // For strings, trim and check if still has content
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        return true;
+    }, ARRAY_FILTER_USE_BOTH);
+
+    return $args;
+}
 ?>
 <div class="product-table-container">
     <!-- Save Controls Row -->
@@ -39,13 +87,9 @@
                 <th
                     class="sortable <?php echo ($sort_by === 'stock_quantity') ? 'sort-' . strtolower($sort_order) : ''; ?>">
                     <?php
-                    $stock_sort_url = add_query_arg([
-                        'page' => 'madebyhype-stockmanagment',
-                        'start_date' => $start_date,
-                        'end_date' => $end_date,
-                        'sort_by' => 'stock_quantity',
-                        'sort_order' => ($sort_by === 'stock_quantity' && $sort_order === 'ASC') ? 'DESC' : 'ASC'
-                    ]);
+                    $stock_sort_order = ($sort_by === 'stock_quantity' && $sort_order === 'ASC') ? 'DESC' : 'ASC';
+                    $stock_sort_args = build_sort_args(['sort_by' => 'stock_quantity', 'sort_order' => $stock_sort_order]);
+                    $stock_sort_url = add_query_arg($stock_sort_args, admin_url('edit.php'));
                     ?>
                     <a href="<?php echo esc_url($stock_sort_url); ?>" style="color: inherit; text-decoration: none;">
                         <?php _e('Stock Quantity', 'madebyhype-stockmanagment'); ?>
@@ -58,13 +102,9 @@
                 <th
                     class="sortable <?php echo ($sort_by === 'total_sales') ? 'sort-' . strtolower($sort_order) : ''; ?>">
                     <?php
-                    $sales_sort_url = add_query_arg([
-                        'page' => 'madebyhype-stockmanagment',
-                        'start_date' => $start_date,
-                        'end_date' => $end_date,
-                        'sort_by' => 'total_sales',
-                        'sort_order' => ($sort_by === 'total_sales' && $sort_order === 'ASC') ? 'DESC' : 'ASC'
-                    ]);
+                    $sales_sort_order = ($sort_by === 'total_sales' && $sort_order === 'ASC') ? 'DESC' : 'ASC';
+                    $sales_sort_args = build_sort_args(['sort_by' => 'total_sales', 'sort_order' => $sales_sort_order]);
+                    $sales_sort_url = add_query_arg($sales_sort_args, admin_url('edit.php'));
                     ?>
                     <a href="<?php echo esc_url($sales_sort_url); ?>" style="color: inherit; text-decoration: none;">
                         <?php _e('Total Sales', 'madebyhype-stockmanagment'); ?>

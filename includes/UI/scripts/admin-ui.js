@@ -117,6 +117,57 @@
         }
       });
   }
+  function initFormCleanup() {
+    // Clean up forms before submission to remove empty values
+    function cleanupForm(form) {
+      // Remove empty hidden inputs (except required ones)
+      const requiredFields = ["post_type", "page"];
+      form.find('input[type="hidden"]').each(function () {
+        const input = $(this);
+        const name = input.attr("name");
+        const value = input.val();
+
+        if (
+          !requiredFields.includes(name) &&
+          (!value || value === "" || value === "0")
+        ) {
+          input.remove();
+        }
+      });
+
+      // Remove empty text inputs
+      form.find('input[type="number"], input[type="text"]').each(function () {
+        const input = $(this);
+        const value = input.val();
+
+        if (!value || value === "" || value === "0") {
+          input.removeAttr("name");
+        }
+      });
+
+      // Handle checkboxes - if no checkboxes are checked in a group, don't submit the parameter
+      const checkboxGroups = ["category_filter", "tag_filter", "stock_filter"];
+      checkboxGroups.forEach(function (groupName) {
+        const checkedBoxes = form.find(
+          'input[name="' + groupName + '[]"]:checked'
+        );
+        if (checkedBoxes.length === 0) {
+          // Remove all unchecked boxes from this group to prevent empty array submission
+          form.find('input[name="' + groupName + '[]"]').removeAttr("name");
+        }
+      });
+    }
+
+    // Apply cleanup to both filter forms
+    $("#filters-form").on("submit", function (e) {
+      cleanupForm($(this));
+    });
+
+    $(".date-filter-form").on("submit", function (e) {
+      cleanupForm($(this));
+    });
+  }
+
   function initSidebarToggle() {
     const sidebar = $("#filters-sidebar");
     const toggleBtn = $("#toggle-sidebar");
@@ -460,6 +511,10 @@
     try {
       const currentUrl = new URL(window.location.href);
 
+      // Ensure post_type=product is always included
+      currentUrl.searchParams.set("post_type", "product");
+      currentUrl.searchParams.set("page", "madebyhype-stockmanagment");
+
       // Add, update, or remove the provided parameters
       Object.keys(params).forEach((key) => {
         if (params[key] === null || params[key] === undefined) {
@@ -476,6 +531,10 @@
       // Fallback for older browsers
       let url = window.location.href.split("?")[0];
       const existingParams = new URLSearchParams(window.location.search);
+
+      // Ensure post_type=product is always included
+      existingParams.set("post_type", "product");
+      existingParams.set("page", "madebyhype-stockmanagment");
 
       // Add, update, or remove the provided parameters
       Object.keys(params).forEach((key) => {
@@ -515,6 +574,7 @@
   initVersionManagement();
   initSidebarToggle();
   initDatePicker();
+  initFormCleanup();
 
   // Initialize save controls state on page load
   updateSaveControls();

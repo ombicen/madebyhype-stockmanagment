@@ -29,7 +29,8 @@
         <?php endif; ?>
     </div>
 
-    <form method="get" action="" class="date-filter-form">
+    <form method="get" action="<?php echo esc_url(admin_url('edit.php')); ?>" class="date-filter-form">
+        <input type="hidden" name="post_type" value="product">
         <input type="hidden" name="page" value="madebyhype-stockmanagment">
         <input type="hidden" id="start_date" name="start_date" value="<?php echo esc_attr($start_date); ?>" />
         <input type="hidden" id="end_date" name="end_date" value="<?php echo esc_attr($end_date); ?>" />
@@ -64,7 +65,7 @@
                             <?php _e('Apply Filter', 'madebyhype-stockmanagment'); ?>
                         </button>
                         <?php if ($filter_applied): ?>
-                            <a href="?page=madebyhype-stockmanagment" class="date-filter-clear-btn">
+                            <a href="<?php echo esc_url(add_query_arg(['post_type' => 'product', 'page' => 'madebyhype-stockmanagment'], admin_url('edit.php'))); ?>" class="date-filter-clear-btn">
                                 <?php _e('Clear Filter', 'madebyhype-stockmanagment'); ?>
                             </a>
                         <?php endif; ?>
