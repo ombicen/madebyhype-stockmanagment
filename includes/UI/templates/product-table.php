@@ -83,6 +83,7 @@ function build_sort_args($overrides = [])
             <tr>
                 <th style="width: 60px;"><?php _e('ID', 'madebyhype-stockmanagment'); ?></th>
                 <th style="width: 300px;"><?php _e('Product Name', 'madebyhype-stockmanagment'); ?></th>
+                <th><?php _e('Type', 'madebyhype-stockmanagment'); ?></th>
                 <th><?php _e('SKU', 'madebyhype-stockmanagment'); ?></th>
                 <th
                     class="sortable <?php echo ($sort_by === 'stock_quantity') ? 'sort-' . strtolower($sort_order) : ''; ?>">
@@ -110,7 +111,6 @@ function build_sort_args($overrides = [])
                         <?php _e('Total Sales', 'madebyhype-stockmanagment'); ?>
                     </a>
                 </th>
-                <th><?php _e('Status', 'madebyhype-stockmanagment'); ?></th>
             </tr>
         </thead>
         <tbody>
@@ -145,6 +145,13 @@ function build_sort_args($overrides = [])
                                     </a>
                                 <?php endif; ?>
                             </div>
+                        </td>
+                        <td>
+                            <?php
+                            $type = $product['type'];
+                            $type_class = strtolower($type);
+                            echo '<span class="product-type ' . esc_attr($type_class) . '">' . esc_html(ucfirst($type)) . '</span>';
+                            ?>
                         </td>
                         <td class="product-sku"><?php echo esc_html($product['sku']); ?></td>
                         <td>
@@ -233,7 +240,6 @@ function build_sort_args($overrides = [])
                             }
                             ?>
                         </td>
-                        <td><?php echo esc_html(ucfirst($product['status'])); ?></td>
                     </tr>
 
                     <!-- Variation rows -->

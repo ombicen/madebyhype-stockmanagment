@@ -563,6 +563,49 @@
     });
   }
 
+  function initCategoryToggles() {
+    // Handle category toggle clicks
+    $(document).on("click", ".category-toggle", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const $toggle = $(this);
+      const categoryId = $toggle.data("category-id");
+      const $children = $("#children-" + categoryId);
+
+      if ($children.length) {
+        const isExpanded = $toggle.hasClass("expanded");
+
+        if (isExpanded) {
+          // Collapse
+          $toggle.removeClass("expanded");
+          $children.removeClass("expanded");
+        } else {
+          // Expand
+          $toggle.addClass("expanded");
+          $children.addClass("expanded");
+        }
+      }
+    });
+
+    // Auto-expand categories that have selected children
+    $(".category-children").each(function () {
+      const $children = $(this);
+      const hasSelectedChild =
+        $children.find("input[type='checkbox']:checked").length > 0;
+
+      if (hasSelectedChild) {
+        const categoryId = $children.attr("id").replace("children-", "");
+        const $toggle = $(
+          ".category-toggle[data-category-id='" + categoryId + "']"
+        );
+
+        $toggle.addClass("expanded");
+        $children.addClass("expanded");
+      }
+    });
+  }
+
   $(document).on("change", "#per_page", function () {
     changePerPage(this.value);
   });
@@ -575,6 +618,7 @@
   initSidebarToggle();
   initDatePicker();
   initFormCleanup();
+  initCategoryToggles();
 
   // Initialize save controls state on page load
   updateSaveControls();

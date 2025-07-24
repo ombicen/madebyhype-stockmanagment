@@ -15,6 +15,7 @@
  * @param float $max_price
  * @param int $min_sales
  * @param int $max_sales
+ * @param bool $include_variations
  */
 ?>
 <div id="filters-sidebar" class="sidebar-filters-container">
@@ -29,19 +30,26 @@
         <input type="hidden" name="sort_by" value="<?php echo esc_attr($sort_by); ?>">
         <input type="hidden" name="sort_order" value="<?php echo esc_attr($sort_order); ?>">
 
+        <!-- Include Variations Filter -->
+        <div class="sidebar-filter-section">
+            <label class="sidebar-filter-label"><?php _e('Display Options', 'madebyhype-stockmanagment'); ?></label>
+            <div class="sidebar-filter-checkbox-container">
+                <label class="sidebar-filter-checkbox-item">
+                    <input type="checkbox" name="include_variations" value="1" <?php echo $include_variations ? 'checked' : ''; ?>>
+                    <?php _e('Include variations as separate products', 'madebyhype-stockmanagment'); ?>
+                </label>
+            </div>
+        </div>
+
         <!-- Categories Filter -->
         <div class="sidebar-filter-section">
             <label class="sidebar-filter-label"><?php _e('Categories', 'madebyhype-stockmanagment'); ?></label>
-            <div class="sidebar-filter-checkbox-container">
+            <div class="sidebar-filter-checkbox-container category-hierarchy">
                 <?php
-                $categories = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => true]);
-                foreach ($categories as $category) {
-                    $checked = in_array($category->term_id, $category_filter) ? 'checked' : '';
-                    echo '<label class="sidebar-filter-checkbox-item">
-                            <input type="checkbox" name="category_filter[]" value="' . esc_attr($category->term_id) . '" ' . $checked . '>
-                            ' . esc_html($category->name) . '
-                          </label>';
-                }
+                // Get all categories and build hierarchy
+                $all_categories = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => true]);
+                $hierarchical_categories = $this->build_category_hierarchy($all_categories);
+                echo $this->render_category_hierarchy($hierarchical_categories, $category_filter);
                 ?>
             </div>
         </div>

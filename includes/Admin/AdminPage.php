@@ -68,6 +68,7 @@ class AdminPage
         $max_price = isset($_GET['max_price']) ? floatval($_GET['max_price']) : 0;
         $min_sales = isset($_GET['min_sales']) ? intval($_GET['min_sales']) : 0;
         $max_sales = isset($_GET['max_sales']) ? intval($_GET['max_sales']) : 0;
+        $include_variations = isset($_GET['include_variations']) ? (bool)$_GET['include_variations'] : false;
 
         // Validate sort parameters
         if (!in_array($sort_by, ['total_sales', 'stock_quantity', ''])) {
@@ -78,12 +79,27 @@ class AdminPage
         }
 
         // Get data from data manager
-        $result = $this->data_manager->get_products($start_date, $end_date, $sort_by, $sort_order, $current_page, $per_page, $category_filter, $tag_filter, $stock_filter, $min_price, $max_price, $min_sales, $max_sales);
+        $result = $this->data_manager->get_products([
+            'start_date' => $start_date,
+            'end_date' => $end_date,
+            'sort_by' => $sort_by,
+            'sort_order' => $sort_order,
+            'page' => $current_page,
+            'per_page' => $per_page,
+            'category_filter' => $category_filter,
+            'tag_filter' => $tag_filter,
+            'stock_filter' => $stock_filter,
+            'min_price' => $min_price,
+            'max_price' => $max_price,
+            'min_sales' => $min_sales,
+            'max_sales' => $max_sales,
+            'include_variations' => $include_variations
+        ]);
         $products = $result['products'];
         $total_count = $result['total_count'];
         $total_pages = $result['total_pages'];
 
         // Render the page using UI manager
-        $this->ui_manager->render_admin_page($products, $total_count, $total_pages, $current_page, $per_page, $start_date, $end_date, $filter_applied, $sort_by, $sort_order, $category_filter, $tag_filter, $stock_filter, $min_price, $max_price, $min_sales, $max_sales);
+        $this->ui_manager->render_admin_page($products, $total_count, $total_pages, $current_page, $per_page, $start_date, $end_date, $filter_applied, $sort_by, $sort_order, $category_filter, $tag_filter, $stock_filter, $min_price, $max_price, $min_sales, $max_sales, $include_variations);
     }
 }

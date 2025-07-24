@@ -13,9 +13,80 @@ class DataManager
         // Initialize data manager
     }
 
-    public function get_products($start_date = null, $end_date = null, $sort_by = null, $sort_order = 'DESC', $page = 1, $per_page = 50, $category_filter = [], $tag_filter = [], $stock_filter = [], $min_price = 0, $max_price = 0, $min_sales = 0, $max_sales = 0)
+    /**
+     * Get products with filtering, sorting, and pagination
+     *
+     * @param array $args {
+     *     Optional. Array of arguments.
+     *
+     *     @type string|null $start_date        Start date for sales data (Y-m-d format). Default null (1 month ago).
+     *     @type string|null $end_date          End date for sales data (Y-m-d format). Default null (today).
+     *     @type string|null $sort_by           Sort field ('total_sales', 'stock_quantity'). Default null.
+     *     @type string      $sort_order        Sort order ('ASC', 'DESC'). Default 'DESC'.
+     *     @type int         $page              Page number for pagination. Default 1.
+     *     @type int         $per_page          Items per page. Default 50.
+     *     @type array       $category_filter   Array of category IDs to filter by. Default [].
+     *     @type array       $tag_filter        Array of tag IDs to filter by. Default [].
+     *     @type array       $stock_filter      Array of stock statuses to filter by. Default [].
+     *     @type float       $min_price         Minimum price filter. Default 0.
+     *     @type float       $max_price         Maximum price filter. Default 0.
+     *     @type int         $min_sales         Minimum sales filter. Default 0.
+     *     @type int         $max_sales         Maximum sales filter. Default 0.
+     *     @type bool        $include_variations Include variations as top-level items. Default false.
+     * }
+     *
+     * @return array {
+     *     @type array $products      Array of product data.
+     *     @type int   $total_count   Total number of products (before pagination).
+     *     @type int   $total_pages   Total number of pages.
+     *     @type int   $current_page  Current page number.
+     *     @type int   $per_page      Items per page.
+     * }
+     *
+     * @example
+     * // Basic usage
+     * $result = $data_manager->get_products();
+     *
+     * // With filters and sorting
+     * $result = $data_manager->get_products([
+     *     'start_date' => '2024-01-01',
+     *     'end_date' => '2024-01-31',
+     *     'sort_by' => 'total_sales',
+     *     'sort_order' => 'DESC',
+     *     'page' => 1,
+     *     'per_page' => 20,
+     *     'category_filter' => [1, 2, 3],
+     *     'stock_filter' => ['instock'],
+     *     'min_price' => 10.00,
+     *     'include_variations' => true
+     * ]);
+     */
+    public function get_products($args = [])
     {
         global $wpdb;
+
+        // Parse arguments with defaults
+        $defaults = [
+            'start_date' => null,
+            'end_date' => null,
+            'sort_by' => null,
+            'sort_order' => 'DESC',
+            'page' => 1,
+            'per_page' => 50,
+            'category_filter' => [],
+            'tag_filter' => [],
+            'stock_filter' => [],
+            'min_price' => 0,
+            'max_price' => 0,
+            'min_sales' => 0,
+            'max_sales' => 0,
+            'include_variations' => false
+        ];
+
+        $args = wp_parse_args($args, $defaults);
+
+        // Extract variables for easier use
+        extract($args);
 
         $products = [];
 
@@ -45,8 +116,9 @@ class DataManager
 
         // SQL för att hämta produkter med metadata + total försäljning
         $sql = "
-            SELECT 
+            SELECT DISTINCT
                 p.ID as product_id,
+                p.post_type as post_type,
                 p.post_title as product_name,
                 p.post_status as status,
                 pm_sku.meta_value as sku,
@@ -65,9 +137,10 @@ class DataManager
             LEFT JOIN $postmeta_table pm_regular_price ON p.ID = pm_regular_price.post_id AND pm_regular_price.meta_key = '_regular_price'
             LEFT JOIN $postmeta_table pm_sale_price ON p.ID = pm_sale_price.post_id AND pm_sale_price.meta_key = '_sale_price'
             LEFT JOIN $postmeta_table pm_type ON p.ID = pm_type.post_id AND pm_type.meta_key = '_product_type'
+             LEFT JOIN $postmeta_table pm_price ON p.ID = pm_price.post_id AND pm_price.meta_key = '_price'
             LEFT JOIN (
                 SELECT 
-                    lookup.product_id,
+                    lookup.product_id as id,
                     SUM(lookup.product_qty) as total_sales
                 FROM $lookup_table lookup
                 INNER JOIN $stats_table stats ON lookup.order_id = stats.order_id
@@ -84,20 +157,48 @@ class DataManager
 
         $sql .= "
                 GROUP BY lookup.product_id
-            ) sales ON p.ID = sales.product_id
-            WHERE p.post_type = 'product' 
+            ";
+
+        // If include_variations is true, also get variation sales
+        if ($include_variations) {
+            $sql .= "
+                UNION ALL
+                SELECT 
+                    lookup.variation_id as id,
+                    SUM(lookup.product_qty) as total_sales
+                FROM $lookup_table lookup
+                INNER JOIN $stats_table stats ON lookup.order_id = stats.order_id
+                WHERE stats.status IN ('wc-completed', 'wc-processing')
+            ";
+
+            if (!empty($start_date) && !empty($end_date)) {
+                $sql .= " AND stats.date_created BETWEEN %s AND %s";
+                $params[] = date('Y-m-d H:i:s', strtotime($start_date));
+                $params[] = date('Y-m-d H:i:s', strtotime($end_date));
+            }
+
+            $sql .= "
+                GROUP BY lookup.variation_id
+            ";
+        }
+
+        $sql .= "
+            ) sales ON p.ID = sales.id
+            WHERE (p.post_type = 'product'" . ($include_variations ? " OR p.post_type = 'product_variation'" : "") . ")
               AND p.post_status = 'publish'
         ";
 
         // Apply filters
         if (!empty($category_filter)) {
-            $category_placeholders = implode(',', array_fill(0, count($category_filter), '%d'));
+            // Get all child category IDs for the selected categories
+            $all_category_ids = $this->get_all_child_category_ids($category_filter);
+            $category_placeholders = implode(',', array_fill(0, count($all_category_ids), '%d'));
             $sql .= " AND p.ID IN (
                 SELECT object_id FROM {$wpdb->prefix}term_relationships tr
                 INNER JOIN {$wpdb->prefix}term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
                 WHERE tt.taxonomy = 'product_cat' AND tt.term_id IN ($category_placeholders)
             )";
-            $params = array_merge($params, $category_filter);
+            $params = array_merge($params, $all_category_ids);
         }
 
         if (!empty($tag_filter)) {
@@ -164,6 +265,9 @@ class DataManager
             return ['products' => [], 'total_count' => $total_count, 'total_pages' => 0];
         }
 
+        // Reset products array to ensure no duplicates
+        $products = [];
+
         // Steg 1: Hämta alla variationer
         $variation_ids_all = [];
         $variable_product_map = [];
@@ -196,22 +300,23 @@ class DataManager
             $product = wc_get_product($row->product_id);
             $actual_type = $product ? $product->get_type() : 'simple';
 
+
             $product_data = [
                 'id' => $row->product_id,
                 'name' => $row->product_name,
                 'sku' => $row->sku,
-                'stock_quantity' => is_numeric($row->stock_quantity) ? (int)$row->stock_quantity : null,
+                'stock_quantity' => is_numeric($row->stock_quantity) ? (int)$row->stock_quantity : 0,
                 'stock_status' => $row->stock_status,
                 'regular_price' => $row->regular_price,
                 'sale_price' => $row->sale_price,
                 'type' => $actual_type,
                 'status' => $row->status,
-                'total_sales' => (int)$row->total_sales,
+                'total_sales' =>  (int)$row->total_sales,
                 'variations' => []
             ];
 
             // Lägg till variationer
-            if (isset($variable_product_map[$row->product_id])) {
+            if (isset($variable_product_map[$row->product_id]) && !$include_variations) {
                 foreach ($variable_product_map[$row->product_id] as $variation_id) {
                     $variation = wc_get_product($variation_id);
                     if (!$variation) continue;
@@ -248,6 +353,8 @@ class DataManager
             'per_page' => $per_page
         ];
     }
+
+
 
     private function get_bulk_sales_data($product_ids, $is_variation = false, $start_date = null, $end_date = null)
     {
@@ -295,43 +402,35 @@ class DataManager
     }
 
     /**
-     * Get sales data for a specific product
+     * Get all child category IDs recursively for given parent category IDs
+     *
+     * @param array $parent_ids Array of parent category IDs
+     * @return array Array of all category IDs including children
      */
-    public function get_product_sales_by_date($product_id, $start_date = null, $end_date = null, $is_variation = false)
+    private function get_all_child_category_ids($parent_ids)
     {
-        global $wpdb;
-
-        // Set default 1-month interval if no dates provided
-        if (empty($start_date) || empty($end_date)) {
-            $end_date = date('Y-m-d'); // Today
-            $start_date = date('Y-m-d', strtotime('-1 month')); // 1 month ago
+        if (empty($parent_ids)) {
+            return [];
         }
 
-        $lookup_table = "{$wpdb->prefix}wc_order_product_lookup";
-        $stats_table  = "{$wpdb->prefix}wc_order_stats";
+        $all_category_ids = $parent_ids;
 
-        // Välj rätt kolumn: product_id eller variation_id
-        $column = $is_variation ? 'variation_id' : 'product_id';
+        foreach ($parent_ids as $parent_id) {
+            $children = get_terms([
+                'taxonomy' => 'product_cat',
+                'parent' => $parent_id,
+                'hide_empty' => false,
+                'fields' => 'ids'
+            ]);
 
-        $sql = "
-            SELECT SUM(lookup.product_qty)
-            FROM $lookup_table AS lookup
-            INNER JOIN $stats_table AS stats
-                ON lookup.order_id = stats.order_id
-            WHERE lookup.$column = %d
-              AND stats.status IN ('wc-completed', 'wc-processing')
-        ";
+            if (!empty($children)) {
+                $all_category_ids = array_merge($all_category_ids, $children);
+                // Recursively get children of children
+                $grandchildren = $this->get_all_child_category_ids($children);
+                $all_category_ids = array_merge($all_category_ids, $grandchildren);
+            }
+        }
 
-        $params = [$product_id];
-
-        // Always apply date filter since we now have default dates
-        $sql .= " AND stats.date_created BETWEEN %s AND %s";
-        $params[] = date('Y-m-d H:i:s', strtotime($start_date));
-        $params[] = date('Y-m-d H:i:s', strtotime($end_date));
-
-        $prepared_sql = $wpdb->prepare($sql, ...$params);
-        $result = $wpdb->get_var($prepared_sql);
-
-        return intval($result);
+        return array_unique($all_category_ids);
     }
 }
