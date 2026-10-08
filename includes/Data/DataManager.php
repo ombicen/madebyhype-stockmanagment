@@ -9,11 +9,6 @@ if (! defined('ABSPATH')) {
 class DataManager
 {
     /**
-     * Cache expiration time in seconds (5 minutes)
-     */
-    private const CACHE_EXPIRATION = 5 * MINUTE_IN_SECONDS;
-
-    /**
      * Cache key prefix
      */
     private const CACHE_PREFIX = 'mbh_stock_';
@@ -21,31 +16,6 @@ class DataManager
     public function init()
     {
         // Initialize data manager
-    }
-
-    /**
-     * Clear all product cache transients
-     */
-    public function clear_cache()
-    {
-        global $wpdb;
-
-        // Delete all transients with our prefix
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-                '_transient_' . self::CACHE_PREFIX . '%',
-                '_transient_timeout_' . self::CACHE_PREFIX . '%'
-            )
-        );
-    }
-
-    /**
-     * Generate cache key from arguments
-     */
-    private function get_cache_key($args)
-    {
-        return self::CACHE_PREFIX . md5(serialize($args));
     }
 
     /**
@@ -121,12 +91,8 @@ class DataManager
 
         $args = wp_parse_args($args, $defaults);
 
-        // Check cache first
-        $cache_key = $this->get_cache_key($args);
-        $cached_result = get_transient($cache_key);
-        if ($cached_result !== false) {
-            return $cached_result;
-        }
+        // The result is deliberately not cached: stock and prices are edited from
+        // this list, so it must show what is in the database right now
 
         // Extract variables explicitly (avoiding extract() for security)
         $start_date = $args['start_date'];
@@ -509,9 +475,6 @@ class DataManager
             'current_page' => $page,
             'per_page' => $per_page
         ];
-
-        // Store result in cache
-        set_transient($cache_key, $result, self::CACHE_EXPIRATION);
 
         return $result;
     }
