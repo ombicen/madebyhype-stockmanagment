@@ -47,7 +47,7 @@ class AssetsManager
         $this->enqueue_component_styles();
 
         // Enqueue admin JS from file
-        wp_enqueue_script('madebyhype-stockmanagment-js', $plugin_url . 'includes/UI/scripts/admin-ui.js', ['jquery'], '1.0.1', true);
+        wp_enqueue_script('madebyhype-stockmanagment-js', $plugin_url . 'includes/UI/scripts/admin-ui.js', ['jquery'], '1.0.6', true);
 
         // Localize script with nonces and data
         wp_localize_script('madebyhype-stockmanagment-js', 'madebyhypeStockData', [
@@ -67,7 +67,7 @@ class AssetsManager
         wp_enqueue_style('madebyhype-date-filter', $plugin_url . 'UI/styles/date-filter.css', [], '1.0.1');
         wp_enqueue_style('madebyhype-top-controls', $plugin_url . 'UI/styles/top-controls.css', [], '1.0.1');
         wp_enqueue_style('madebyhype-sidebar-filters', $plugin_url . 'UI/styles/sidebar-filters.css', [], '1.0.1');
-        wp_enqueue_style('madebyhype-product-table', $plugin_url . 'UI/styles/product-table.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-product-table', $plugin_url . 'UI/styles/product-table.css', [], '1.0.6');
         wp_enqueue_style('madebyhype-variation-table', $plugin_url . 'UI/styles/variation-table.css', [], '1.0.1');
         wp_enqueue_style('madebyhype-pagination', $plugin_url . 'UI/styles/pagination.css', [], '1.0.1');
         wp_enqueue_style('madebyhype-footer-info', $plugin_url . 'UI/styles/footer-info.css', [], '1.0.1');

@@ -125,6 +125,12 @@
     background: #fef3c7;
 }
 
+/* Cells the server refused to save (the reason is in the cell's tooltip) */
+.product-table-container .changed.save-failed {
+    border-color: #dc2626;
+    background: #fee2e2;
+}
+
 .stock-status-select {
     width: 120px;
     padding: 6px 8px;

@@ -28,8 +28,10 @@
         ? $(this).val()
         : current.toFixed(2);
 
+      // Editing a cell again clears the error left by a refused save
+      $(this).removeClass("save-failed").removeAttr("title");
+
       targetMap[id] = targetMap[id] || {};
-      console.log(formattedCurrent, formattedOriginal);
       if (formattedCurrent !== formattedOriginal) {
         targetMap[id][dataKey] = isNaN(current) ? $(this).val() : current;
         $(this).addClass("changed");
@@ -399,50 +401,200 @@
     });
   }
 
-  function updateSaveControls() {
-    const productChanges = Object.keys(changedProducts).length;
-    const variationChanges = Object.keys(changedVariations).length;
-    const totalChanges = productChanges + variationChanges;
+  function countPendingChanges() {
+    return (
+      Object.keys(changedProducts).length +
+      Object.keys(changedVariations).length
+    );
+  }
 
-    $("#save-changes-btn").prop("disabled", totalChanges === 0);
-    $("#reset-changes-btn").prop("disabled", totalChanges === 0);
+  function updateSaveControls() {
+    const totalChanges = countPendingChanges();
+
+    $("#save-changes-btn").prop("disabled", isSaving || totalChanges === 0);
+    $("#reset-changes-btn").prop("disabled", isSaving || totalChanges === 0);
 
     $(".changes-count").text(totalChanges);
   }
 
-  function saveStockChanges() {
-    $.post(madebyhypeStockData.ajaxUrl, {
-      action: "madebyhype_save_stock_changes",
-      data: {
-        products: changedProducts,
-        variations: changedVariations,
-      },
-      _wpnonce: madebyhypeStockData.updateNonce,
-    })
-      .done(function () {
-        showNotification("Changes saved successfully.", "success");
+  function setSavingState(saving) {
+    const $saveBtn = $("#save-changes-btn");
 
-        // Update the original values to current values for all changed elements
-        $(".changed").each(function () {
-          const currentValue = $(this).val();
-          // Update the HTML attribute directly to ensure jQuery re-reads it
-          $(this).attr("data-original-value", currentValue);
-          $(this).removeClass("changed");
-        });
+    if (saving) {
+      $saveBtn.data("label", $saveBtn.text()).text("Saving...");
+    } else if ($saveBtn.data("label")) {
+      $saveBtn.text($saveBtn.data("label"));
+    }
 
-        // Clear the change tracking objects (preserve references)
-        Object.keys(changedProducts).forEach(
-          (key) => delete changedProducts[key]
-        );
-        Object.keys(changedVariations).forEach(
-          (key) => delete changedVariations[key]
-        );
+    isSaving = saving;
+    updateSaveControls();
+  }
 
-        updateSaveControls();
-      })
-      .fail(function () {
-        showNotification("Failed to save changes.", "error");
+  // The server accepts at most 100 products and 100 variations per request
+  function buildSaveChunks() {
+    const productIds = Object.keys(changedProducts);
+    const variationIds = Object.keys(changedVariations);
+    const chunkCount = Math.max(
+      Math.ceil(productIds.length / SAVE_CHUNK_SIZE),
+      Math.ceil(variationIds.length / SAVE_CHUNK_SIZE)
+    );
+    const chunks = [];
+
+    for (let i = 0; i < chunkCount; i++) {
+      const chunk = { products: {}, variations: {} };
+      productIds
+        .slice(i * SAVE_CHUNK_SIZE, (i + 1) * SAVE_CHUNK_SIZE)
+        .forEach((id) => (chunk.products[id] = changedProducts[id]));
+      variationIds
+        .slice(i * SAVE_CHUNK_SIZE, (i + 1) * SAVE_CHUNK_SIZE)
+        .forEach((id) => (chunk.variations[id] = changedVariations[id]));
+      chunks.push(chunk);
+    }
+
+    return chunks;
+  }
+
+  function countZeroPrices() {
+    let count = 0;
+
+    [changedProducts, changedVariations].forEach(function (map) {
+      Object.keys(map).forEach(function (id) {
+        if (map[id].regular_price === 0) count++;
+        if (map[id].sale_price === 0) count++;
       });
+    });
+
+    return count;
+  }
+
+  // Mark each item of a chunk as saved or refused, based on what the server reports
+  function applySaveResults(chunk, results, outcome) {
+    const resultsById = {};
+    results.forEach(function (result) {
+      resultsById[result.id] = result;
+    });
+
+    [
+      ["products", changedProducts, "product-id"],
+      ["variations", changedVariations, "variation-id"],
+    ].forEach(function (group) {
+      const key = group[0];
+      const targetMap = group[1];
+      const idAttribute = group[2];
+
+      Object.keys(chunk[key]).forEach(function (id) {
+        const result = resultsById[id];
+        const $cells = $("[data-" + idAttribute + '="' + id + '"].changed');
+
+        if (result && result.success) {
+          $cells.each(function () {
+            // Update the HTML attribute directly to ensure jQuery re-reads it
+            $(this).attr("data-original-value", $(this).val());
+            $(this).removeClass("changed");
+          });
+          delete targetMap[id];
+          outcome.saved++;
+        } else {
+          const message =
+            (result && result.message) ||
+            "The server returned no result for this item.";
+          $cells.addClass("save-failed").attr("title", message);
+          outcome.failed.push(message);
+        }
+      });
+    });
+  }
+
+  function reportSaveOutcome(outcome) {
+    const failedCount = outcome.failed.length;
+
+    if (!outcome.requestError && failedCount === 0) {
+      showNotification("Changes saved successfully.", "success");
+      return;
+    }
+
+    const parts = ["Saved " + outcome.saved + " of " + outcome.total + "."];
+
+    if (failedCount > 0) {
+      parts.push(
+        failedCount + " not saved (marked in red): " + outcome.failed[0]
+      );
+    }
+    if (outcome.requestError) {
+      parts.push(outcome.requestError);
+    }
+
+    showNotification(parts.join(" "), "error", true);
+  }
+
+  function saveStockChanges() {
+    if (isSaving || countPendingChanges() === 0) return;
+
+    const zeroPrices = countZeroPrices();
+    if (
+      zeroPrices > 0 &&
+      !window.confirm(
+        zeroPrices +
+          " price(s) will be set to 0, which makes the product free. Save anyway?"
+      )
+    ) {
+      return;
+    }
+
+    const chunks = buildSaveChunks();
+    const outcome = {
+      total: countPendingChanges(),
+      saved: 0,
+      failed: [],
+      requestError: "",
+    };
+
+    setSavingState(true);
+
+    function finish() {
+      setSavingState(false);
+      reportSaveOutcome(outcome);
+    }
+
+    function sendChunk(index) {
+      if (index >= chunks.length) {
+        finish();
+        return;
+      }
+
+      $.post(madebyhypeStockData.ajaxUrl, {
+        action: "madebyhype_save_stock_changes",
+        data: chunks[index],
+        _wpnonce: madebyhypeStockData.updateNonce,
+      })
+        .done(function (response) {
+          // wp_send_json_error also arrives here, with HTTP 200
+          if (!response || response.success !== true) {
+            outcome.requestError =
+              response && typeof response.data === "string"
+                ? response.data
+                : "The server refused the save.";
+            finish();
+            return;
+          }
+
+          applySaveResults(
+            chunks[index],
+            (response.data && response.data.results) || [],
+            outcome
+          );
+          sendChunk(index + 1);
+        })
+        .fail(function (xhr) {
+          outcome.requestError =
+            xhr.status === 403
+              ? "Your session has expired. Reload the page and re-enter the changes that are still highlighted."
+              : "The server could not be reached or returned an error. The highlighted changes were not saved.";
+          finish();
+        });
+    }
+
+    sendChunk(0);
   }
 
   function resetStockChanges() {
@@ -456,7 +608,7 @@
     $(".changed").each(function () {
       // Use attr() to get the current HTML attribute value, not cached jQuery data
       const original = $(this).attr("data-original-value");
-      $(this).val(original).removeClass("changed");
+      $(this).val(original).removeClass("changed save-failed").removeAttr("title");
     });
 
     // Update save controls
@@ -474,12 +626,16 @@
   }
 
   function showRevertConfirmation(versionNumber) {
+    const pendingWarning =
+      countPendingChanges() > 0
+        ? " Your unsaved changes on this page will be lost."
+        : "";
     const modalHtml = `
       <div class="version-revert-modal">
         <div class="version-revert-modal-content">
           <div class="version-revert-modal-header">
             <h3 class="version-revert-modal-title">Revert to Version ${versionNumber}?</h3>
-            <p class="version-revert-modal-message">This will revert all changes made in this version. This action cannot be undone.</p>
+            <p class="version-revert-modal-message">This will revert all changes made in this version. This action cannot be undone.${pendingWarning}</p>
           </div>
           <div class="version-revert-modal-actions">
             <button type="button" class="version-revert-modal-cancel">Cancel</button>
@@ -511,19 +667,38 @@
       version_id: versionNumber,
       _wpnonce: madebyhypeStockData.revertNonce,
     })
-      .done(function () {
+      .done(function (response) {
+        // wp_send_json_error also arrives here, with HTTP 200
+        if (!response || response.success !== true) {
+          failRevert(
+            response && typeof response.data === "string"
+              ? response.data
+              : "Failed to revert version."
+          );
+          return;
+        }
+
         showNotification("Version reverted successfully.", "success");
+        // The revert dialog already warned about unsaved changes
+        allowUnload = true;
         location.reload();
       })
       .fail(function () {
-        showNotification("Failed to revert version.", "error");
+        failRevert("Failed to revert version.");
       });
   }
 
-  function showNotification(message, type = "info") {
+  function failRevert(message) {
+    $(".version-revert-modal").remove();
+    showNotification(message, "error", true);
+  }
+
+  // Sticky notifications stay until dismissed, for errors the user must not miss
+  function showNotification(message, type = "info", sticky = false) {
     Toastify({
       text: message,
-      duration: 3000,
+      duration: sticky ? -1 : 3000,
+      close: sticky,
       gravity: "top",
       position: "right",
       backgroundColor:
@@ -710,6 +885,18 @@
 
   let changedProducts = {};
   let changedVariations = {};
+
+  const SAVE_CHUNK_SIZE = 100;
+  let isSaving = false;
+  let allowUnload = false;
+
+  // Sorting, filtering and paging all reload the page, which would drop pending edits
+  window.addEventListener("beforeunload", function (e) {
+    if (allowUnload || countPendingChanges() === 0) return;
+
+    e.preventDefault();
+    e.returnValue = "";
+  });
 
   initStockEditing();
   initVersionManagement();
