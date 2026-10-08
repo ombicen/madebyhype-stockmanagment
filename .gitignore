@@ -1,0 +1,15 @@
+# Dependencies and build tooling
+node_modules/
+
+# Editor and local tool settings
+.vscode/
+.idea/
+.qodo/
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
