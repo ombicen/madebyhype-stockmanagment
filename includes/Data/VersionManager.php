@@ -158,6 +158,13 @@ class VersionManager
     {
         global $wpdb;
 
+        // Load the target before anything is written. A stale or pruned version
+        // number must not roll back the later versions and then fail.
+        $target_version = $this->get_version($version_number);
+        if (!$target_version) {
+            return false;
+        }
+
         // Get all versions after the target version (newest first)
         $later_versions = $wpdb->get_results(
             $wpdb->prepare(
@@ -180,11 +187,6 @@ class VersionManager
         }
 
         // Now apply the target version to restore the desired state
-        $target_version = $this->get_version($version_number);
-        if (!$target_version) {
-            return false;
-        }
-
         $revert_success = $this->apply_version_changes($target_version['changes_data'], false); // false = normal mode
 
         if ($revert_success) {

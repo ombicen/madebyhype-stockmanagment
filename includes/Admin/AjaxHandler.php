@@ -71,7 +71,15 @@ class AjaxHandler
                 continue;
             }
 
-            $original_values['products'][$product_id] = [
+            // Reject the whole item before anything is written if any field is invalid
+            $validated = $this->validate_fields($product, $fields, ['stock_quantity', 'stock_status', 'regular_price', 'sale_price']);
+            if (isset($validated['error'])) {
+                $results[] = ['id' => $product_id, 'success' => false, 'message' => $validated['error']];
+                $error_count++;
+                continue;
+            }
+
+            $original = [
                 'stock_quantity' => $product->get_stock_quantity(),
                 'stock_status' => $product->get_stock_status(),
                 'backorders' => $product->get_backorders(),
@@ -80,36 +88,16 @@ class AjaxHandler
                 'sale_price' => $product->get_sale_price(),
             ];
 
-            $messages = [];
-            $product->set_manage_stock(true);
-
-            foreach ($fields as $key => $value) {
-                switch ($key) {
-                    case 'stock_quantity':
-                        $product->set_stock_quantity((int) $value);
-                        $messages[] = "Stock set to $value";
-                        break;
-                    case 'stock_status':
-                        if ($value === 'onbackorder') {
-                            $product->set_backorders('yes');
-                        } elseif ($value === 'outofstock') {
-                            $product->set_stock_quantity(0);
-                            $product->set_backorders('no');
-                        }
-                        $messages[] = "Stock status set to $value";
-                        break;
-                    case 'regular_price':
-                        $product->set_regular_price((float) $value);
-                        $messages[] = "Regular price set to $value";
-                        break;
-                    case 'sale_price':
-                        $product->set_sale_price((float) $value);
-                        $messages[] = "Sale price set to $value";
-                        break;
-                }
+            try {
+                $messages = $this->apply_fields($product, $validated['fields']);
+                $product->save();
+            } catch (\Throwable $e) {
+                $results[] = ['id' => $product_id, 'success' => false, 'message' => $e->getMessage()];
+                $error_count++;
+                continue;
             }
 
-            $product->save();
+            $original_values['products'][$product_id] = $original;
             $success_count++;
             $results[] = ['id' => $product_id, 'success' => true, 'message' => implode(", ", $messages)];
         }
@@ -136,7 +124,15 @@ class AjaxHandler
                 continue;
             }
 
-            $original_values['variations'][$variation_id] = [
+            // Reject the whole item before anything is written if any field is invalid
+            $validated = $this->validate_fields($variation, $fields, ['stock_quantity', 'stock_status', 'regular_price']);
+            if (isset($validated['error'])) {
+                $results[] = ['id' => $variation_id, 'success' => false, 'message' => $validated['error']];
+                $error_count++;
+                continue;
+            }
+
+            $original = [
                 'stock_quantity' => $variation->get_stock_quantity(),
                 'stock_status' => $variation->get_stock_status(),
                 'backorders' => $variation->get_backorders(),
@@ -144,41 +140,21 @@ class AjaxHandler
                 'regular_price' => $variation->get_regular_price(),
             ];
 
-            $messages = [];
-            $variation->set_manage_stock(true);
-
-            foreach ($fields as $key => $value) {
-                switch ($key) {
-                    case 'stock_quantity':
-                        $variation->set_stock_quantity((int) $value);
-                        $messages[] = "Stock set to $value";
-                        break;
-                    case 'stock_status':
-                        if ($value === 'onbackorder') {
-                            $variation->set_backorders('yes');
-                        } elseif ($value === 'outofstock') {
-                            $variation->set_stock_quantity(0);
-                            $variation->set_backorders('no');
-                        }
-                        $messages[] = "Stock status set to $value";
-                        break;
-                    case 'regular_price':
-                        $variation->set_regular_price((float) $value);
-                        $messages[] = "Regular price set to $value";
-                        break;
-                }
+            try {
+                $messages = $this->apply_fields($variation, $validated['fields']);
+                $variation->save();
+            } catch (\Throwable $e) {
+                $results[] = ['id' => $variation_id, 'success' => false, 'message' => $e->getMessage()];
+                $error_count++;
+                continue;
             }
 
-            $variation->save();
+            $original_values['variations'][$variation_id] = $original;
             $success_count++;
             $results[] = ['id' => $variation_id, 'success' => true, 'message' => implode(", ", $messages)];
         }
 
         \wc_delete_product_transients();
-
-        // Clear our custom cache when stock changes are made
-        $data_manager = new \MadeByHypeStockmanagment\Data\DataManager();
-        $data_manager->clear_cache();
 
         if ($success_count > 0) {
             $version_manager = new \MadeByHypeStockmanagment\Data\VersionManager();
@@ -193,6 +169,126 @@ class AjaxHandler
                 'errors' => $error_count,
             ]
         ]);
+    }
+
+    /**
+     * Validate the submitted fields for one product or variation
+     *
+     * Nothing is written here. An empty or non-numeric value must never be cast
+     * to 0: an empty sale price ends the sale, any other empty value is an error.
+     *
+     * @param \WC_Product $item Product or variation the fields belong to
+     * @param array $fields Raw field => value pairs from the request
+     * @param array $allowed Field names this item type accepts
+     * @return array ['fields' => cleaned values] or ['error' => message]
+     */
+    private function validate_fields($item, $fields, $allowed)
+    {
+        $clean = [];
+
+        foreach ($fields as $key => $value) {
+            if (!in_array($key, $allowed, true)) {
+                continue;
+            }
+
+            $value = is_scalar($value) ? trim((string) wp_unslash($value)) : '';
+
+            switch ($key) {
+                case 'stock_quantity':
+                    if ($value === '' || !is_numeric($value)) {
+                        return ['error' => __('Stock quantity must be a number. It cannot be left empty.', 'madebyhype-stockmanagment')];
+                    }
+                    if ((float) $value < 0) {
+                        return ['error' => __('Stock quantity cannot be negative.', 'madebyhype-stockmanagment')];
+                    }
+                    $clean[$key] = (int) $value;
+                    break;
+                case 'stock_status':
+                    if (!in_array($value, ['instock', 'outofstock', 'onbackorder'], true)) {
+                        return ['error' => __('Unknown stock status.', 'madebyhype-stockmanagment')];
+                    }
+                    $clean[$key] = $value;
+                    break;
+                case 'regular_price':
+                    if ($value === '') {
+                        return ['error' => __('Regular price cannot be left empty.', 'madebyhype-stockmanagment')];
+                    }
+                    if (!is_numeric($value) || (float) $value < 0) {
+                        return ['error' => __('Regular price must be a number of 0 or more.', 'madebyhype-stockmanagment')];
+                    }
+                    $clean[$key] = \wc_format_decimal($value);
+                    break;
+                case 'sale_price':
+                    // An empty sale price ends the sale
+                    if ($value === '') {
+                        $clean[$key] = '';
+                        break;
+                    }
+                    if (!is_numeric($value) || (float) $value < 0) {
+                        return ['error' => __('Sale price must be a number of 0 or more.', 'madebyhype-stockmanagment')];
+                    }
+                    $clean[$key] = \wc_format_decimal($value);
+                    break;
+            }
+        }
+
+        if (empty($clean)) {
+            return ['error' => __('Nothing to save for this item.', 'madebyhype-stockmanagment')];
+        }
+
+        // WooCommerce silently drops a sale price that is not below the regular
+        // price, so refuse it here and say why
+        if (array_key_exists('regular_price', $clean) || array_key_exists('sale_price', $clean)) {
+            $regular_price = array_key_exists('regular_price', $clean) ? $clean['regular_price'] : $item->get_regular_price();
+            $sale_price = array_key_exists('sale_price', $clean) ? $clean['sale_price'] : $item->get_sale_price();
+
+            if ($sale_price !== '' && ($regular_price === '' || (float) $sale_price >= (float) $regular_price)) {
+                return ['error' => __('Sale price must be lower than the regular price.', 'madebyhype-stockmanagment')];
+            }
+        }
+
+        return ['fields' => $clean];
+    }
+
+    /**
+     * Apply validated fields to a product or variation (does not save)
+     *
+     * @param \WC_Product $item Product or variation object
+     * @param array $fields Validated field => value pairs
+     * @return array Messages describing what was set
+     */
+    private function apply_fields($item, $fields)
+    {
+        $messages = [];
+        $item->set_manage_stock(true);
+
+        foreach ($fields as $key => $value) {
+            switch ($key) {
+                case 'stock_quantity':
+                    $item->set_stock_quantity($value);
+                    $messages[] = "Stock set to $value";
+                    break;
+                case 'stock_status':
+                    if ($value === 'onbackorder') {
+                        $item->set_backorders('yes');
+                    } elseif ($value === 'outofstock') {
+                        $item->set_stock_quantity(0);
+                        $item->set_backorders('no');
+                    }
+                    $messages[] = "Stock status set to $value";
+                    break;
+                case 'regular_price':
+                    $item->set_regular_price($value);
+                    $messages[] = "Regular price set to $value";
+                    break;
+                case 'sale_price':
+                    $item->set_sale_price($value);
+                    $messages[] = $value === '' ? 'Sale price cleared' : "Sale price set to $value";
+                    break;
+            }
+        }
+
+        return $messages;
     }
 
     public function revert_to_version()
@@ -212,6 +308,12 @@ class AjaxHandler
         }
 
         $version_manager = new \MadeByHypeStockmanagment\Data\VersionManager();
+
+        if (!$version_manager->get_version($version_number)) {
+            wp_send_json_error('Version ' . $version_number . ' no longer exists. Reload the page to see the current history.');
+            return;
+        }
+
         $success = $version_manager->revert_to_version($version_number);
 
         if ($success) {
