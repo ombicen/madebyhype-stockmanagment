@@ -8,6 +8,7 @@
  * Requires at least: 5.0
  * Tested up to: 6.4
  * Requires PHP: 7.4
+ * Requires Plugins: woocommerce
  * Author: MadebyHype
  * Author URI: https://madebyhype.se/
  * License: GPL v2 or later
@@ -30,6 +31,10 @@ if (! defined('ABSPATH')) {
 }
 
 require_once plugin_dir_path(__FILE__) . 'includes/Plugin.php';
+
+// Table lifecycle. Removal of all data on delete is in uninstall.php
+register_activation_hook(__FILE__, ['\MadeByHypeStockmanagment\Plugin', 'activate']);
+register_deactivation_hook(__FILE__, ['\MadeByHypeStockmanagment\Plugin', 'deactivate']);
 
 // Initialize the plugin
 function madebyhype_stockmanagment_init()

@@ -12,66 +12,13 @@ class VersionManager
     private $max_versions = 6;
 
     /**
-     * Flag to track if table has been verified this request
+     * The table is created and kept up to date by Schema (activation and
+     * Schema::maybe_upgrade()), not checked here on every request.
      */
-    private static $table_verified = false;
-
     public function __construct()
     {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'madebyhype_stock_versions';
-
-        // Only check/create table once per request, not on every instantiation
-        if (!self::$table_verified) {
-            $this->maybe_create_table();
-            self::$table_verified = true;
-        }
-    }
-
-    /**
-     * Create table only if it doesn't exist
-     * Uses a lightweight check before running expensive dbDelta
-     */
-    private function maybe_create_table()
-    {
-        global $wpdb;
-
-        // Quick check if table exists (much faster than running dbDelta every time)
-        $table_exists = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(1) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
-                DB_NAME,
-                $this->table_name
-            )
-        );
-
-        if (!$table_exists) {
-            $this->create_table();
-        }
-    }
-
-    /**
-     * Create the versions table using dbDelta
-     * Only called when table doesn't exist
-     */
-    private function create_table()
-    {
-        global $wpdb;
-
-        $charset_collate = $wpdb->get_charset_collate();
-
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->table_name} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            version_number int(11) NOT NULL,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            changes_data longtext NOT NULL,
-            description varchar(255) DEFAULT '',
-            PRIMARY KEY (id),
-            KEY version_number (version_number)
-        ) $charset_collate;";
-
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
     }
 
     public function save_version($changes_data, $description = '')

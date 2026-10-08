@@ -6,6 +6,9 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// Needed before WooCommerce is known to be there: activation and schema upgrades
+require_once plugin_dir_path(__FILE__) . 'Data/Schema.php';
+
 class Plugin
 {
     private $admin_page;
@@ -13,6 +16,8 @@ class Plugin
     private $ui_manager;
     private $assets_manager;
     private $ajax_handler;
+    private $change_log;
+    private $write_service;
     private $plugin_file;
 
     public function __construct($plugin_file)
@@ -20,25 +25,127 @@ class Plugin
         $this->plugin_file = $plugin_file;
     }
 
-    public function run()
+    /**
+     * Plugin activation: create the tables. An update of an already active
+     * plugin does not come through here; Schema::maybe_upgrade() covers that.
+     */
+    public static function activate()
     {
-	// Declare HPOS compatibility (needs to run always)
-      	add_action('before_woocommerce_init', [$this, 'declare_hpos_compatibility']);
-
-      	// Everything else is admin-only
-	if (!is_admin()) {
-          return;
-	}
-
-        add_action('init', [$this, 'init_plugin']);
-        add_action('admin_menu', [$this, 'add_admin_menu']);
-        add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
-
+        Data\Schema::install();
     }
 
-    private function load_dependencies()
+    /**
+     * Plugin deactivation: stop the scheduled clean-up. Data is kept.
+     */
+    public static function deactivate()
     {
-        // Load all modular components
+        wp_clear_scheduled_hook(Data\Schema::PRUNE_HOOK);
+    }
+
+    /**
+     * Runs on plugins_loaded, in every context.
+     *
+     * On a storefront request (a page view, the cart, checkout, REST) this
+     * plugin does two things and nothing else: the HPOS declaration and the
+     * schema version comparison. Everything else is decided in init_plugin().
+     */
+    public function run()
+    {
+        // Declare HPOS compatibility (needs to run always)
+        add_action('before_woocommerce_init', [$this, 'declare_hpos_compatibility']);
+
+        // One comparison against an autoloaded option; does work only when the
+        // schema is behind. Before init_plugin, so the tables exist when it runs.
+        add_action('init', [Data\Schema::class, 'maybe_upgrade'], 5);
+
+        add_action('init', [$this, 'init_plugin']);
+
+        // The menu and the assets are wp-admin only
+        if (is_admin()) {
+            add_action('admin_menu', [$this, 'add_admin_menu']);
+            add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
+        }
+    }
+
+    public function init_plugin()
+    {
+        // Check if WooCommerce is active
+        if (!class_exists('WooCommerce')) {
+            if (is_admin()) {
+                add_action('admin_notices', [$this, 'woocommerce_missing_notice']);
+            }
+            return;
+        }
+
+        if (!$this->core_runs_here()) {
+            return;
+        }
+
+        $this->load_core();
+        $this->register_core_hooks();
+
+        // wp-admin and admin-ajax only
+        if (is_admin()) {
+            $this->load_admin();
+            $this->admin_page->init();
+            $this->data_manager->init();
+            $this->ui_manager->init();
+            $this->assets_manager->init();
+            $this->ajax_handler->init();
+        }
+    }
+
+    /**
+     * Where the core (change log, write service, scheduled clean-up) is loaded
+     *
+     * wp-admin, which includes admin-ajax, and cron runs, so the daily prune
+     * fires. Not the storefront: changes made outside this tool are not
+     * recorded, so nothing of ours has a reason to run there. Returning true
+     * here is all it takes to load the core in every context again.
+     *
+     * @return bool
+     */
+    private function core_runs_here()
+    {
+        return is_admin() || wp_doing_cron();
+    }
+
+    /**
+     * The permission helper, the change log and the write service. Nothing in
+     * here depends on wp-admin.
+     */
+    private function load_core()
+    {
+        require_once plugin_dir_path(__FILE__) . 'Capabilities.php';
+        require_once plugin_dir_path(__FILE__) . 'Data/ChangeLog.php';
+        require_once plugin_dir_path(__FILE__) . 'Data/VersionManager.php';
+        require_once plugin_dir_path(__FILE__) . 'Data/WriteService.php';
+
+        $this->change_log = new Data\ChangeLog();
+
+        // TRANSITION: VersionManager is passed in only so saves keep feeding
+        // the legacy Version History. Drop the argument with the legacy revert.
+        $this->write_service = new Data\WriteService($this->change_log, new Data\VersionManager());
+    }
+
+    /**
+     * Hooks of the core that are not tied to the admin screen: the daily
+     * clean-up of the change log, and keeping it scheduled
+     */
+    private function register_core_hooks()
+    {
+        add_action(Data\Schema::PRUNE_HOOK, [$this, 'prune_change_log']);
+
+        if (!wp_next_scheduled(Data\Schema::PRUNE_HOOK)) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', Data\Schema::PRUNE_HOOK);
+        }
+    }
+
+    /**
+     * The admin screen and its AJAX transport
+     */
+    private function load_admin()
+    {
         require_once plugin_dir_path(__FILE__) . 'Admin/AdminPage.php';
         require_once plugin_dir_path(__FILE__) . 'Admin/AjaxHandler.php';
         require_once plugin_dir_path(__FILE__) . 'Data/DataManager.php';
@@ -49,27 +156,20 @@ class Plugin
         $this->ui_manager = new UI\UIManager();
         $this->assets_manager = new Assets\AssetsManager();
         $this->admin_page = new Admin\AdminPage();
-        $this->ajax_handler = new Admin\AjaxHandler();
+        $this->ajax_handler = new Admin\AjaxHandler($this->write_service);
 
         // Set dependencies
         $this->admin_page->set_dependencies($this->data_manager, $this->ui_manager);
     }
 
-    public function init_plugin()
+    /**
+     * Daily clean-up of change-log entries past the retention period
+     */
+    public function prune_change_log()
     {
-        // Check if WooCommerce is active
-        if (!class_exists('WooCommerce')) {
-            add_action('admin_notices', [$this, 'woocommerce_missing_notice']);
-            return;
-        }
+        $months = (int) apply_filters('madebyhype_stock_log_retention_months', Data\ChangeLog::DEFAULT_RETENTION_MONTHS);
 
-        // Initialize components
-	$this->load_dependencies();
-        $this->admin_page->init();
-        $this->data_manager->init();
-        $this->ui_manager->init();
-        $this->assets_manager->init();
-        $this->ajax_handler->init();
+        $this->change_log->prune($months);
     }
 
     /**
@@ -111,6 +211,22 @@ class Plugin
     public function get_ui_manager()
     {
         return $this->ui_manager;
+    }
+
+    /**
+     * Get the write service: the one way to change products from this plugin
+     */
+    public function get_write_service()
+    {
+        return $this->write_service;
+    }
+
+    /**
+     * Get the change log
+     */
+    public function get_change_log()
+    {
+        return $this->change_log;
     }
 
     /**
