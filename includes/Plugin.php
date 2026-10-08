@@ -77,6 +77,11 @@ class Plugin
      */
     public function add_admin_menu()
     {
+        // Components are only created once WooCommerce is confirmed active
+        if (!$this->admin_page) {
+            return;
+        }
+
         $this->admin_page->add_admin_menu();
     }
 
@@ -85,6 +90,10 @@ class Plugin
      */
     public function enqueue_admin_scripts($hook)
     {
+        if (!$this->assets_manager) {
+            return;
+        }
+
         $this->assets_manager->enqueue_admin_scripts($hook, $this->plugin_file);
     }
 
