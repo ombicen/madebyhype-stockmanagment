@@ -10,6 +10,7 @@
  * @param string $sort_order
  * @param array $category_filter
  * @param array $tag_filter
+ * @param array $attribute_filter
  * @param array $stock_filter
  * @param float $min_price
  * @param float $max_price
@@ -38,6 +39,49 @@
                     <input type="checkbox" name="include_variations" value="1" <?php echo $include_variations ? 'checked' : ''; ?>>
                     <?php _e('Include variations as separate products', 'madebyhype-stockmanagment'); ?>
                 </label>
+            </div>
+        </div>
+        
+        <!-- Attributes Filter -->
+        <div class="sidebar-filter-section">
+            <label class="sidebar-filter-label"><?php _e('Attributes', 'madebyhype-stockmanagment'); ?></label>
+            <div class="sidebar-filter-checkbox-container attribute-hierarchy sidebar-filter-attributes">
+                <?php
+                // Global search input for all attribute terms
+                echo '<input type="search" id="attribute-global-search" class="attribute-search" placeholder="' . esc_attr__('Search attribute terms...', 'madebyhype-stockmanagment') . '">';
+
+                // Get global product attributes and render as expandable groups
+                if (function_exists('wc_get_attribute_taxonomies')) {
+                    $attributes = wc_get_attribute_taxonomies();
+                    foreach ($attributes as $attr) {
+                        $taxonomy = 'pa_' . $attr->attribute_name;
+                        $terms = get_terms(['taxonomy' => $taxonomy, 'hide_empty' => true]);
+                        if (empty($terms) || is_wp_error($terms)) continue;
+
+                        echo '<div class="attribute-group">';
+                        echo '<div class="attribute-header">';
+                        echo '<button type="button" class="attribute-toggle" data-attribute="' . esc_attr($taxonomy) . '">';
+                        echo '<img src="' . esc_url(plugin_dir_url(__DIR__) . '../../assets/images/chevron.svg') . '" class="chevron-icon" alt="Toggle">';
+                        echo '</button>';
+                        echo '<label class="attribute-name">' . esc_html($attr->attribute_label) . '</label>';
+                        echo '</div>';
+
+                        echo '<div class="attribute-children" id="attribute-children-' . esc_attr($taxonomy) . '">';
+                        echo '<div class="attribute-terms">';
+                        foreach ($terms as $term) {
+                            $checked = (isset($attribute_filter[$taxonomy]) && in_array($term->term_id, (array)$attribute_filter[$taxonomy])) ? 'checked' : '';
+                            echo '<label class="sidebar-filter-checkbox-item">';
+                            echo '<input type="checkbox" name="attribute_filter[' . esc_attr($taxonomy) . '][]" value="' . esc_attr($term->term_id) . '" ' . $checked . '>';
+                            echo esc_html($term->name);
+                            echo '</label>';
+                        }
+                        echo '</div>'; // .attribute-terms
+                        echo '</div>'; // .attribute-children
+
+                        echo '</div>'; // .attribute-group
+                    }
+                }
+                ?>
             </div>
         </div>
 
@@ -70,6 +114,7 @@
                 ?>
             </div>
         </div>
+
 
         <!-- Stock Status Filter -->
         <div class="sidebar-filter-section">

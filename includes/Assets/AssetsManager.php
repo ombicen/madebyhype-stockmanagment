@@ -19,7 +19,7 @@ class AssetsManager
     public function enqueue_admin_scripts($hook, $plugin_file)
     {
         // Debug: Log the hook name to help identify the correct one
-        error_log('MadeByHype Stock Management Hook: ' . $hook);
+        // error_log('MadeByHype Stock Management Hook: ' . $hook); // disabled 2026-09-24: logged on every admin page
 
         // Check for various possible hook names
         $valid_hooks = [
@@ -38,8 +38,8 @@ class AssetsManager
         wp_enqueue_script('jquery');
 
         // Enqueue bundled Flatpickr and Toastify
-        wp_enqueue_style('flatpickr', $plugin_url . 'assets/styles/flatpickr.min.css', [], '1.0.0');
-        wp_enqueue_script('flatpickr', $plugin_url . 'assets/scripts/flatpickr.min.js', [], '1.0.0', true);
+        wp_enqueue_style('flatpickr', $plugin_url . 'assets/styles/flatpickr.min.css', [], '1.0.1');
+        wp_enqueue_script('flatpickr', $plugin_url . 'assets/scripts/flatpickr.min.js', [], '1.0.1', true);
         wp_enqueue_script('toastify', $plugin_url . 'assets/scripts/toastify.min.js', [], '1.12.0', true);
         wp_enqueue_style('toastify', $plugin_url . 'assets/styles/toastify.min.css', [], '1.12.0');
 
@@ -47,7 +47,7 @@ class AssetsManager
         $this->enqueue_component_styles();
 
         // Enqueue admin JS from file
-        wp_enqueue_script('madebyhype-stockmanagment-js', $plugin_url . 'includes/UI/scripts/admin-ui.js', ['jquery'], '1.0.0', true);
+        wp_enqueue_script('madebyhype-stockmanagment-js', $plugin_url . 'includes/UI/scripts/admin-ui.js', ['jquery'], '1.0.1', true);
 
         // Localize script with nonces and data
         wp_localize_script('madebyhype-stockmanagment-js', 'madebyhypeStockData', [
@@ -64,15 +64,15 @@ class AssetsManager
     {
         $plugin_url = plugin_dir_url(__DIR__ . '/../../');
 
-        wp_enqueue_style('madebyhype-date-filter', $plugin_url . 'UI/styles/date-filter.css', [], '1.0.0');
-        wp_enqueue_style('madebyhype-top-controls', $plugin_url . 'UI/styles/top-controls.css', [], '1.0.0');
-        wp_enqueue_style('madebyhype-sidebar-filters', $plugin_url . 'UI/styles/sidebar-filters.css', [], '1.0.0');
-        wp_enqueue_style('madebyhype-product-table', $plugin_url . 'UI/styles/product-table.css', [], '1.0.0');
-        wp_enqueue_style('madebyhype-variation-table', $plugin_url . 'UI/styles/variation-table.css', [], '1.0.0');
-        wp_enqueue_style('madebyhype-pagination', $plugin_url . 'UI/styles/pagination.css', [], '1.0.0');
-        wp_enqueue_style('madebyhype-footer-info', $plugin_url . 'UI/styles/footer-info.css', [], '1.0.0');
-        wp_enqueue_style('madebyhype-legend', $plugin_url . 'UI/styles/legend.css', [], '1.0.0');
-        wp_enqueue_style('madebyhype-version-history', $plugin_url . 'UI/styles/version-history.css', [], '1.0.0');
+        wp_enqueue_style('madebyhype-date-filter', $plugin_url . 'UI/styles/date-filter.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-top-controls', $plugin_url . 'UI/styles/top-controls.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-sidebar-filters', $plugin_url . 'UI/styles/sidebar-filters.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-product-table', $plugin_url . 'UI/styles/product-table.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-variation-table', $plugin_url . 'UI/styles/variation-table.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-pagination', $plugin_url . 'UI/styles/pagination.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-footer-info', $plugin_url . 'UI/styles/footer-info.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-legend', $plugin_url . 'UI/styles/legend.css', [], '1.0.1');
+        wp_enqueue_style('madebyhype-version-history', $plugin_url . 'UI/styles/version-history.css', [], '1.0.1');
     }
 
 

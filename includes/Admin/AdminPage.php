@@ -42,9 +42,26 @@ class AdminPage
      */
     public function render_admin_page()
     {
-        // Handle date filter and sorting parameters
+        // Handle date filter and sorting parameters with validation
         $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
         $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+
+        // Validate date format (Y-m-d)
+        if (!empty($start_date) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date)) {
+            $start_date = '';
+        }
+        if (!empty($end_date) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date)) {
+            $end_date = '';
+        }
+
+        // Ensure start_date is not after end_date
+        if (!empty($start_date) && !empty($end_date) && strtotime($start_date) > strtotime($end_date)) {
+            // Swap dates if in wrong order
+            $temp = $start_date;
+            $start_date = $end_date;
+            $end_date = $temp;
+        }
+
         $filter_applied = !empty($start_date) && !empty($end_date);
 
         $sort_by = isset($_GET['sort_by']) ? sanitize_text_field($_GET['sort_by']) : '';
@@ -60,10 +77,33 @@ class AdminPage
             $per_page = 50;
         }
 
-        // Handle sidebar filter parameters
-        $category_filter = isset($_GET['category_filter']) ? (array)$_GET['category_filter'] : [];
-        $tag_filter = isset($_GET['tag_filter']) ? (array)$_GET['tag_filter'] : [];
-        $stock_filter = isset($_GET['stock_filter']) ? (array)$_GET['stock_filter'] : [];
+        // Handle sidebar filter parameters with proper validation
+        $category_filter = isset($_GET['category_filter']) && is_array($_GET['category_filter'])
+            ? array_map('absint', $_GET['category_filter'])
+            : [];
+        $category_filter = array_filter($category_filter); // Remove zeros/invalid values
+
+        $tag_filter = isset($_GET['tag_filter']) && is_array($_GET['tag_filter'])
+            ? array_map('absint', $_GET['tag_filter'])
+            : [];
+        $tag_filter = array_filter($tag_filter);
+
+        // Validate stock filter values against allowed options
+        $valid_stock_statuses = ['instock', 'outofstock', 'onbackorder'];
+        $stock_filter = isset($_GET['stock_filter']) && is_array($_GET['stock_filter'])
+            ? array_intersect($_GET['stock_filter'], $valid_stock_statuses)
+            : [];
+        // Attribute filter structure: attribute_filter[pa_color] = [term_id, ...]
+        $raw_attribute_filter = isset($_GET['attribute_filter']) ? (array)$_GET['attribute_filter'] : [];
+        $attribute_filter = [];
+        foreach ($raw_attribute_filter as $tax => $terms) {
+            $tax = sanitize_text_field($tax);
+            // Only allow product attribute taxonomies (pa_ prefix)
+            if (strpos($tax, 'pa_') !== 0) {
+                continue;
+            }
+            $attribute_filter[$tax] = array_map('intval', (array)$terms);
+        }
         $min_price = isset($_GET['min_price']) ? floatval($_GET['min_price']) : 0;
         $max_price = isset($_GET['max_price']) ? floatval($_GET['max_price']) : 0;
         $min_sales = isset($_GET['min_sales']) ? intval($_GET['min_sales']) : 0;
@@ -88,6 +128,7 @@ class AdminPage
             'per_page' => $per_page,
             'category_filter' => $category_filter,
             'tag_filter' => $tag_filter,
+            'attribute_filter' => $attribute_filter,
             'stock_filter' => $stock_filter,
             'min_price' => $min_price,
             'max_price' => $max_price,
@@ -100,6 +141,6 @@ class AdminPage
         $total_pages = $result['total_pages'];
 
         // Render the page using UI manager
-        $this->ui_manager->render_admin_page($products, $total_count, $total_pages, $current_page, $per_page, $start_date, $end_date, $filter_applied, $sort_by, $sort_order, $category_filter, $tag_filter, $stock_filter, $min_price, $max_price, $min_sales, $max_sales, $include_variations);
+        $this->ui_manager->render_admin_page($products, $total_count, $total_pages, $current_page, $per_page, $start_date, $end_date, $filter_applied, $sort_by, $sort_order, $category_filter, $tag_filter, $attribute_filter, $stock_filter, $min_price, $max_price, $min_sales, $max_sales, $include_variations);
     }
 }

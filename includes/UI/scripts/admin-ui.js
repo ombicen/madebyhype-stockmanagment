@@ -156,6 +156,34 @@
           form.find('input[name="' + groupName + '[]"]').removeAttr("name");
         }
       });
+
+      // Handle attribute_filter groups (attribute_filter[pa_color][]=...)
+      const attributeInputs = form.find('input[name^="attribute_filter["]');
+      if (attributeInputs.length) {
+        // Group by taxonomy (attribute_filter[pa_xxx])
+        const taxGroups = {};
+        attributeInputs.each(function () {
+          const name = $(this).attr('name');
+          const match = name.match(/^attribute_filter\[([^\]]+)\]\[\]$/);
+          if (match) {
+            const tax = match[1];
+            taxGroups[tax] = taxGroups[tax] || [];
+            taxGroups[tax].push($(this));
+          }
+        });
+
+        Object.keys(taxGroups).forEach(function (tax) {
+          const group = taxGroups[tax];
+          const anyChecked = group.some(function ($el) {
+            return $el.is(':checked');
+          });
+          if (!anyChecked) {
+            group.forEach(function ($el) {
+              $el.removeAttr('name');
+            });
+          }
+        });
+      }
     }
 
     // Apply cleanup to both filter forms
@@ -606,6 +634,76 @@
     });
   }
 
+  function initAttributeSearch() {
+    const $groups = $('.attribute-group');
+    if ($groups.length === 0) return;
+
+    // Ensure global search input exists
+    let $global = $('#attribute-global-search');
+    if ($global.length === 0) {
+      $global = $("<input id=\"attribute-global-search\" type=\"search\" class=\"attribute-search\" placeholder=\"Search attribute terms...\">");
+      $('.sidebar-filter-attributes').prepend($global);
+    }
+
+    // Bind a single input handler (namespaced) so it's not added multiple times
+    $global.off('input.madebyhypeAttrSearch').on('input.madebyhypeAttrSearch', function () {
+      const q = $(this).val().toLowerCase().trim();
+
+      $groups.each(function () {
+        const $group = $(this);
+        const $terms = $group.find('.attribute-terms .sidebar-filter-checkbox-item');
+        let matches = 0;
+
+        $terms.each(function () {
+          const txt = $(this).text().toLowerCase();
+          const isMatch = q === '' || txt.indexOf(q) !== -1;
+          $(this).toggle(isMatch);
+          if (isMatch) matches++;
+        });
+
+        if (q === '') {
+          $group.show();
+          const hasSelected = $group.find('input[type=checkbox]:checked').length > 0;
+          if (hasSelected) {
+            $group.find('.attribute-toggle').addClass('expanded');
+            $group.find('.attribute-children').addClass('expanded');
+          } else {
+            $group.find('.attribute-toggle').removeClass('expanded');
+            $group.find('.attribute-children').removeClass('expanded');
+          }
+        } else {
+          if (matches > 0) {
+            $group.show();
+            $group.find('.attribute-toggle').addClass('expanded');
+            $group.find('.attribute-children').addClass('expanded');
+          } else {
+            $group.hide();
+          }
+        }
+      });
+    });
+
+    // Store original labels once
+    $('.attribute-group .attribute-name').each(function () {
+      const $label = $(this);
+      $label.data('label', $label.text());
+    });
+
+    // Update counts and bind handler once
+    const updateCounts = function () {
+      $groups.each(function () {
+        const $group = $(this);
+        const selected = $group.find('input[type=checkbox]:checked').length;
+        const $label = $group.find('.attribute-name');
+        const base = $label.data('label') || $label.text();
+        $label.text(base + (selected ? ' (' + selected + ')' : ''));
+      });
+    };
+
+    $('.attribute-group .attribute-terms input[type=checkbox]').off('change.madebyhypeAttrCount').on('change.madebyhypeAttrCount', updateCounts);
+    updateCounts();
+  }
+
   $(document).on("change", "#per_page", function () {
     changePerPage(this.value);
   });
@@ -619,6 +717,36 @@
   initDatePicker();
   initFormCleanup();
   initCategoryToggles();
+  initAttributeSearch();
+  initAttributeToggles();
+
+  function initAttributeToggles() {
+    $(document).on('click', '.attribute-toggle', function (e) {
+      e.preventDefault();
+      const tax = $(this).data('attribute');
+      const $children = $('#attribute-children-' + tax);
+      const $button = $(this);
+
+      if ($children.is(':visible') && $children.hasClass('expanded')) {
+        $children.removeClass('expanded');
+        $button.removeClass('expanded');
+      } else {
+        $children.addClass('expanded');
+        $button.addClass('expanded');
+      }
+    });
+
+    // Auto-expand groups that have selected children on load
+    $('.attribute-children').each(function () {
+      const $children = $(this);
+      const hasSelected = $children.find('input[type=checkbox]:checked').length > 0;
+      if (hasSelected) {
+        $children.addClass('expanded');
+        const id = $children.attr('id').replace('attribute-children-', '');
+        $('.attribute-toggle[data-attribute="' + id + '"]').addClass('expanded');
+      }
+    });
+  }
 
   // Initialize save controls state on page load
   updateSaveControls();

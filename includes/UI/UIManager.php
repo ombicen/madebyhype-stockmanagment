@@ -15,7 +15,7 @@ class UIManager
         // Initialize UI manager
     }
 
-    public function render_admin_page($products, $total_count, $total_pages, $current_page, $per_page, $start_date, $end_date, $filter_applied, $sort_by, $sort_order, $category_filter = [], $tag_filter = [], $stock_filter = [], $min_price = 0, $max_price = 0, $min_sales = 0, $max_sales = 0, $include_variations = false)
+    public function render_admin_page($products, $total_count, $total_pages, $current_page, $per_page, $start_date, $end_date, $filter_applied, $sort_by, $sort_order, $category_filter = [], $tag_filter = [], $attribute_filter = [], $stock_filter = [], $min_price = 0, $max_price = 0, $min_sales = 0, $max_sales = 0, $include_variations = false)
     {
 ?>
         <div class="wrap">
@@ -39,7 +39,7 @@ class UIManager
                     <!-- Main content with sidebar -->
                     <div style="display: flex; gap: 20px;">
                         <!-- Sidebar -->
-                        <?php $this->render_sidebar_filters($start_date, $end_date, $per_page, $sort_by, $sort_order, $category_filter, $tag_filter, $stock_filter, $min_price, $max_price, $min_sales, $max_sales, $include_variations); ?>
+                        <?php $this->render_sidebar_filters($start_date, $end_date, $per_page, $sort_by, $sort_order, $category_filter, $tag_filter, $attribute_filter, $stock_filter, $min_price, $max_price, $min_sales, $max_sales, $include_variations); ?>
 
                         <!-- Main content -->
                         <div style="flex: 1; gap: 20px; display: flex; flex-direction: column; justify-content: space-between;">
@@ -70,7 +70,7 @@ class UIManager
         include __DIR__ . '/templates/top-controls.php';
     }
 
-    private function render_sidebar_filters($start_date, $end_date, $per_page, $sort_by, $sort_order, $category_filter, $tag_filter, $stock_filter, $min_price, $max_price, $min_sales, $max_sales, $include_variations)
+    private function render_sidebar_filters($start_date, $end_date, $per_page, $sort_by, $sort_order, $category_filter = [], $tag_filter = [], $attribute_filter = [], $stock_filter = [], $min_price = 0, $max_price = 0, $min_sales = 0, $max_sales = 0, $include_variations = false)
     {
         include __DIR__ . '/templates/sidebar-filters.php';
     }

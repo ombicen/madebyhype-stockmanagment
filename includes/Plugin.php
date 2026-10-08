@@ -18,17 +18,22 @@ class Plugin
     public function __construct($plugin_file)
     {
         $this->plugin_file = $plugin_file;
-        $this->load_dependencies();
     }
 
     public function run()
     {
+	// Declare HPOS compatibility (needs to run always)
+      	add_action('before_woocommerce_init', [$this, 'declare_hpos_compatibility']);
+
+      	// Everything else is admin-only
+	if (!is_admin()) {
+          return;
+	}
+
         add_action('init', [$this, 'init_plugin']);
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
 
-        // Declare HPOS compatibility
-        add_action('before_woocommerce_init', [$this, 'declare_hpos_compatibility']);
     }
 
     private function load_dependencies()
@@ -59,6 +64,7 @@ class Plugin
         }
 
         // Initialize components
+	$this->load_dependencies();
         $this->admin_page->init();
         $this->data_manager->init();
         $this->ui_manager->init();

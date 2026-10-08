@@ -11,13 +11,49 @@ class VersionManager
     private $table_name;
     private $max_versions = 6;
 
+    /**
+     * Flag to track if table has been verified this request
+     */
+    private static $table_verified = false;
+
     public function __construct()
     {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'madebyhype_stock_versions';
-        $this->create_table();
+
+        // Only check/create table once per request, not on every instantiation
+        if (!self::$table_verified) {
+            $this->maybe_create_table();
+            self::$table_verified = true;
+        }
     }
 
+    /**
+     * Create table only if it doesn't exist
+     * Uses a lightweight check before running expensive dbDelta
+     */
+    private function maybe_create_table()
+    {
+        global $wpdb;
+
+        // Quick check if table exists (much faster than running dbDelta every time)
+        $table_exists = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(1) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
+                DB_NAME,
+                $this->table_name
+            )
+        );
+
+        if (!$table_exists) {
+            $this->create_table();
+        }
+    }
+
+    /**
+     * Create the versions table using dbDelta
+     * Only called when table doesn't exist
+     */
     private function create_table()
     {
         global $wpdb;
@@ -70,12 +106,27 @@ class VersionManager
     {
         global $wpdb;
 
-        $limit_clause = $limit ? "LIMIT $limit" : '';
+        // Use prepared statement for limit to prevent SQL injection
+        if ($limit) {
+            $sql = $wpdb->prepare(
+                "SELECT * FROM {$this->table_name} ORDER BY version_number DESC LIMIT %d",
+                (int) $limit
+            );
+        } else {
+            $sql = "SELECT * FROM {$this->table_name} ORDER BY version_number DESC";
+        }
 
-        $results = $wpdb->get_results(
-            "SELECT * FROM {$this->table_name} ORDER BY version_number DESC $limit_clause",
-            ARRAY_A
-        );
+        $results = $wpdb->get_results($sql, ARRAY_A);
+
+        // Check for database errors
+        if ($wpdb->last_error) {
+            error_log('MadeByHype Stock Management - Get versions error: ' . $wpdb->last_error);
+            return [];
+        }
+
+        if (empty($results)) {
+            return [];
+        }
 
         foreach ($results as &$version) {
             $version['changes_data'] = json_decode($version['changes_data'], true);
@@ -146,102 +197,128 @@ class VersionManager
     private function apply_version_changes($changes_data, $is_revert = false)
     {
         $success = true;
+        $errors = [];
 
-        // Apply product changes
+        // Batch load all products at once to avoid N+1 queries
+        $product_ids = isset($changes_data['products']) ? array_keys($changes_data['products']) : [];
+        $variation_ids = isset($changes_data['variations']) ? array_keys($changes_data['variations']) : [];
+
+        // Pre-load products in batch
+        $product_cache = [];
+        if (!empty($product_ids)) {
+            $loaded_products = \wc_get_products([
+                'include' => array_map('intval', $product_ids),
+                'limit' => -1,
+                'return' => 'objects'
+            ]);
+            foreach ($loaded_products as $prod) {
+                $product_cache[$prod->get_id()] = $prod;
+            }
+        }
+
+        // Pre-load variations in batch
+        $variation_cache = [];
+        if (!empty($variation_ids)) {
+            $loaded_variations = \wc_get_products([
+                'include' => array_map('intval', $variation_ids),
+                'type' => 'variation',
+                'limit' => -1,
+                'return' => 'objects'
+            ]);
+            foreach ($loaded_variations as $var) {
+                $variation_cache[$var->get_id()] = $var;
+            }
+        }
+
+        // Apply product changes using cached products
         if (isset($changes_data['products'])) {
             foreach ($changes_data['products'] as $product_id => $changes) {
-                $product = \wc_get_product($product_id);
+                $product = $product_cache[(int) $product_id] ?? null;
                 if ($product) {
-                    foreach ($changes as $field => $value) {
-                        // In revert mode, we need to apply the opposite of what was saved
-                        $value_to_apply = $is_revert ? $this->get_opposite_value($field, $value) : $value;
-
-                        switch ($field) {
-                            case 'stock_quantity':
-                                $product->set_manage_stock(true);
-                                $product->set_stock_quantity($value_to_apply);
-                                break;
-                            case 'stock_status':
-                                // Restore stock status using WooCommerce's logic
-                                if ($value_to_apply === 'onbackorder') {
-                                    $product->set_manage_stock(true);
-                                    $product->set_backorders('yes');
-                                } elseif ($value_to_apply === 'outofstock') {
-                                    $product->set_manage_stock(true);
-                                    $product->set_stock_quantity(0);
-                                    $product->set_backorders('no');
-                                }
-                                break;
-                            case 'backorders':
-                                $product->set_backorders($value_to_apply);
-                                break;
-                            case 'manage_stock':
-                                $product->set_manage_stock($value_to_apply);
-                                break;
-                            case 'price':
-                                $product->set_price($value_to_apply);
-                                break;
-                            case 'regular_price':
-                                $product->set_regular_price($value_to_apply);
-                                break;
-                            case 'sale_price':
-                                $product->set_sale_price($value_to_apply);
-                                break;
-                        }
-                    }
+                    $this->apply_field_changes($product, $changes, $is_revert);
                     $save_result = $product->save();
                     if (!$save_result) {
                         $success = false;
+                        $errors[] = "Failed to save product $product_id";
                     }
+                } else {
+                    $errors[] = "Product $product_id not found";
                 }
             }
         }
 
-        // Apply variation changes
+        // Apply variation changes using cached variations
         if (isset($changes_data['variations'])) {
             foreach ($changes_data['variations'] as $variation_id => $changes) {
-                $variation = \wc_get_product($variation_id);
+                $variation = $variation_cache[(int) $variation_id] ?? null;
                 if ($variation && $variation->is_type('variation')) {
-                    foreach ($changes as $field => $value) {
-                        // In revert mode, we need to apply the opposite of what was saved
-                        $value_to_apply = $is_revert ? $this->get_opposite_value($field, $value) : $value;
-
-                        switch ($field) {
-                            case 'stock_quantity':
-                                $variation->set_manage_stock(true);
-                                $variation->set_stock_quantity($value_to_apply);
-                                break;
-                            case 'stock_status':
-                                // Restore stock status using WooCommerce's logic
-                                if ($value_to_apply === 'onbackorder') {
-                                    $variation->set_manage_stock(true);
-                                    $variation->set_backorders('yes');
-                                } elseif ($value_to_apply === 'outofstock') {
-                                    $variation->set_manage_stock(true);
-                                    $variation->set_stock_quantity(0);
-                                    $variation->set_backorders('no');
-                                }
-                                break;
-                            case 'backorders':
-                                $variation->set_backorders($value_to_apply);
-                                break;
-                            case 'manage_stock':
-                                $variation->set_manage_stock($value_to_apply);
-                                break;
-                            case 'regular_price':
-                                $variation->set_regular_price($value_to_apply);
-                                break;
-                        }
-                    }
+                    $this->apply_field_changes($variation, $changes, $is_revert);
                     $save_result = $variation->save();
                     if (!$save_result) {
                         $success = false;
+                        $errors[] = "Failed to save variation $variation_id";
                     }
+                } else {
+                    $errors[] = "Variation $variation_id not found";
                 }
             }
         }
 
+        // Log any errors that occurred
+        if (!empty($errors)) {
+            error_log('MadeByHype Stock Management - Version revert errors: ' . implode(', ', $errors));
+        }
+
         return $success;
+    }
+
+    /**
+     * Apply field changes to a product or variation
+     * Extracted to reduce code duplication (DRY)
+     *
+     * @param \WC_Product $item Product or variation object
+     * @param array $changes Array of field => value pairs
+     * @param bool $is_revert Whether this is a revert operation
+     */
+    private function apply_field_changes($item, $changes, $is_revert)
+    {
+        foreach ($changes as $field => $value) {
+            $value_to_apply = $is_revert ? $this->get_opposite_value($field, $value) : $value;
+
+            switch ($field) {
+                case 'stock_quantity':
+                    $item->set_manage_stock(true);
+                    $item->set_stock_quantity($value_to_apply);
+                    break;
+                case 'stock_status':
+                    if ($value_to_apply === 'onbackorder') {
+                        $item->set_manage_stock(true);
+                        $item->set_backorders('yes');
+                    } elseif ($value_to_apply === 'outofstock') {
+                        $item->set_manage_stock(true);
+                        $item->set_stock_quantity(0);
+                        $item->set_backorders('no');
+                    }
+                    break;
+                case 'backorders':
+                    $item->set_backorders($value_to_apply);
+                    break;
+                case 'manage_stock':
+                    $item->set_manage_stock($value_to_apply);
+                    break;
+                case 'price':
+                    $item->set_price($value_to_apply);
+                    break;
+                case 'regular_price':
+                    $item->set_regular_price($value_to_apply);
+                    break;
+                case 'sale_price':
+                    if (method_exists($item, 'set_sale_price')) {
+                        $item->set_sale_price($value_to_apply);
+                    }
+                    break;
+            }
+        }
     }
 
     private function get_opposite_value($field, $value)
@@ -266,16 +343,36 @@ class VersionManager
     {
         global $wpdb;
 
-        $wpdb->query(
-            "DELETE FROM {$this->table_name} 
-             WHERE id NOT IN (
-                 SELECT id FROM (
-                     SELECT id FROM {$this->table_name} 
-                     ORDER BY version_number DESC 
-                     LIMIT {$this->max_versions}
-                 ) as temp
-             )"
+        // Count total versions first - only cleanup if we exceed max
+        $total_versions = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
+
+        if ($total_versions <= $this->max_versions) {
+            return; // Nothing to clean up
+        }
+
+        // More efficient approach: find the minimum version_number to keep, then delete older
+        $min_version_to_keep = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT version_number FROM {$this->table_name}
+                 ORDER BY version_number DESC
+                 LIMIT 1 OFFSET %d",
+                $this->max_versions - 1
+            )
         );
+
+        if ($min_version_to_keep) {
+            $result = $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$this->table_name} WHERE version_number < %d",
+                    (int) $min_version_to_keep
+                )
+            );
+
+            // Log any errors
+            if ($wpdb->last_error) {
+                error_log('MadeByHype Stock Management - Cleanup versions error: ' . $wpdb->last_error);
+            }
+        }
     }
 
     public function get_version_summary($version)
