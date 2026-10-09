@@ -22,6 +22,7 @@ class Settings
 
     const OPTION_PER_PAGE = 'madebyhype_stock_per_page';
     const OPTION_PERIOD = 'madebyhype_stock_period';
+    const OPTION_LOW_STOCK = 'madebyhype_stock_low_amount';
     const OPTION_RETENTION = 'madebyhype_stock_retention_months';
     const OPTION_BULK_MAX = 'madebyhype_stock_bulk_max_items';
     const OPTION_BULK_CHUNK = 'madebyhype_stock_bulk_chunk';
@@ -30,6 +31,7 @@ class Settings
     const OPTIONS = [
         self::OPTION_PER_PAGE,
         self::OPTION_PERIOD,
+        self::OPTION_LOW_STOCK,
         self::OPTION_RETENTION,
         self::OPTION_BULK_MAX,
         self::OPTION_BULK_CHUNK,
@@ -95,6 +97,26 @@ class Settings
         $value = (string) get_option(self::OPTION_PERIOD, self::DEFAULT_PERIOD);
 
         return in_array($value, self::PERIOD_CHOICES, true) ? $value : self::DEFAULT_PERIOD;
+    }
+
+    /**
+     * The quantity at or below which stock counts as low
+     *
+     * Empty until it is set: the list then follows WooCommerce's own
+     * low-stock threshold. 0 switches the low-stock check off.
+     *
+     * @return int|null The threshold; 0 for no low-stock check; null for WooCommerce's own
+     */
+    public static function low_stock()
+    {
+        $value = get_option(self::OPTION_LOW_STOCK, '');
+
+        if (!is_scalar($value) || trim((string) $value) === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        // Below 0 is not a threshold: as good as not set
+        return (int) $value < 0 ? null : min(1000000, (int) $value);
     }
 
     /**
@@ -211,6 +233,20 @@ class Settings
                     'all' => __('All time', 'madebyhype-stockmanagment'),
                 ],
                 'desc_tip' => __('What "Sold" and "Cover" are counted over.', 'madebyhype-stockmanagment'),
+            ],
+            [
+                'title' => __('Low stock at', 'madebyhype-stockmanagment'),
+                'id' => self::OPTION_LOW_STOCK,
+                'type' => 'number',
+                'default' => '',
+                'placeholder' => (string) (int) get_option('woocommerce_notify_low_stock_amount', 2),
+                'css' => 'width: 80px;',
+                'custom_attributes' => ['min' => 0, 'step' => 1],
+                'desc' => sprintf(
+                    /* translators: %s: WooCommerce's own low-stock threshold, a number */
+                    __('or fewer in stock. An item at or below this is shown as "Low stock" and listed under Needs attention. 0 means no low-stock check. Empty follows WooCommerce\'s own threshold (now %s). A threshold set on a product itself still comes first, unless the check is off.', 'madebyhype-stockmanagment'),
+                    (int) get_option('woocommerce_notify_low_stock_amount', 2)
+                ),
             ],
             ['type' => 'sectionend', 'id' => 'madebyhype_stock_list'],
 

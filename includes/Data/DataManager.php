@@ -818,7 +818,7 @@ class DataManager
 
         $q['with_images'] = !empty($args['with_images']);
 
-        $q['low_stock_amount'] = (int) get_option('woocommerce_notify_low_stock_amount', 2);
+        $q['low_stock_amount'] = $this->low_stock_amount();
 
         // Sales are totalled for the whole catalogue only when the selection or the order depends on
         // them, and joined to every candidate row only then. Needs attention in its own order uses
@@ -1087,7 +1087,10 @@ class DataManager
 
         // Needs attention: tracked, and out of stock or at or below the threshold in force
         if ($q['tab'] === self::TAB_ATTENTION) {
-            $where[] = "(l.stock_quantity IS NOT NULL AND (l.stock_status = 'outofstock' OR l.stock_quantity <= {$threshold}))";
+            // Without a low-stock check: what is out of stock or on backorder, and nothing for being low
+            $where[] = $q['low_stock_amount'] === null
+                ? "(l.stock_quantity IS NOT NULL AND l.stock_status IN ('outofstock', 'onbackorder'))"
+                : "(l.stock_quantity IS NOT NULL AND (l.stock_status = 'outofstock' OR l.stock_quantity <= {$threshold}))";
             $cols['cls'] = "(CASE WHEN l.stock_status = 'outofstock' THEN 'out' WHEN l.stock_status = 'onbackorder' THEN 'backorder' ELSE 'low' END)";
         }
 
@@ -1347,12 +1350,37 @@ class DataManager
     }
 
     /**
+     * The store-wide quantity at or below which stock is low: what the plugin
+     * is set to, else WooCommerce's own threshold
+     *
+     * @return int|null Null when the plugin is set to make no low-stock check
+     */
+    private function low_stock_amount()
+    {
+        $set = \MadeByHypeStockmanagment\Settings::low_stock();
+
+        if ($set === null) {
+            return (int) get_option('woocommerce_notify_low_stock_amount', 2);
+        }
+
+        return $set === 0 ? null : $set;
+    }
+
+    /**
      * The low-stock threshold in force: the item's own, else its product's,
-     * else the store-wide setting. The same rule as wc_get_low_stock_amount().
+     * else the store-wide amount (see low_stock_amount()). The same rule as
+     * wc_get_low_stock_amount().
+     *
+     * @param int|null $store_amount Null: there is no low-stock check
      */
     private function threshold_sql($store_amount, $id_sql, $parent_id_sql = null)
     {
         global $wpdb;
+
+        // No low-stock check: a quantity compared with nothing is never at or below it
+        if ($store_amount === null) {
+            return 'NULL';
+        }
 
         $parts = ["NULLIF((SELECT t1.meta_value FROM {$wpdb->postmeta} t1 WHERE t1.post_id = {$id_sql} AND t1.meta_key = '_low_stock_amount' LIMIT 1), '')"];
         if ($parent_id_sql) {
@@ -1810,7 +1838,7 @@ class DataManager
         list($sold_by_product, $sold_by_variation) = $this->sales_for(array_values(array_unique($sales_ids)), $period);
 
         $term_names = $this->attribute_term_names($products);
-        $store_threshold = (int) get_option('woocommerce_notify_low_stock_amount', 2);
+        $store_threshold = $this->low_stock_amount();
 
         $rows = [];
         foreach ($products as $id => $product) {
@@ -1906,6 +1934,11 @@ class DataManager
                 $amount = get_post_meta($parent_id, '_low_stock_amount', true);
             }
             $threshold = $amount === '' || $amount === null ? $store_threshold : (int) $amount;
+
+            // No low-stock check: nothing is measured, whatever a product says itself
+            if ($store_threshold === null) {
+                $threshold = null;
+            }
         }
 
         $attributes = [];
@@ -2012,8 +2045,11 @@ class DataManager
         // The same three classes as the Needs attention query
         if ($row['stock_status'] === 'outofstock') {
             $row['attention'] = 'out';
-        } elseif ($quantity <= $row['low_stock_threshold']) {
+        } elseif ($row['low_stock_threshold'] !== null && $quantity <= $row['low_stock_threshold']) {
             $row['attention'] = $row['stock_status'] === 'onbackorder' ? 'backorder' : 'low';
+        } elseif ($row['low_stock_threshold'] === null && $row['stock_mode'] !== 'none' && $row['stock_status'] === 'onbackorder') {
+            // No low-stock check: on backorder still needs attention
+            $row['attention'] = 'backorder';
         }
 
         // Days the stock lasts at the period's rate of sale

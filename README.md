@@ -71,6 +71,7 @@ When updating by copying files instead, replace the whole plugin folder rather t
 **WooCommerce → Settings → Products → Stock Management** (also linked from the Plugins screen and from the tabs of the stock screen):
 
 - Rows per page and the sales period the list opens with.
+- The quantity at or below which stock counts as low. Empty follows WooCommerce's own threshold; 0 means no low-stock check, and Needs attention then lists only what is out of stock or on backorder. A threshold set on a product itself still comes first.
 - How long History is kept (12 months unless changed).
 - The largest bulk price change allowed, in items.
 - Items per request of a bulk price change: 50 (default), 100, 250, 500 or 1000, each listed with what it takes per request and the PHP memory recommended for it. The page also shows the memory this server allows.
