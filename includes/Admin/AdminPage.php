@@ -3,6 +3,7 @@
 namespace MadeByHypeStockmanagment\Admin;
 
 use MadeByHypeStockmanagment\Capabilities;
+use MadeByHypeStockmanagment\Settings;
 use MadeByHypeStockmanagment\Data\DataManager;
 
 if (! defined('ABSPATH')) {
@@ -15,7 +16,6 @@ class AdminPage
 
     const TABS = ['all', 'attention', 'history'];
     const PER_PAGE_OPTIONS = [20, 50, 100, 500];
-    const DEFAULT_PER_PAGE = 50;
 
     private $data_manager;
     private $ui_manager;
@@ -161,9 +161,9 @@ class AdminPage
         // Paging. An unknown page size becomes 100 when larger than 100, else the default.
         $request['paged'] = isset($source['paged']) && is_scalar($source['paged']) ? max(1, (int) $source['paged']) : 1;
 
-        $per_page = isset($source['per_page']) && is_scalar($source['per_page']) ? (int) $source['per_page'] : self::DEFAULT_PER_PAGE;
+        $per_page = isset($source['per_page']) && is_scalar($source['per_page']) ? (int) $source['per_page'] : Settings::per_page();
         if (!in_array($per_page, self::PER_PAGE_OPTIONS, true)) {
-            $per_page = $per_page > 100 ? 100 : self::DEFAULT_PER_PAGE;
+            $per_page = $per_page > 100 ? 100 : Settings::per_page();
         }
         $request['per_page'] = $per_page;
 

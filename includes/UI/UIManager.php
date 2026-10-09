@@ -2,6 +2,7 @@
 
 namespace MadeByHypeStockmanagment\UI;
 
+use MadeByHypeStockmanagment\Settings;
 use MadeByHypeStockmanagment\Admin\AdminPage;
 use MadeByHypeStockmanagment\Data\DataManager;
 
@@ -972,7 +973,7 @@ class UIManager
             $args['sort_order'] = $request['sort_order'];
         }
 
-        if ($request['per_page'] !== AdminPage::DEFAULT_PER_PAGE) {
+        if ($request['per_page'] !== Settings::per_page()) {
             $args['per_page'] = $request['per_page'];
         }
 
@@ -1018,7 +1019,7 @@ class UIManager
     {
         $period = $this->period;
 
-        if (empty($period) || !empty($period['is_default']) || ($period['key'] === DataManager::DEFAULT_PERIOD && $period['mode'] === 'rolling')) {
+        if (empty($period) || !empty($period['is_default']) || ($period['key'] === Settings::period() && $period['mode'] === 'rolling')) {
             return [];
         }
 
@@ -1079,7 +1080,7 @@ class UIManager
 
         $args += $this->period_args();
 
-        if ($tab !== 'history' && $this->request['per_page'] !== AdminPage::DEFAULT_PER_PAGE) {
+        if ($tab !== 'history' && $this->request['per_page'] !== Settings::per_page()) {
             $args['per_page'] = $this->request['per_page'];
         }
 

@@ -22,9 +22,6 @@ if (!defined('ABSPATH')) {
  */
 class BulkPriceService
 {
-    // Most items one bulk change takes; filter madebyhype_stock_bulk_price_max_items
-    const MAX_ITEMS = 50000;
-
     // Most items one apply() call takes
     const MAX_APPLY = 50;
 
@@ -75,7 +72,7 @@ class BulkPriceService
             return new \WP_Error('db_error', $targets['error']['message']);
         }
 
-        $max = (int) apply_filters('madebyhype_stock_bulk_price_max_items', self::MAX_ITEMS);
+        $max = (int) apply_filters('madebyhype_stock_bulk_price_max_items', \MadeByHypeStockmanagment\Settings::bulk_max_items());
         if (count($targets['ids']) > $max) {
             return new \WP_Error('too_many', sprintf(
                 /* translators: 1: number of items matched, 2: most items one bulk change takes */

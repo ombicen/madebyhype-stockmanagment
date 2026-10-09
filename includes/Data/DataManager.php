@@ -36,7 +36,6 @@ class DataManager
     const MAX_PER_PAGE = 500;
     // Rows read in one get_rows() call
     const MAX_ROW_IDS = 100;
-    const DEFAULT_PERIOD = '30';
 
     const SORT_FIELDS = ['name', 'sku', 'price', 'stock_quantity', 'total_sales', 'cover'];
     const STOCK_FILTERS = ['instock', 'outofstock', 'onbackorder', 'lowstock', 'untracked'];
@@ -662,20 +661,6 @@ class DataManager
         $start = null;
         $end = null;
 
-        if ($period === 'all') {
-            return [
-                'mode' => 'all',
-                'key' => 'all',
-                'start_date' => null,
-                'end_date' => null,
-                'days' => null,
-                'from' => null,
-                'to' => null,
-                'timezone' => wp_timezone_string(),
-                'is_default' => false,
-            ];
-        }
-
         if (!in_array($period, self::PERIODS, true)) {
             $period = '';
             $start = $this->parse_day($start_date, $timezone);
@@ -687,10 +672,25 @@ class DataManager
                 $end = $swap;
             }
 
+            // Nothing usable was asked for: the period the plugin is set to
             if (!$start || !$end) {
-                $period = self::DEFAULT_PERIOD;
+                $period = \MadeByHypeStockmanagment\Settings::period();
                 $is_default = true;
             }
+        }
+
+        if ($period === 'all') {
+            return [
+                'mode' => 'all',
+                'key' => 'all',
+                'start_date' => null,
+                'end_date' => null,
+                'days' => null,
+                'from' => null,
+                'to' => null,
+                'timezone' => wp_timezone_string(),
+                'is_default' => $is_default,
+            ];
         }
 
         if ($period !== '') {

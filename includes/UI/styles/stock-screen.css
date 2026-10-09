@@ -3163,3 +3163,8 @@ body.mbh-dialog-open {
 .mbh-row-links button:hover {
     color: #135e96;
 }
+
+/* The link to the settings page: at the far end of the tabs, since it leaves the screen */
+.mbh-tab--settings {
+    margin-left: auto;
+}

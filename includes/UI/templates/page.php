@@ -53,6 +53,10 @@ $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
                     <?php endif; ?>
                 </a>
             <?php endforeach; ?>
+            <?php // The plugin's settings live with WooCommerce's own, under Products ?>
+            <?php if (current_user_can('manage_woocommerce')): ?>
+                <a href="<?php echo esc_url(\MadeByHypeStockmanagment\Settings::url()); ?>" class="mbh-tab mbh-tab--settings"><?php esc_html_e('Settings', 'madebyhype-stockmanagment'); ?></a>
+            <?php endif; ?>
         </nav>
 
         <script type="application/json" id="mbh-stock-page"><?php echo wp_json_encode($this->page_data($history_item), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>

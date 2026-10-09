@@ -84,7 +84,7 @@ $views = [
 
     <span class="mbh-period">
         <label for="mbh-period"><?php esc_html_e('Sold in', 'madebyhype-stockmanagment'); ?></label>
-        <select id="mbh-period" class="mbh-select" name="period" data-current="<?php echo esc_attr($period_key); ?>" data-default="<?php echo esc_attr(DataManager::DEFAULT_PERIOD); ?>">
+        <select id="mbh-period" class="mbh-select" name="period" data-current="<?php echo esc_attr($period_key); ?>" data-default="<?php echo esc_attr(\MadeByHypeStockmanagment\Settings::period()); ?>">
             <?php foreach ($this->period_options() as $key => $label): ?>
                 <option value="<?php echo esc_attr($key); ?>"<?php selected($period_key, (string) $key); ?>><?php echo esc_html($label); ?></option>
             <?php endforeach; ?>

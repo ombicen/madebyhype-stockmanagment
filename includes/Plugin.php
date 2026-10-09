@@ -8,6 +8,8 @@ if (! defined('ABSPATH')) {
 
 // Needed before WooCommerce is known to be there: activation and schema upgrades
 require_once plugin_dir_path(__FILE__) . 'Data/Schema.php';
+// What the plugin is set to; a few options, read where they are used
+require_once plugin_dir_path(__FILE__) . 'Settings.php';
 
 class Plugin
 {
@@ -70,8 +72,9 @@ class Plugin
             (new Updater($this->plugin_file))->init();
         }
 
-        // The menu and the assets are wp-admin only
+        // The menu, the assets and the settings page are wp-admin only
         if (is_admin()) {
+            (new Settings($this->plugin_file))->init();
             add_action('admin_menu', [$this, 'add_admin_menu']);
             add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         }
@@ -186,7 +189,7 @@ class Plugin
      */
     public function prune_change_log()
     {
-        $months = (int) apply_filters('madebyhype_stock_log_retention_months', Data\ChangeLog::DEFAULT_RETENTION_MONTHS);
+        $months = (int) apply_filters('madebyhype_stock_log_retention_months', Settings::retention_months());
 
         $this->change_log->prune($months);
     }

@@ -43,7 +43,7 @@ A WooCommerce plugin for editing stock and prices in one screen: a fast, searcha
 - Every save is recorded with who made it, when, and the value before and after for each field.
 - History per save and per product, with a note where a value was changed outside this tool.
 - Any save can be undone on its own, with a preview first. Only fields that still hold what the save wrote are put back.
-- History is kept for 12 months.
+- History is kept for 12 months, or as long as the settings say.
 
 ## Requirements
 
@@ -66,6 +66,15 @@ An installation that is a git working copy (it has a `.git` folder) is never off
 
 When updating by copying files instead, replace the whole plugin folder rather than copying over it, and clear the server's PHP cache if the screen does not change.
 
+## Settings
+
+**WooCommerce → Settings → Products → Stock Management** (also linked from the Plugins screen and from the tabs of the stock screen):
+
+- Rows per page and the sales period the list opens with.
+- How long History is kept (12 months unless changed).
+- The largest bulk price change allowed, in items.
+- Whether History and these settings are kept when the plugin is deleted. Unticked, deleting the plugin removes what it stored; products are never touched.
+
 ## Permissions
 
 The screen and everything on it need the WooCommerce capability `manage_woocommerce`. Viewing, editing stock, editing prices and undoing are separate permissions in the code (`includes/Capabilities.php`) and all map to that capability for now.
@@ -79,6 +88,7 @@ madebyhype-stockmanagment/
 ├── includes/
 │   ├── Plugin.php                  # Wires the parts together
 │   ├── Updater.php                 # Updates from the releases on GitHub
+│   ├── Settings.php                # The settings and their page under WooCommerce > Settings > Products
 │   ├── Capabilities.php            # What the current user may do
 │   ├── Admin/
 │   │   ├── AdminPage.php           # Menu, and reading the request
