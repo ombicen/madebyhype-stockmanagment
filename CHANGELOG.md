@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-09
+
 ### Added
 - Updates from GitHub: a new release shows on the Plugins and Updates screens like any other update, with its release notes, and can be installed in one click or automatically. The update keeps the name of the folder the plugin is installed in
 
