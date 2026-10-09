@@ -351,6 +351,16 @@ class UIManager
             'showSubcategories' => __('Show the categories under %s', 'madebyhype-stockmanagment'),
             /* translators: %s: category name */
             'hideSubcategories' => __('Hide the categories under %s', 'madebyhype-stockmanagment'),
+            'expandAll' => __('Expand all', 'madebyhype-stockmanagment'),
+            'collapseAll' => __('Collapse all', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of selected categories that are out of sight under a closed category */
+            'selectedInside' => _n_noop('%d category selected inside', '%d categories selected inside', 'madebyhype-stockmanagment'),
+            /* translators: 1: a category, 2: a category under it, as in "Men's › Rings" */
+            'categoryUnder' => __('%1$s › %2$s', 'madebyhype-stockmanagment'),
+            'categoryCountProducts' => __('Products this category would list, with the search and the other filters as they are', 'madebyhype-stockmanagment'),
+            'categoryCountSkus' => __('SKUs this category would list, with the search and the other filters as they are', 'madebyhype-stockmanagment'),
+            /* translators: read out after the number 0 beside a category */
+            'categoryNothing' => __('(nothing with the search and the other filters as they are)', 'madebyhype-stockmanagment'),
             'noMatches' => __('Nothing matches.', 'madebyhype-stockmanagment'),
             'tagHint' => _n_noop('Type to search %d tag.', 'Type to search %d tags.', 'madebyhype-stockmanagment'),
             'moreMatches' => _n_noop('%d more match. Type more to narrow it down.', '%d more matches. Type more to narrow them down.', 'madebyhype-stockmanagment'),
@@ -986,7 +996,24 @@ class UIManager
             }
         };
 
-        $term_chips('category_filter', 'product_cat', $request['category_filter'], __('Category', 'madebyhype-stockmanagment'));
+        // Categories: a category stands for the whole branch below it, so one that is listed together
+        // with a category above it gets no chip of its own, and removing a chip takes what it covers along
+        foreach ($request['category_filter'] as $id) {
+            $term = get_term($id, 'product_cat');
+            if (!$term || is_wp_error($term) || array_intersect(get_ancestors($id, 'product_cat', 'taxonomy'), $request['category_filter'])) {
+                continue;
+            }
+
+            $below = get_term_children($id, 'product_cat');
+            $rest = array_values(array_diff($request['category_filter'], [$id], is_array($below) ? array_map('intval', $below) : []));
+
+            $chips[] = [
+                /* translators: 1: what is filtered on, for example "Category" or "Size", 2: the value */
+                'label' => sprintf(__('%1$s: %2$s', 'madebyhype-stockmanagment'), __('Category', 'madebyhype-stockmanagment'), $this->category_label($term)),
+                'url' => $this->url(['category_filter' => $rest ? $rest : null]),
+                'filter' => true,
+            ];
+        }
         $term_chips('tag_filter', 'product_tag', $request['tag_filter'], __('Tag', 'madebyhype-stockmanagment'));
 
         foreach ($request['attribute_filter'] as $taxonomy => $ids) {
@@ -1400,6 +1427,38 @@ class UIManager
             /* translators: %s: number of items */
             'attentionLabel' => $attention_count === null ? '' : sprintf(_n('%s item', '%s items', $attention_count, 'madebyhype-stockmanagment'), number_format_i18n($attention_count)),
         ];
+    }
+
+    /**
+     * What a chip calls a category: its name, with the categories above it
+     * ("Men's › Rings") when another category has the same name
+     *
+     * @param \WP_Term $term
+     * @return string Plain text
+     */
+    private function category_label($term)
+    {
+        $plain = function ($name) {
+            return html_entity_decode($name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        };
+
+        $label = $plain($term->name);
+        $same = get_terms(['taxonomy' => 'product_cat', 'name' => $term->name, 'hide_empty' => false, 'fields' => 'ids']);
+
+        if (!is_array($same) || count($same) < 2) {
+            return $label;
+        }
+
+        // The nearest category above comes first in the list
+        foreach (get_ancestors($term->term_id, 'product_cat', 'taxonomy') as $id) {
+            $above = get_term($id, 'product_cat');
+            if ($above && !is_wp_error($above)) {
+                /* translators: 1: a category, 2: a category under it, as in "Men's › Rings" */
+                $label = sprintf(__('%1$s › %2$s', 'madebyhype-stockmanagment'), $plain($above->name), $label);
+            }
+        }
+
+        return $label;
     }
 
     /**

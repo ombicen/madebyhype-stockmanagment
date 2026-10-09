@@ -2586,3 +2586,72 @@ body.mbh-dialog-open {
 @media (prefers-reduced-motion: reduce) {
     .mbh-opt-toggle .mbh-icon { transition: none; }
 }
+
+/* Category tree: a category with only some of its branch ticked */
+.mbh-stock .mbh-opt input[type="checkbox"]:indeterminate {
+    border-color: var(--mbh-black);
+    background: var(--mbh-black) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23fff' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M5 10h10'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+}
+
+/* How many categories are ticked out of sight, below a closed one */
+.mbh-opt-inside {
+    flex: none;
+    display: grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border: 1.5px solid var(--mbh-black);
+    border-radius: 10px;
+    box-sizing: border-box;
+    color: var(--mbh-ink);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Open and close every branch */
+.mbh-opt-tools {
+    display: flex;
+    gap: 16px;
+    margin: -4px 0;
+}
+
+.mbh-opt-tools[hidden] {
+    display: none;
+}
+
+/* A search: the part of a name that matches, and the categories that only lead to a match */
+.mbh-opt-hit {
+    padding: 1px 0;
+    border-radius: 3px;
+    background: #ffe9a8;
+    color: inherit;
+    font-weight: 600;
+}
+
+.mbh-opt.is-context .mbh-opt-name {
+    color: var(--mbh-faint);
+}
+
+/* A category that would list nothing with the search and the other filters as they are */
+.mbh-opt.is-none .mbh-opt-name,
+.mbh-opt.is-none .mbh-opt-count {
+    color: #8c8f94;
+}
+
+.mbh-opt.is-unavailable:hover {
+    background: none;
+}
+
+.mbh-opt.is-unavailable .mbh-opt-label {
+    cursor: default;
+}
+
+.mbh-stock .mbh-opt input[type="checkbox"]:disabled {
+    border-color: var(--mbh-line);
+    background-color: var(--mbh-soft);
+    opacity: 1;
+    cursor: default;
+}

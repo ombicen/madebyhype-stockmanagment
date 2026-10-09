@@ -21,6 +21,7 @@ class ReadAjaxHandler
     const ACTION_ROWS = 'madebyhype_get_rows';
     const ACTION_LIST = 'madebyhype_get_list';
     const ACTION_FILTER_OPTIONS = 'madebyhype_get_filter_options';
+    const ACTION_CATEGORY_COUNTS = 'madebyhype_get_category_counts';
 
     // Longest query string the list read takes; a URL of the screen with every filter set is far shorter
     const MAX_QUERY_LENGTH = 8000;
@@ -42,6 +43,7 @@ class ReadAjaxHandler
         add_action('wp_ajax_' . self::ACTION_ROWS, [$this, 'get_rows']);
         add_action('wp_ajax_' . self::ACTION_LIST, [$this, 'get_list']);
         add_action('wp_ajax_' . self::ACTION_FILTER_OPTIONS, [$this, 'get_filter_options']);
+        add_action('wp_ajax_' . self::ACTION_CATEGORY_COUNTS, [$this, 'get_category_counts']);
     }
 
     /**
@@ -180,6 +182,80 @@ class ReadAjaxHandler
             'categories' => $options['categories'],
             'tags' => $options['tags'],
             'attributes' => $options['attributes'],
+        ]);
+    }
+
+    /**
+     * The number beside each category in the filter drawer: how many rows
+     * the given view would list with that category as its only category
+     * filter, everything else in the query kept
+     *
+     * Request (GET or POST): action=madebyhype_get_category_counts, _wpnonce, and
+     *   query  the query string of the screen's URL for the view, as for
+     *          madebyhype_get_list. Its category_filter is ignored; sorting,
+     *          page and rows per page make no difference.
+     *
+     * Success: {success: true, data: {counts: {"<category id>": int, ...}, view: "product"|"sku"}}
+     *          A category that would list nothing is left out. The numbers are
+     *          products by product and SKUs by SKU and on Needs attention; a
+     *          category includes the categories below it (see
+     *          DataManager::count_by_category()).
+     * Failure: {success: false, data: {code, message}} with HTTP 403 (forbidden),
+     *          400 (invalid_request: no query, a query that is too long, or the
+     *          History tab) or 500 (db_error).
+     * A missing or expired nonce is answered by WordPress itself: HTTP 403, body -1.
+     */
+    public function get_category_counts()
+    {
+        check_ajax_referer(self::NONCE_ACTION);
+
+        if (!Capabilities::can_view()) {
+            wp_send_json_error([
+                'code' => 'forbidden',
+                'message' => __('You do not have permission to view stock.', 'madebyhype-stockmanagment'),
+            ], 403);
+            return;
+        }
+
+        $request = wp_unslash($_REQUEST);
+        $query = isset($request['query']) && is_string($request['query']) ? ltrim($request['query'], '?') : null;
+
+        if ($query === null || strlen($query) > self::MAX_QUERY_LENGTH) {
+            wp_send_json_error([
+                'code' => 'invalid_request',
+                'message' => __('The list that was asked for could not be read.', 'madebyhype-stockmanagment'),
+            ], 400);
+            return;
+        }
+
+        require_once __DIR__ . '/AdminPage.php';
+
+        $args = [];
+        parse_str($query, $args);
+
+        // The same reading as the URL of the page gets; it expects slashed input, as $_GET is
+        $admin_page = new AdminPage();
+        $parsed = $admin_page->parse_request(wp_slash($args));
+
+        if ($parsed['tab'] === 'history') {
+            wp_send_json_error([
+                'code' => 'invalid_request',
+                'message' => __('The list that was asked for could not be read.', 'madebyhype-stockmanagment'),
+            ], 400);
+            return;
+        }
+
+        $counted = $this->data_manager->count_by_category($admin_page->list_args($parsed));
+
+        if ($counted['error']) {
+            wp_send_json_error($counted['error'], 500);
+            return;
+        }
+
+        wp_send_json_success([
+            // An object also when it is empty
+            'counts' => (object) $counted['counts'],
+            'view' => $counted['view'],
         ]);
     }
 

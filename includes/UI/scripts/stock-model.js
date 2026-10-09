@@ -7,6 +7,11 @@
  * PHP give the same answers for the rows the server prints. Keep the two in
  * step; the model test in the test folder compares them.
  *
+ * The category tree of the filter drawer is here too: which categories are
+ * sent for a set of ticked boxes, and which boxes are ticked for a set of
+ * categories. DataManager applies a category with every category below it,
+ * and these functions keep what is shown and what is sent meaning the same.
+ *
  * Loads in the browser as MBHStock.model and in node as a module.
  */
 (function (root, factory) {
@@ -533,6 +538,290 @@
     return counts;
   }
 
+  /* ------------------------------------------------------------------
+   * The category tree of the filter drawer
+   *
+   * The server lists a category together with every category below it. So
+   * a ticked box always has every box below it ticked, and only the top of
+   * a ticked branch is sent. A box that is not ticked but has ticked boxes
+   * below it is "mixed". A category is ticked only when it, or a category
+   * above it, was chosen: ticking every box below a category does not tick
+   * that category, because it may hold products of its own.
+   * ---------------------------------------------------------------- */
+
+  /**
+   * @param {Array} categories [{id, name, parent}], in the order to show them among their siblings
+   * @return {object} order (every id, each after its parent), parent, children, name, depth (by id).
+   *                  A category whose parent is not listed is at the top.
+   */
+  function categoryTree(categories) {
+    var tree = { order: [], parent: {}, children: {}, name: {}, depth: {} };
+    var known = {};
+    var byParent = {};
+
+    (categories || []).forEach(function (category) {
+      known[category.id] = true;
+    });
+    (categories || []).forEach(function (category) {
+      var id = Number(category.id);
+      var parent = known[category.parent] && Number(category.parent) !== id ? Number(category.parent) : 0;
+
+      if (tree.name[id] !== undefined) {
+        return; // Listed twice
+      }
+
+      tree.name[id] = String(category.name);
+      tree.parent[id] = parent;
+      tree.children[id] = [];
+      (byParent[parent] = byParent[parent] || []).push(id);
+    });
+
+    (function walk(parent, depth) {
+      (byParent[parent] || []).forEach(function (id) {
+        if (tree.depth[id] !== undefined) {
+          return;
+        }
+
+        tree.depth[id] = depth;
+        tree.order.push(id);
+
+        if (parent) {
+          tree.children[parent].push(id);
+        }
+
+        walk(id, depth + 1);
+      });
+    })(0, 0);
+
+    // Categories that only point at each other (a loop) cannot be reached from the top: list them there
+    Object.keys(tree.name).forEach(function (key) {
+      var id = Number(key);
+
+      if (tree.depth[id] === undefined) {
+        tree.parent[id] = 0;
+        tree.depth[id] = 0;
+        tree.children[id] = [];
+        tree.order.push(id);
+      }
+    });
+
+    return tree;
+  }
+
+  /** Every category below one, each after its parent */
+  function categoryBelow(tree, id) {
+    var below = [];
+
+    (function walk(parent) {
+      (tree.children[parent] || []).forEach(function (child) {
+        below.push(child);
+        walk(child);
+      });
+    })(Number(id));
+
+    return below;
+  }
+
+  /** The categories above one, nearest first */
+  function categoryAbove(tree, id) {
+    var above = [];
+    var up = tree.parent[Number(id)];
+
+    while (up) {
+      above.push(up);
+      up = tree.parent[up];
+    }
+
+    return above;
+  }
+
+  /**
+   * The boxes that are ticked for the categories of a list's address:
+   * each of them and everything below it
+   *
+   * @param {Array} ids Category ids; one the tree does not know stays ticked on its own
+   * @return {object} id => true
+   */
+  function categoryTicks(tree, ids) {
+    var ticks = {};
+
+    (ids || []).forEach(function (id) {
+      id = Number(id);
+
+      if (!(id > 0)) {
+        return;
+      }
+
+      ticks[id] = true;
+      categoryBelow(tree, id).forEach(function (below) {
+        ticks[below] = true;
+      });
+    });
+
+    return ticks;
+  }
+
+  /**
+   * The categories to send for a set of ticked boxes: the top of every
+   * ticked branch, in ascending order. It means the same as the ticks,
+   * because the server adds what is below a category.
+   *
+   * @param {object} ticks id => anything but undefined
+   */
+  function categoryIds(tree, ticks) {
+    return Object.keys(ticks || {})
+      .filter(function (key) {
+        return (
+          ticks[key] !== undefined &&
+          !categoryAbove(tree, key).some(function (up) {
+            return ticks[up] !== undefined;
+          })
+        );
+      })
+      .map(Number)
+      .sort(function (a, b) {
+        return a - b;
+      });
+  }
+
+  /**
+   * The ticks after one box is ticked or unticked. Ticking takes everything
+   * below with it. Unticking does too, and also unticks the categories
+   * above, which no longer hold all of their branch; their other branches
+   * stay ticked.
+   *
+   * @return {object} A new set, id => true
+   */
+  function categoryToggle(tree, ticks, id, on) {
+    var next = {};
+
+    Object.keys(ticks || {}).forEach(function (key) {
+      if (ticks[key] !== undefined) {
+        next[key] = true;
+      }
+    });
+
+    id = Number(id);
+
+    if (on) {
+      next[id] = true;
+      categoryBelow(tree, id).forEach(function (below) {
+        next[below] = true;
+      });
+    } else {
+      delete next[id];
+      categoryBelow(tree, id)
+        .concat(categoryAbove(tree, id))
+        .forEach(function (other) {
+          delete next[other];
+        });
+    }
+
+    return next;
+  }
+
+  /**
+   * How every box of the tree shows
+   *
+   * @return {object} id => {state: 'on' | 'mixed' | 'off', inside: ticked categories below it, below: categories below it}
+   */
+  function categoryStates(tree, ticks) {
+    var states = {};
+
+    ticks = ticks || {};
+
+    // From the bottom up: a category's numbers are those of its children, plus the children themselves
+    tree.order
+      .slice()
+      .reverse()
+      .forEach(function (id) {
+        var inside = 0;
+        var below = 0;
+
+        (tree.children[id] || []).forEach(function (child) {
+          inside += states[child].inside + (ticks[child] !== undefined ? 1 : 0);
+          below += states[child].below + 1;
+        });
+
+        states[id] = { state: ticks[id] !== undefined ? "on" : inside ? "mixed" : "off", inside: inside, below: below };
+      });
+
+    return states;
+  }
+
+  /**
+   * What to call the given categories where they stand alone (a summary
+   * line): the name, and the names of the categories above when another
+   * category of the tree has the same name
+   *
+   * @return {Array} [{id, name, under: names of the categories above, the top one first, or null}]
+   */
+  function categoryLabels(tree, ids) {
+    var times = {};
+
+    Object.keys(tree.name).forEach(function (key) {
+      var name = tree.name[key].toLowerCase();
+
+      times[name] = (times[name] || 0) + 1;
+    });
+
+    return (ids || []).map(function (id) {
+      var name = tree.name[id];
+      var above =
+        name !== undefined && times[name.toLowerCase()] > 1
+          ? categoryAbove(tree, id)
+              .reverse()
+              .map(function (up) {
+                return tree.name[up];
+              })
+          : [];
+
+      return { id: Number(id), name: name === undefined ? "" : name, under: above.length ? above : null };
+    });
+  }
+
+  /**
+   * The categories whose name contains a text, and the categories above
+   * them that do not: those are shown as the way to a match
+   *
+   * @param {number} limit At most this many matches, in the tree's order (0: all)
+   * @return {object} hits (id => true), context (id => true), found (number of matches before the limit)
+   */
+  function categorySearch(tree, text, limit) {
+    var query = String(text === null || text === undefined ? "" : text)
+      .trim()
+      .toLowerCase();
+    var result = { hits: {}, context: {}, found: 0 };
+
+    if (query === "") {
+      return result;
+    }
+
+    tree.order.forEach(function (id) {
+      if (tree.name[id].toLowerCase().indexOf(query) === -1) {
+        return;
+      }
+
+      result.found++;
+
+      if (limit && result.found > limit) {
+        return;
+      }
+
+      result.hits[id] = true;
+    });
+
+    Object.keys(result.hits).forEach(function (id) {
+      categoryAbove(tree, id).forEach(function (up) {
+        if (!result.hits[up]) {
+          result.context[up] = true;
+        }
+      });
+    });
+
+    return result;
+  }
+
   return {
     FIELDS: FIELDS,
     PRICE_FIELDS: PRICE_FIELDS,
@@ -557,5 +846,14 @@
     resolveField: resolveField,
     saveNotice: saveNotice,
     historyCounts: historyCounts,
+    categoryTree: categoryTree,
+    categoryBelow: categoryBelow,
+    categoryAbove: categoryAbove,
+    categoryTicks: categoryTicks,
+    categoryIds: categoryIds,
+    categoryToggle: categoryToggle,
+    categoryStates: categoryStates,
+    categoryLabels: categoryLabels,
+    categorySearch: categorySearch,
   };
 });

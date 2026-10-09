@@ -16,7 +16,10 @@
  * The drawer is a dialog: focus goes in and stays in, Escape and the backdrop
  * close it, focus goes back to the Filters button. Sections are details
  * elements, status and tag and attribute values are toggle buttons
- * (aria-pressed), categories are checkboxes.
+ * (aria-pressed), categories are checkboxes in a tree: a category ticks the
+ * ones below it, and the number beside each says what it would list with
+ * the search and the other filters as they are in the draft (read through
+ * madebyhype_get_category_counts whenever those change).
  */
 (function ($, window, document) {
   "use strict";
@@ -55,9 +58,17 @@
   var draft = null;
   var applied = "";
   var sections = {}; // key => {node, summary, inner, render()}
-  var ui = { open: {}, categoryQuery: "", categoryAll: false, categoryOpen: null, tagQuery: "", attribute: "" };
+  // categoryOpen: the branches the user has open (null until the tree is first drawn);
+  // categoryFound: the branches closed (false) or opened in full (true) by hand during a search
+  var ui = { open: {}, categoryQuery: "", categoryAll: false, categoryOpen: null, categoryFound: {}, tagQuery: "", attribute: "" };
   var countSeq = 0;
   var countTimer = null;
+  var tree = null; // model.categoryTree() of the categories, once they are read
+  var staticCounts = {}; // category id => published products, as read with the options
+  var visible = {}; // category id => whether its row is drawn, filled by categoryView()
+  // The numbers beside the categories for the draft's other filters: the ones on show (counts, view,
+  // shown: the query they answer), the query asked for last, and what was read while the drawer is open
+  var facet = { counts: null, view: "product", shown: null, wanted: null, failed: false, cache: {}, seq: 0, timer: null };
 
   /* ------------------------------------------------------------------
    * The draft
@@ -131,7 +142,7 @@
     return {
       stock_filter: tab() === "all" ? draft.stock.slice().sort() : null,
       include_drafts: tab() === "all" && draft.drafts ? 1 : null,
-      category_filter: ids(draft.categories),
+      category_filter: categoryIds(),
       tag_filter: ids(draft.tags),
       attribute_filter: attributes,
       min_price: amount(draft.minPrice, true),
@@ -146,7 +157,7 @@
   }
 
   function activeCount() {
-    var count = draft.stock.length + (draft.drafts ? 1 : 0) + ids(draft.categories).length + ids(draft.tags).length;
+    var count = draft.stock.length + (draft.drafts ? 1 : 0) + categoryIds().length + ids(draft.tags).length;
 
     Object.keys(draft.attributes).forEach(function (taxonomy) {
       count += ids(draft.attributes[taxonomy].terms).length;
@@ -252,6 +263,7 @@
 
     updateHead();
     scheduleCount();
+    scheduleFacet();
   }
 
   /* --- stock status and drafts --- */
@@ -297,146 +309,325 @@
     );
   }
 
-  /* --- categories: a searchable tree of checkboxes; a parent opens to show its direct children --- */
+  /* --- categories: a searchable tree of checkboxes ---
+   *
+   * A parent opens to show its direct children. Ticking a category ticks
+   * everything below it; a category with only some of its branch ticked is
+   * shown as mixed. Which boxes are ticked for which categories, and which
+   * categories are sent, is decided in stock-model.js (category*): the
+   * draft holds the ticked boxes, the address gets the top of each ticked
+   * branch.
+   */
 
-  /** The categories in the shop's order, each after its parent, with its depth */
-  function categoryRows() {
-    var byParent = {};
+  /**
+   * The tree of what can be chosen. A selected category the shop no longer
+   * lists (no product uses it) is put at the top, so it can be taken off.
+   */
+  function buildTree() {
     var known = {};
-    var rows = [];
+    var extra = [];
 
     (options.categories || []).forEach(function (category) {
       known[category.id] = true;
     });
-    (options.categories || []).forEach(function (category) {
-      // A category whose parent is not listed is shown at the top level
-      var parent = known[category.parent] ? category.parent : 0;
-
-      (byParent[parent] = byParent[parent] || []).push(category);
-    });
-
-    (function walk(parent, depth) {
-      (byParent[parent] || []).forEach(function (category) {
-        rows.push({ id: category.id, name: category.name, count: category.count, depth: depth, parent: parent, children: (byParent[category.id] || []).length });
-        walk(category.id, depth + 1);
-      });
-    })(0, 0);
-
-    // A selected category the shop no longer lists (no product uses it) can still be taken off
     ids(draft.categories).forEach(function (id) {
       if (!known[id]) {
-        rows.unshift({ id: id, name: draft.categories[id], count: null, depth: 0, parent: 0, children: 0 });
+        extra.push({ id: id, name: draft.categories[id], parent: 0 });
       }
     });
 
-    return rows;
+    tree = model.categoryTree(extra.concat(options.categories || []));
+    staticCounts = {};
+    (options.categories || []).forEach(function (category) {
+      staticCounts[category.id] = category.count;
+    });
   }
 
-  function categoryList() {
-    var rows = categoryRows();
+  /** A set of ticked boxes as the draft keeps it: id => name */
+  function namedTicks(ticks) {
+    var named = {};
+
+    Object.keys(ticks).forEach(function (id) {
+      named[id] = tree.name[id] !== undefined ? tree.name[id] : draft.categories[id] || "";
+    });
+
+    return named;
+  }
+
+  /** The draft's categories as ticked boxes: each one and everything below it */
+  function linkCategories() {
+    draft.categories = namedTicks(model.categoryTicks(tree, ids(draft.categories)));
+  }
+
+  /** Open or close a branch: of the tree, or of the search's layout while a search is on */
+  function openCategory(id, open) {
+    if (ui.categoryQuery) {
+      ui.categoryFound[id] = open;
+    } else {
+      ui.categoryOpen = ui.categoryOpen || {};
+      ui.categoryOpen[id] = open;
+    }
+  }
+
+  /** The categories the address gets: the top of each ticked branch */
+  function categoryIds() {
+    return tree ? model.categoryIds(tree, draft.categories) : ids(draft.categories);
+  }
+
+  /** Their names, for the section's summary line; "Men's › Rings" where "Rings" alone could be one of several categories */
+  function categoryNames() {
+    if (!tree) {
+      return valuesOf(draft.categories);
+    }
+
+    return model.categoryLabels(tree, categoryIds()).map(function (label) {
+      return (label.under || []).concat(label.name).reduce(function (path, name) {
+        return t("categoryUnder", path, name);
+      });
+    });
+  }
+
+  /**
+   * The numbers beside the categories
+   *
+   * @return {object|null} {of: id => number, live: whether they follow the search and the other filters};
+   *                       null while the first numbers for a filtered list are on their way
+   */
+  function categoryCounts() {
+    if (facet.counts) {
+      return { of: facet.counts, live: true };
+    }
+
+    // Without an answer: the numbers of the whole catalogue, which is what an unfiltered list by product gives
+    return facet.failed || facetIsPlain() ? { of: staticCounts, live: false } : null;
+  }
+
+  /** A name with the part that matches the search marked */
+  function nameWithHit(name, query) {
+    var at = query ? name.toLowerCase().indexOf(query) : -1;
+
+    if (at === -1) {
+      return [name];
+    }
+
+    return [name.slice(0, at), el("mark", { class: "mbh-opt-hit", text: name.slice(at, at + query.length) }), name.slice(at + query.length)];
+  }
+
+  /**
+   * The rows to draw
+   *
+   * Without a search: the top-level categories (the first few, or all of
+   * them, and always one that holds a selection), and below them what the
+   * user has opened. With a search: the matches, each under the categories
+   * above it; such a branch counts as open, the arrow closes it or opens it
+   * in full.
+   *
+   * @return {object} rows [{id, open, hit, context}], more (matches left out)
+   */
+  function categoryView(states) {
     var query = ui.categoryQuery.toLowerCase();
-    var shown;
-    var more = null;
+    var result = { rows: [], more: 0 };
 
     if (query) {
-      shown = rows.filter(function (row) {
-        return matches(row.name, query);
-      });
+      var search = model.categorySearch(tree, query, MATCH_LIMIT);
+      var leads = {}; // id => a match is somewhere below it
+      var open = {};
 
-      if (shown.length > MATCH_LIMIT) {
-        more = el("p", { class: "mbh-fsec-hint", text: tn("moreMatches", shown.length - MATCH_LIMIT) });
-        shown = shown.slice(0, MATCH_LIMIT);
-      }
-    } else {
-      var parentOf = {};
-      var shownTop = {};
-      var topCount = 0;
-
-      rows.forEach(function (row) {
-        parentOf[row.id] = row.parent;
-
-        if (row.depth === 0 && (++topCount <= CATEGORY_PREVIEW || ui.categoryAll)) {
-          shownTop[row.id] = true;
-        }
-      });
-
-      // First time: open the branches that lead to a selected category
-      if (ui.categoryOpen === null) {
-        ui.categoryOpen = {};
-        ids(draft.categories).forEach(function (id) {
-          for (var up = parentOf[id]; up; up = parentOf[up]) {
-            ui.categoryOpen[up] = true;
-          }
+      Object.keys(search.hits).forEach(function (id) {
+        model.categoryAbove(tree, id).forEach(function (up) {
+          leads[up] = true;
         });
-      }
+      });
 
-      // Top-level categories first (the first few, or all of them). A category
-      // below shows only while every category above it is open.
-      shown = rows.filter(function (row) {
-        var up = row.id;
+      result.more = Math.max(0, search.found - MATCH_LIMIT);
 
-        while (parentOf[up]) {
-          up = parentOf[up];
+      tree.order.forEach(function (id) {
+        var parent = tree.parent[id];
+        var onPath = !!(search.hits[id] || leads[id]);
 
-          if (!ui.categoryOpen[up]) {
-            return false;
-          }
+        // A category that leads to a match is open until the user closes it; opened by hand it shows all of its children
+        open[id] = tree.children[id].length > 0 && (ui.categoryFound[id] === undefined ? !!leads[id] : ui.categoryFound[id]);
+        visible[id] = parent ? visible[parent] && open[parent] && (onPath || ui.categoryFound[parent] === true) : onPath;
+
+        if (visible[id]) {
+          result.rows.push({ id: id, open: open[id], hit: !!search.hits[id], context: !search.hits[id] });
         }
+      });
 
-        return shownTop[up] === true;
+      return result;
+    }
+
+    // First time: open the way to every selected category. A branch that is ticked as a whole stays closed.
+    if (ui.categoryOpen === null) {
+      ui.categoryOpen = {};
+      categoryIds().forEach(function (id) {
+        model.categoryAbove(tree, id).forEach(function (up) {
+          ui.categoryOpen[up] = true;
+        });
       });
     }
 
-    var list = el(
+    var top = 0;
+
+    tree.order.forEach(function (id) {
+      var parent = tree.parent[id];
+      var shown;
+
+      if (parent) {
+        shown = visible[parent] && ui.categoryOpen[parent] === true;
+      } else {
+        // Beyond the first few, a top-level category still shows while it holds a selection
+        shown = ++top <= CATEGORY_PREVIEW || ui.categoryAll || states[id].state !== "off";
+      }
+
+      visible[id] = shown;
+
+      if (shown) {
+        result.rows.push({ id: id, open: tree.children[id].length > 0 && ui.categoryOpen[id] === true, hit: false, context: false });
+      }
+    });
+
+    return result;
+  }
+
+  function categoryRow(row, states, counts, query) {
+    var id = row.id;
+    var name = tree.name[id];
+    var state = states[id];
+    var hasChildren = tree.children[id].length > 0;
+    var count = counts && (counts.live || counts.of[id] !== undefined) ? counts.of[id] || 0 : null;
+    var none = !!counts && counts.live && count === 0;
+    var box = el("input", {
+      type: "checkbox",
+      "data-category": id,
+      checked: state.state === "on",
+      // A category that would list nothing cannot be added, but one that is ticked can be taken off
+      disabled: none && state.state === "off",
+    });
+
+    // Partly ticked: the checkbox's own third state, which assistive technology reads as "mixed"
+    box.indeterminate = state.state === "mixed";
+
+    return el(
       "div",
-      { class: "mbh-opts", role: "group", "aria-label": t("filterCategory") },
-      shown.map(function (row) {
-        var isOpen = !query && ui.categoryOpen !== null && ui.categoryOpen[row.id] === true;
-
-        return el("div", { class: "mbh-opt mbh-opt--tree mbh-opt--t" + (query ? 0 : Math.min(row.depth, 4)) }, [
-          // The arrow sits left of the checkbox and opens the direct children
-          row.children && !query
-            ? el(
-                "button",
-                {
-                  type: "button",
-                  class: "mbh-opt-toggle" + (isOpen ? " is-open" : ""),
-                  "data-category-toggle": row.id,
-                  "aria-expanded": isOpen ? "true" : "false",
-                  "aria-label": t(isOpen ? "hideSubcategories" : "showSubcategories", row.name),
-                },
-                [MBH.icon("chevron")]
-              )
-            : el("span", { class: "mbh-opt-toggle mbh-opt-toggle--none", "aria-hidden": "true" }),
-          el("label", { class: "mbh-opt-label" }, [
-            el("input", { type: "checkbox", "data-category": row.id, "data-name": row.name, checked: draft.categories[row.id] !== undefined ? true : false }),
-            el("span", { class: "mbh-opt-name", text: row.name }),
-            row.count === null ? null : el("span", { class: "mbh-opt-count", title: t("productCountTitle"), text: grouped(row.count) }),
-          ]),
-        ]);
-      })
+      {
+        class: "mbh-opt mbh-opt--tree mbh-opt--t" + Math.min(tree.depth[id], 4) + (row.context ? " is-context" : "") + (none ? " is-none" : "") + (none && state.state === "off" ? " is-unavailable" : ""),
+        "data-category-row": id,
+      },
+      [
+        // The arrow sits left of the checkbox and opens the direct children
+        hasChildren
+          ? el(
+              "button",
+              {
+                type: "button",
+                class: "mbh-opt-toggle" + (row.open ? " is-open" : ""),
+                "data-category-toggle": id,
+                "aria-expanded": row.open ? "true" : "false",
+                "aria-label": t(row.open ? "hideSubcategories" : "showSubcategories", name),
+              },
+              [MBH.icon("chevron")]
+            )
+          : el("span", { class: "mbh-opt-toggle mbh-opt-toggle--none", "aria-hidden": "true" }),
+        el("label", { class: "mbh-opt-label" }, [
+          box,
+          el("span", { class: "mbh-opt-name" }, nameWithHit(name, query)),
+          // What is ticked out of sight, below a closed category
+          hasChildren && !row.open && state.inside
+            ? el("span", { class: "mbh-opt-inside", title: tn("selectedInside", state.inside) }, [
+                el("span", { "aria-hidden": "true", text: grouped(state.inside) }),
+                el("span", { class: "screen-reader-text", text: tn("selectedInside", state.inside) }),
+              ])
+            : null,
+          count === null
+            ? null
+            : el("span", { class: "mbh-opt-count", title: !counts.live ? t("productCountTitle") : t(facet.view === "sku" ? "categoryCountSkus" : "categoryCountProducts") }, [
+                grouped(count),
+                none ? el("span", { class: "screen-reader-text", text: t("categoryNothing") }) : null,
+              ]),
+        ]),
+      ]
     );
+  }
 
-    var parts = [shown.length ? list : el("p", { class: "mbh-fsec-hint", text: query ? t("noMatches") : t("noCategories") }), more];
+  function categoryList() {
+    var states = model.categoryStates(tree, draft.categories);
+    var counts = categoryCounts();
+    var query = ui.categoryQuery.toLowerCase();
+    var view;
 
-    if (
-      !query &&
-      rows.filter(function (row) {
-        return row.depth === 0;
-      }).length > CATEGORY_PREVIEW
-    ) {
+    visible = {};
+    view = categoryView(states);
+
+    var parts = [
+      view.rows.length
+        ? el(
+            "div",
+            { class: "mbh-opts", role: "group", "aria-label": t("filterCategory") },
+            view.rows.map(function (row) {
+              return categoryRow(row, states, counts, query);
+            })
+          )
+        : el("p", { class: "mbh-fsec-hint", text: query ? t("noMatches") : t("noCategories") }),
+      view.more ? el("p", { class: "mbh-fsec-hint", text: tn("moreMatches", view.more) }) : null,
+    ];
+
+    var topLevel = tree.order.filter(function (id) {
+      return !tree.parent[id];
+    }).length;
+
+    if (!query && topLevel > CATEGORY_PREVIEW) {
       parts.push(
         el("button", {
           type: "button",
           class: "mbh-text-button mbh-more",
           id: "mbh-category-more",
           "aria-expanded": ui.categoryAll ? "true" : "false",
-          text: ui.categoryAll ? t("showFewer") : tn("showAllCategories", rows.length),
+          text: ui.categoryAll ? t("showFewer") : tn("showAllCategories", tree.order.length),
         })
       );
     }
 
     return parts;
+  }
+
+  /** Draw the tree again; the focus stays on the control it was on (or goes to the one given) */
+  function redrawCategories(focus) {
+    var list = document.getElementById("mbh-category-list");
+    var tools = document.getElementById("mbh-category-tools");
+
+    if (!list || !tree) {
+      return;
+    }
+
+    var active = document.activeElement;
+    var scrolled = body.scrollTop;
+
+    if (!focus && active && list.contains(active)) {
+      if (active.hasAttribute("data-category")) {
+        focus = 'input[data-category="' + active.getAttribute("data-category") + '"]';
+      } else if (active.hasAttribute("data-category-toggle")) {
+        focus = '[data-category-toggle="' + active.getAttribute("data-category-toggle") + '"]';
+      } else if (active.id) {
+        focus = "#" + active.id;
+      }
+    }
+
+    $(list).empty().append(categoryList());
+
+    if (tools) {
+      // Opening and closing everything is for the tree; a search lays out its own branches
+      tools.hidden = ui.categoryQuery !== "";
+    }
+
+    body.scrollTop = scrolled;
+
+    if (focus) {
+      var target = list.querySelector(focus);
+
+      // The control may be gone, or may no longer take the focus: stay in the section
+      (target && !target.disabled ? target : document.getElementById("mbh-category-find")).focus();
+    }
   }
 
   function categorySection() {
@@ -450,16 +641,117 @@
           return;
         }
 
+        var hasBranches = tree.order.some(function (id) {
+          return tree.children[id].length > 0;
+        });
+
         inner.appendChild(
           el("input", { type: "search", class: "mbh-field", id: "mbh-category-find", placeholder: t("findCategory"), "aria-label": t("findCategory"), autocomplete: "off", value: ui.categoryQuery })
         );
+
+        if (hasBranches) {
+          inner.appendChild(
+            el("div", { class: "mbh-opt-tools", id: "mbh-category-tools", hidden: ui.categoryQuery !== "" }, [
+              el("button", { type: "button", class: "mbh-text-button", id: "mbh-category-expand", text: t("expandAll") }),
+              el("button", { type: "button", class: "mbh-text-button", id: "mbh-category-collapse", text: t("collapseAll") }),
+            ])
+          );
+        }
+
         inner.appendChild(el("div", { id: "mbh-category-list" }, categoryList()));
       },
       function () {
-        var list = valuesOf(draft.categories);
+        var list = categoryNames();
 
         return list.length ? { text: names(list), set: true } : { text: t("filterNone") };
       }
+    );
+  }
+
+  /* --- the numbers beside the categories: what each would list, the search and the other filters kept --- */
+
+  /** The draft without its categories, and without what makes no difference to a count */
+  function facetArgs() {
+    return $.extend(draftChanges(), { category_filter: null, sort_by: null, sort_order: null, paged: null, per_page: null });
+  }
+
+  function facetQuery() {
+    var url = MBH.list.url(facetArgs());
+
+    return url.slice(url.indexOf("?") + 1);
+  }
+
+  /** Whether the draft, its categories aside, is the whole catalogue by product: the numbers read with the options are right for it */
+  function facetIsPlain() {
+    var state = MBH.list.state;
+    var changes = facetArgs();
+
+    return (
+      tab() === "all" &&
+      state.view === "product" &&
+      !state.search &&
+      !Object.keys(changes).some(function (name) {
+        var value = changes[name];
+
+        return !(value === null || value === "" || ($.isArray(value) && !value.length) || ($.isPlainObject(value) && $.isEmptyObject(value)));
+      })
+    );
+  }
+
+  /**
+   * Ask for the numbers of the draft, unless they are the ones asked for
+   * last. Until the answer comes the numbers on show stay.
+   *
+   * @param {boolean} now Without the wait that follows a change
+   */
+  function scheduleFacet(now) {
+    var key = facetQuery();
+
+    if (key === facet.wanted) {
+      return;
+    }
+
+    window.clearTimeout(facet.timer);
+    facet.wanted = key;
+    facet.seq++;
+
+    if (facet.cache[key]) {
+      // Back at filters whose numbers were read while the drawer has been open
+      facet.failed = false;
+      facet.counts = facet.cache[key].counts;
+      facet.view = facet.cache[key].view;
+      facet.shown = key;
+      redrawCategories();
+      return;
+    }
+
+    var seq = facet.seq;
+
+    facet.timer = window.setTimeout(
+      function () {
+        MBH.request("madebyhype_get_category_counts", "read", { query: key }).then(function (answer) {
+          if (seq !== facet.seq) {
+            return; // The draft has changed since, or the drawer was closed
+          }
+
+          if (answer.ok && answer.data && answer.data.counts) {
+            facet.cache[key] = { counts: answer.data.counts, view: answer.data.view };
+            facet.failed = false;
+            facet.counts = answer.data.counts;
+            facet.view = answer.data.view;
+            facet.shown = key;
+          } else {
+            // No numbers for these filters: the catalogue's own, and nothing dimmed. The next change asks again.
+            facet.failed = true;
+            facet.counts = null;
+            facet.shown = null;
+            facet.wanted = null;
+          }
+
+          redrawCategories();
+        });
+      },
+      now ? 0 : COUNT_DELAY
     );
   }
 
@@ -734,6 +1026,17 @@
       } else {
         options = answer.data;
         optionsState = "ready";
+
+        // The categories now form a tree: those of the list on the page become ticked branches, and so
+        // do the draft's. What is applied is worked out the same way, so an untouched draft still equals it.
+        var mine = draft;
+
+        draft = draftFrom(MBH.list.state.filters);
+        buildTree();
+        linkCategories();
+        applied = signature();
+        draft = mine;
+        linkCategories();
       }
 
       // The focus may sit on "Try again", which is about to go
@@ -749,6 +1052,8 @@
       if (hadFocus) {
         panel.focus();
       }
+
+      updateHead();
     });
   }
 
@@ -803,14 +1108,36 @@
   function show(open) {
     if (open) {
       draft = draftFrom(MBH.list.state.filters);
+
+      if (optionsState === "ready") {
+        buildTree();
+        linkCategories();
+      }
+
       applied = signature();
       ui.categoryQuery = "";
+      ui.categoryFound = {};
       ui.tagQuery = "";
+
+      // The numbers beside the categories are read again at every opening; the ones on show stay
+      // until then if they are for the same search and filters
+      facet.cache = {};
+      facet.wanted = null;
+
+      if (facet.shown !== facetQuery()) {
+        facet.counts = null;
+        facet.shown = null;
+      }
+
       build();
       setApply(MBH.list.state.showLabel, false);
+      scheduleFacet(true);
     } else {
       window.clearTimeout(countTimer);
       countSeq++;
+      window.clearTimeout(facet.timer);
+      facet.seq++;
+      facet.wanted = null;
     }
 
     panel.hidden = !open;
@@ -911,31 +1238,89 @@
     })
     .on("input", "#mbh-category-find", function () {
       ui.categoryQuery = $.trim(this.value);
-      $("#mbh-category-list").empty().append(categoryList());
+      // Each search lays its branches out afresh; the tree keeps what the user had open
+      ui.categoryFound = {};
+      redrawCategories();
     })
     .on("change", "input[data-category]", function () {
       var id = this.getAttribute("data-category");
 
-      if (this.checked) {
-        draft.categories[id] = this.getAttribute("data-name");
-      } else {
-        delete draft.categories[id];
-      }
-
+      // Everything below goes with it; the categories above lose their tick when one below is taken off
+      draft.categories = namedTicks(model.categoryToggle(tree, draft.categories, id, this.checked));
+      redrawCategories('input[data-category="' + id + '"]');
       changed("category");
     })
     .on("click", "[data-category-toggle]", function () {
       var id = this.getAttribute("data-category-toggle");
 
-      ui.categoryOpen = ui.categoryOpen || {};
-      ui.categoryOpen[id] = !ui.categoryOpen[id];
-      $("#mbh-category-list").empty().append(categoryList());
-      refocus('[data-category-toggle="' + id + '"]');
+      openCategory(id, this.getAttribute("aria-expanded") !== "true");
+      redrawCategories('[data-category-toggle="' + id + '"]');
+    })
+    .on("keydown", ".mbh-opt--tree", function (event) {
+      // As in a tree: Right opens a branch, or steps into an open one; Left closes it, or steps out to the category above
+      if ((event.key !== "ArrowRight" && event.key !== "ArrowLeft") || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+
+      var id = Number(this.getAttribute("data-category-row"));
+      var arrow = this.querySelector("button[data-category-toggle]");
+      var isOpen = !!arrow && arrow.getAttribute("aria-expanded") === "true";
+      var onArrow = event.target === arrow;
+      var same = function (other) {
+        return (onArrow ? "[data-category-toggle" : "input[data-category") + '="' + other + '"]';
+      };
+      var step = function (other) {
+        // The same control of another row, else whichever of its two controls takes the focus
+        var row = body.querySelector('[data-category-row="' + other + '"]');
+        var target = row && (row.querySelector(same(other) + ":not(:disabled)") || row.querySelector("input:not(:disabled), button"));
+
+        if (target) {
+          target.focus();
+        }
+      };
+
+      if (event.key === "ArrowRight" && arrow) {
+        event.preventDefault();
+
+        if (isOpen) {
+          step(
+            tree.children[id].filter(function (child) {
+              return visible[child];
+            })[0]
+          );
+        } else {
+          openCategory(id, true);
+          redrawCategories(same(id));
+        }
+      } else if (event.key === "ArrowLeft" && isOpen) {
+        event.preventDefault();
+        openCategory(id, false);
+        redrawCategories(same(id));
+      } else if (event.key === "ArrowLeft" && tree.parent[id]) {
+        event.preventDefault();
+        step(tree.parent[id]);
+      }
+    })
+    .on("click", "#mbh-category-expand, #mbh-category-collapse", function () {
+      var open = this.id === "mbh-category-expand";
+
+      ui.categoryOpen = {};
+
+      if (open) {
+        tree.order.forEach(function (id) {
+          if (tree.children[id].length) {
+            ui.categoryOpen[id] = true;
+          }
+        });
+        // Every category, not only the first few at the top
+        ui.categoryAll = true;
+      }
+
+      redrawCategories();
     })
     .on("click", "#mbh-category-more", function () {
       ui.categoryAll = !ui.categoryAll;
-      $("#mbh-category-list").empty().append(categoryList());
-      refocus("#mbh-category-more");
+      redrawCategories("#mbh-category-more");
     })
     .on("input", "#mbh-tag-find", function () {
       ui.tagQuery = $.trim(this.value);
@@ -1016,6 +1401,7 @@
     ui.tagQuery = "";
     build();
     scheduleCount();
+    scheduleFacet();
     panel.focus();
   });
 

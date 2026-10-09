@@ -20,6 +20,7 @@ if (! defined('ABSPATH')) {
  * Public entry points:
  *   get_list()        the list: All stock (by product or by SKU) and Needs attention
  *   count_list()      how many rows a list has, without reading any
+ *   count_by_category() how many rows a list would have for each category, the other filters kept
  *   get_filter_options() the categories, tags and attribute values a list can be filtered on
  *   get_variations()  the variations of one variable product, on demand
  *   get_rows()        given products and variations again, after a save or an undo
@@ -207,6 +208,100 @@ class DataManager
         } catch (\RuntimeException $e) {
             return $this->failed($result, $e);
         }
+
+        return $result;
+    }
+
+    /**
+     * For every category: how many rows the list would have with that
+     * category as its only category filter
+     *
+     * The search, the tab and its kind, the view, drafts and every other
+     * filter are kept; the category filter of the arguments is ignored. So
+     * the number for a category is count_list() of the same arguments with
+     * category_filter set to that category alone: a category includes the
+     * ones below it, and a row is counted once however many of them it is in.
+     *
+     * One statement: the rows that match, counted per product, joined to
+     * the categories of those products. The numbers are added up here along
+     * the category tree.
+     *
+     * @param array $args As count_list(); category_filter is ignored
+     * @return array {
+     *     counts (category id => rows; a category that would list nothing is left out), view, tab,
+     *     error (null, or ['code' => 'db_error', 'message' => string])
+     * }
+     */
+    public function count_by_category($args = [])
+    {
+        global $wpdb;
+
+        $q = $this->normalise_list_args($args);
+        $q['category_filter'] = [];
+
+        $result = [
+            'counts' => [],
+            'view' => $q['view'],
+            'tab' => $q['tab'],
+            'error' => null,
+        ];
+
+        if (!class_exists('WooCommerce')) {
+            return $result;
+        }
+
+        try {
+            if ($q['search'] !== '') {
+                $q['exact_ids'] = $this->exact_sku_ids($q['search']);
+            }
+
+            // As count_list(): the sales are joined only when they decide which rows match
+            $branches = $this->build_branches($q, $q['sales_in_where']);
+
+            // On Needs attention with a kind selected, the list holds that kind only
+            $of_kind = $q['tab'] === self::TAB_ATTENTION && $q['attention'] !== 'all';
+            $rows = $this->select_sql($branches, $of_kind ? ['k_owner', 'cls'] : ['k_owner']);
+            $kind = $of_kind ? $wpdb->prepare(' WHERE r.cls = %s', $q['attention']) : '';
+
+            $pairs = $this->run(
+                'get_results',
+                'SELECT tt.term_id, o.owner, o.n'
+                . " FROM (SELECT r.k_owner AS owner, COUNT(*) AS n FROM ({$rows}) r{$kind} GROUP BY r.k_owner) o"
+                . " INNER JOIN {$wpdb->term_relationships} tr ON tr.object_id = o.owner"
+                . " INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id"
+                . " WHERE tt.taxonomy = 'product_cat'"
+            );
+        } catch (\RuntimeException $e) {
+            return $this->failed($result, $e);
+        }
+
+        // Which product (with its number of rows) is in which category
+        $members = [];
+        foreach ($pairs as $pair) {
+            $members[(int) $pair->term_id][(int) $pair->owner] = (int) $pair->n;
+        }
+        unset($pairs);
+
+        $parents = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => false, 'fields' => 'id=>parent', 'update_term_meta_cache' => false]);
+        $parents = is_array($parents) ? $parents : [];
+
+        // A category includes the categories below it: every product also counts for the categories above its own
+        $inside = $members;
+        foreach ($members as $term_id => $products) {
+            $seen = [$term_id => true];
+            $up = isset($parents[$term_id]) ? (int) $parents[$term_id] : 0;
+
+            while ($up > 0 && !isset($seen[$up])) {
+                $seen[$up] = true;
+                $inside[$up] = (isset($inside[$up]) ? $inside[$up] : []) + $products;
+                $up = isset($parents[$up]) ? (int) $parents[$up] : 0;
+            }
+        }
+
+        foreach ($inside as $term_id => $products) {
+            $result['counts'][$term_id] = array_sum($products);
+        }
+        ksort($result['counts']);
 
         return $result;
     }
