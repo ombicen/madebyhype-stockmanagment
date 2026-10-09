@@ -802,11 +802,14 @@
     table-layout: fixed;
 }
 
-/* The heading: a dark band, as the save bar and the primary buttons are, with the columns in white */
+/* The heading: a band that runs from grey to black, and nothing but greys on it. Small capitals, a hairline
+   between the columns, and each heading that sorts a pill that lights up: under the pointer, and
+   for good on the column the list is sorted by. */
 .mbh-stock .mbh-grid {
     --mbh-head-top: var(--wp-admin--admin-bar--height, 32px);
-    --mbh-head-ink: #fff;
-    --mbh-head-dim: #c3c4c7;
+    --mbh-head-ink: #f2f2f2;
+    --mbh-head-dim: #b5b5b5;
+    --mbh-head-rule: rgba(255, 255, 255, 0.14);
 }
 
 .mbh-grid thead th {
@@ -815,56 +818,62 @@
     z-index: 3;
     padding: 0;
     border: 0;
-    background: var(--mbh-black);
+    border-bottom: 1px solid #000;
+    /* The hairline at the left edge parts a column from the one before it */
+    background: linear-gradient(var(--mbh-head-rule), var(--mbh-head-rule)) left center / 1px 16px no-repeat, linear-gradient(#3d3d3d, #000);
     color: var(--mbh-head-dim);
-    font-size: 12.5px;
+    font-size: 11px;
     font-weight: 600;
-    line-height: 18px;
+    letter-spacing: 0.08em;
+    line-height: 16px;
     text-align: left;
-    vertical-align: bottom;
+    text-transform: uppercase;
+    vertical-align: middle;
     white-space: nowrap;
 }
 
 .mbh-grid thead th:first-child {
     border-top-left-radius: var(--mbh-radius);
+    background: linear-gradient(#3d3d3d, #000);
 }
 
 .mbh-grid thead th:last-child {
     border-top-right-radius: var(--mbh-radius);
 }
 
+/* A heading and the pill of one that sorts take the same room, so the words line up either way */
 .mbh-grid thead th > .mbh-th-label,
 .mbh-grid thead th > a {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 6px;
-    padding: 13px 14px 12px;
+    margin: 7px 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
 }
 
 .mbh-grid thead th > a {
     color: inherit;
     text-decoration: none;
-    transition: color 0.15s;
+    transition: background-color 0.15s, color 0.15s;
 }
 
-/* A heading that sorts answers the pointer; the one in force is white on a rule of its own */
 .mbh-grid thead th > a:hover,
 .mbh-grid thead th > a:focus {
+    background-color: rgba(255, 255, 255, 0.08);
     color: var(--mbh-head-ink);
 }
 
-.mbh-grid thead th.is-sorted {
-    box-shadow: inset 0 -3px 0 var(--mbh-head-ink);
-}
-
+/* The sorted column: its pill stays lit, with a hairline round it, and the arrow says which way */
 .mbh-grid thead th.is-sorted > a {
+    background-color: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
     color: var(--mbh-head-ink);
-    font-weight: 700;
 }
 
 .mbh-stock .mbh-grid thead th > a:focus-visible {
     outline-color: var(--mbh-head-ink);
-    outline-offset: -4px;
+    outline-offset: 1px;
 }
 
 .mbh-grid thead th.mbh-num > a,
@@ -873,14 +882,10 @@
     text-align: right;
 }
 
-/* Over a column of numbers the arrow stands before the words, in the gap between two columns, so the words keep the whole width */
+/* Over a column of numbers the arrow stands before the words, so the words end where the numbers do */
 .mbh-grid thead th.mbh-num > a {
     flex-direction: row-reverse;
     justify-content: flex-start;
-}
-
-.mbh-grid thead th.mbh-num .mbh-sort-icon {
-    margin-left: -20px;
 }
 
 /* A second line under a heading, lighter */
@@ -889,16 +894,17 @@
     color: var(--mbh-head-dim);
     font-size: 11px;
     font-weight: 400;
+    letter-spacing: 0;
     line-height: 14px;
+    text-transform: none;
 }
 
 /* Direction of the sort: an arrow. Faint on every heading that sorts, so it is seen that it does;
    white on the sorted column, and under the pointer (the direction a click gives). */
 .mbh-sort-icon {
-    width: 14px;
-    height: 14px;
-    margin-bottom: 2px;
-    opacity: 0.45;
+    width: 13px;
+    height: 13px;
+    opacity: 0.4;
     transition: opacity 0.15s;
 }
 
@@ -2677,7 +2683,7 @@ body.mbh-dialog-open {
 
     .mbh-grid thead th > .mbh-th-label,
     .mbh-grid thead th > a {
-        padding: 13px 12px 12px;
+        margin: 7px 4px;
     }
 
     .mbh-grid thead th {
