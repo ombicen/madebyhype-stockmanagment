@@ -24,6 +24,7 @@ class Settings
     const OPTION_PERIOD = 'madebyhype_stock_period';
     const OPTION_RETENTION = 'madebyhype_stock_retention_months';
     const OPTION_BULK_MAX = 'madebyhype_stock_bulk_max_items';
+    const OPTION_BULK_CHUNK = 'madebyhype_stock_bulk_chunk';
     const OPTION_KEEP_DATA = 'madebyhype_stock_keep_data';
 
     const OPTIONS = [
@@ -31,6 +32,7 @@ class Settings
         self::OPTION_PERIOD,
         self::OPTION_RETENTION,
         self::OPTION_BULK_MAX,
+        self::OPTION_BULK_CHUNK,
         self::OPTION_KEEP_DATA,
     ];
 
@@ -39,9 +41,13 @@ class Settings
     const DEFAULT_PERIOD = '30';
     const DEFAULT_RETENTION_MONTHS = 12;
     const DEFAULT_BULK_MAX = 50000;
+    const DEFAULT_BULK_CHUNK = 50;
 
     const PER_PAGE_CHOICES = [20, 50, 100, 500];
     const PERIOD_CHOICES = ['30', '90', '180', '365', 'all'];
+
+    // Items one request of a bulk price change handles. The write service takes at most 100 at a time.
+    const BULK_CHUNK_CHOICES = [10, 25, 50, 100];
 
     private $plugin_file;
 
@@ -113,6 +119,18 @@ class Settings
         $value = (int) get_option(self::OPTION_BULK_MAX, self::DEFAULT_BULK_MAX);
 
         return $value >= 100 ? min(500000, $value) : self::DEFAULT_BULK_MAX;
+    }
+
+    /**
+     * Items one request of a bulk price change handles
+     *
+     * @return int One of BULK_CHUNK_CHOICES
+     */
+    public static function bulk_chunk()
+    {
+        $value = (int) get_option(self::OPTION_BULK_CHUNK, self::DEFAULT_BULK_CHUNK);
+
+        return in_array($value, self::BULK_CHUNK_CHOICES, true) ? $value : self::DEFAULT_BULK_CHUNK;
     }
 
     /**
@@ -226,6 +244,26 @@ class Settings
                 'custom_attributes' => ['min' => 100, 'max' => 500000, 'step' => 100],
                 'desc' => __('items. A change that would touch more is refused, with the advice to narrow the list first. Variations count one each.', 'madebyhype-stockmanagment'),
             ],
+            [
+                'title' => __('Items per request', 'madebyhype-stockmanagment'),
+                'id' => self::OPTION_BULK_CHUNK,
+                'type' => 'select',
+                'default' => (string) self::DEFAULT_BULK_CHUNK,
+                'css' => 'min-width: 420px;',
+                // What a request takes on top of WordPress itself was measured on a shop with variations;
+                // the memory is what PHP should be allowed in all, with room for plugins that react to a product being saved
+                'options' => [
+                    '10' => __('10: lightest. About 1 MB and under half a second per request. PHP memory: 128 MB', 'madebyhype-stockmanagment'),
+                    '25' => __('25: about 2 MB and half a second per request. PHP memory: 128 MB', 'madebyhype-stockmanagment'),
+                    '50' => __('50: recommended. About 3 MB and one second per request. PHP memory: 256 MB', 'madebyhype-stockmanagment'),
+                    '100' => __('100: fewest requests. About 7 MB and two seconds per request. PHP memory: 256 MB, 512 MB with many plugins', 'madebyhype-stockmanagment'),
+                ],
+                'desc' => '<br>' . sprintf(
+                    /* translators: %s: a memory limit, for example "256M" */
+                    __('A bulk change is sent to the server in slices of this many items. Larger slices finish sooner; smaller ones are safer on a server that is short of memory or quick to time out, and stop sooner when you press Stop. This server allows PHP %s in wp-admin.', 'madebyhype-stockmanagment'),
+                    '<strong>' . esc_html(self::memory_limit()) . '</strong>'
+                ),
+            ],
             ['type' => 'sectionend', 'id' => 'madebyhype_stock_bulk'],
 
             [
@@ -243,6 +281,29 @@ class Settings
             ],
             ['type' => 'sectionend', 'id' => 'madebyhype_stock_delete'],
         ];
+    }
+
+    /**
+     * The memory PHP is allowed on an admin request, as this server is set up
+     *
+     * WordPress raises the limit in wp-admin to WP_MAX_MEMORY_LIMIT when the
+     * server lets it, so that is what a bulk change really has.
+     *
+     * @return string For example "256M"; "unlimited" for -1
+     */
+    private static function memory_limit()
+    {
+        $limit = (string) ini_get('memory_limit');
+
+        if (defined('WP_MAX_MEMORY_LIMIT') && wp_is_ini_value_changeable('memory_limit')) {
+            $raised = (string) WP_MAX_MEMORY_LIMIT;
+
+            if ($limit !== '-1' && ($raised === '-1' || wp_convert_hr_to_bytes($raised) > wp_convert_hr_to_bytes($limit))) {
+                $limit = $raised;
+            }
+        }
+
+        return $limit === '-1' ? __('unlimited', 'madebyhype-stockmanagment') : $limit;
     }
 
     /**

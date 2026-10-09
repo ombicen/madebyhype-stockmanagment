@@ -66,6 +66,8 @@ class AssetsManager
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonces' => AjaxHandler::nonces(),
             'heartbeatKey' => AjaxHandler::HEARTBEAT_KEY,
+            // Items one request of a bulk price change carries, as the plugin is set
+            'bulkChunk' => \MadeByHypeStockmanagment\Settings::bulk_chunk(),
             'caps' => AdminPage::permissions(),
             'format' => UIManager::price_format(),
             // Counted strings in every plural form of the page's language, and which form a count takes

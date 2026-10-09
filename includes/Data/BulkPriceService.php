@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 class BulkPriceService
 {
     // Most items one apply() call takes
-    const MAX_APPLY = 50;
+    const MAX_APPLY = 100;
 
     // Rows the preview shows, before the two largest changes are added
     const SAMPLE_ROWS = 10;
