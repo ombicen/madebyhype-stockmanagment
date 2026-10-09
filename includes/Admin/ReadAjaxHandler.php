@@ -22,6 +22,7 @@ class ReadAjaxHandler
     const ACTION_LIST = 'madebyhype_get_list';
     const ACTION_FILTER_OPTIONS = 'madebyhype_get_filter_options';
     const ACTION_CATEGORY_COUNTS = 'madebyhype_get_category_counts';
+    const ACTION_FIND_PRODUCTS = 'madebyhype_find_products';
 
     // Longest query string the list read takes; a URL of the screen with every filter set is far shorter
     const MAX_QUERY_LENGTH = 8000;
@@ -44,6 +45,39 @@ class ReadAjaxHandler
         add_action('wp_ajax_' . self::ACTION_LIST, [$this, 'get_list']);
         add_action('wp_ajax_' . self::ACTION_FILTER_OPTIONS, [$this, 'get_filter_options']);
         add_action('wp_ajax_' . self::ACTION_CATEGORY_COUNTS, [$this, 'get_category_counts']);
+        add_action('wp_ajax_' . self::ACTION_FIND_PRODUCTS, [$this, 'find_products']);
+    }
+
+    /**
+     * Products by name, SKU or id, for the drawer's Products filter
+     *
+     * Request (GET or POST): action=madebyhype_find_products, _wpnonce, s (the text).
+     *
+     * Success: {success: true, data: {products: [{id, name, sku}, ...]}}: at most 20, by name
+     * Failure: {success: false, data: {code, message}} with HTTP 403 (forbidden) or 500 (db_error).
+     * A missing or expired nonce is answered by WordPress itself: HTTP 403, body -1.
+     */
+    public function find_products()
+    {
+        check_ajax_referer(self::NONCE_ACTION);
+
+        if (!Capabilities::can_view()) {
+            wp_send_json_error([
+                'code' => 'forbidden',
+                'message' => __('You do not have permission to view stock.', 'madebyhype-stockmanagment'),
+            ], 403);
+            return;
+        }
+
+        $request = wp_unslash($_REQUEST);
+        $found = $this->data_manager->find_products(isset($request['s']) && is_scalar($request['s']) ? sanitize_text_field((string) $request['s']) : '');
+
+        if ($found['error']) {
+            wp_send_json_error($found['error'], 500);
+            return;
+        }
+
+        wp_send_json_success(['products' => $found['products']]);
     }
 
     /**

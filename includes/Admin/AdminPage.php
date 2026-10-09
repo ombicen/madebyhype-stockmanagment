@@ -99,6 +99,8 @@ class AdminPage
      *     sort_by ''|'name'|'sku'|'price'|'stock_quantity'|'total_sales'|'cover', sort_order 'ASC'|'DESC',
      *     paged int, per_page 20|50|100|500,
      *     category_filter int[], tag_filter int[], attribute_filter (pa_taxonomy => int[]),
+     *     category_exclude int[], tag_exclude int[], attribute_exclude (pa_taxonomy => int[]), stock_exclude string[],
+     *     product_include int[], product_exclude int[],
      *     stock_filter string[] (instock, outofstock, onbackorder, lowstock, untracked),
      *     min_price float, max_price float, min_sales int, max_sales int,
      *     include_drafts bool, sold_only bool, attention 'all'|'out'|'low'|'backorder',
@@ -169,23 +171,33 @@ class AdminPage
         $request['category_filter'] = $ids('category_filter');
         $request['tag_filter'] = $ids('tag_filter');
 
+        // The same values to leave out, and products named one by one
+        $request['category_exclude'] = $ids('category_exclude');
+        $request['tag_exclude'] = $ids('tag_exclude');
+        $request['product_include'] = $ids('product_include');
+        $request['product_exclude'] = $ids('product_exclude');
+
         // Attribute filter structure: attribute_filter[pa_color] = [term_id, ...]
-        $request['attribute_filter'] = [];
-        $raw_attributes = isset($source['attribute_filter']) && is_array($source['attribute_filter']) ? $source['attribute_filter'] : [];
-        foreach ($raw_attributes as $taxonomy => $terms) {
-            $taxonomy = sanitize_text_field((string) $taxonomy);
-            // Only allow product attribute taxonomies (pa_ prefix)
-            if (strpos($taxonomy, 'pa_') !== 0 || !is_array($terms)) {
-                continue;
-            }
-            $terms = array_values(array_unique(array_filter(array_map('absint', array_filter($terms, 'is_scalar')))));
-            if ($terms) {
-                $request['attribute_filter'][$taxonomy] = $terms;
+        foreach (['attribute_filter', 'attribute_exclude'] as $key) {
+            $request[$key] = [];
+            $raw_attributes = isset($source[$key]) && is_array($source[$key]) ? $source[$key] : [];
+            foreach ($raw_attributes as $taxonomy => $terms) {
+                $taxonomy = sanitize_text_field((string) $taxonomy);
+                // Only allow product attribute taxonomies (pa_ prefix)
+                if (strpos($taxonomy, 'pa_') !== 0 || !is_array($terms)) {
+                    continue;
+                }
+                $terms = array_values(array_unique(array_filter(array_map('absint', array_filter($terms, 'is_scalar')))));
+                if ($terms) {
+                    $request[$key][$taxonomy] = $terms;
+                }
             }
         }
 
-        $stock_filter = isset($source['stock_filter']) && is_array($source['stock_filter']) ? array_filter($source['stock_filter'], 'is_string') : [];
-        $request['stock_filter'] = array_values(array_intersect(DataManager::STOCK_FILTERS, $stock_filter));
+        foreach (['stock_filter', 'stock_exclude'] as $key) {
+            $statuses = isset($source[$key]) && is_array($source[$key]) ? array_filter($source[$key], 'is_string') : [];
+            $request[$key] = array_values(array_intersect(DataManager::STOCK_FILTERS, $statuses));
+        }
 
         $number = function ($key) use ($source) {
             return isset($source[$key]) && is_scalar($source[$key]) ? max(0, (float) $source[$key]) : 0;
@@ -232,6 +244,12 @@ class AdminPage
             'tag_filter' => $request['tag_filter'],
             'attribute_filter' => $request['attribute_filter'],
             'stock_filter' => $request['stock_filter'],
+            'category_exclude' => $request['category_exclude'],
+            'tag_exclude' => $request['tag_exclude'],
+            'attribute_exclude' => $request['attribute_exclude'],
+            'stock_exclude' => $request['stock_exclude'],
+            'product_include' => $request['product_include'],
+            'product_exclude' => $request['product_exclude'],
             'min_price' => $request['min_price'],
             'max_price' => $request['max_price'],
             'min_sales' => $request['min_sales'],
@@ -326,6 +344,8 @@ class AdminPage
     {
         $plain = $request['tab'] === 'attention' && $request['search'] === '' && !$request['sold_only']
             && !$request['category_filter'] && !$request['tag_filter'] && !$request['attribute_filter']
+            && !$request['category_exclude'] && !$request['tag_exclude'] && !$request['attribute_exclude']
+            && !$request['stock_filter'] && !$request['stock_exclude'] && !$request['product_include'] && !$request['product_exclude']
             && !($request['min_price'] > 0) && !($request['max_price'] > 0) && !($request['min_sales'] > 0) && !($request['max_sales'] > 0);
 
         if ($plain && $result && empty($result['error']) && isset($result['counts']['all'])) {

@@ -83,6 +83,13 @@ class DataManager
      *     @type int[]        $tag_filter       product_tag term ids.
      *     @type array        $attribute_filter pa_taxonomy => term ids.
      *     @type string[]     $stock_filter     Any of STOCK_FILTERS; several are OR-ed.
+     *     @type int[]        $category_exclude product_cat term ids to leave out; descendants included.
+     *     @type int[]        $tag_exclude      product_tag term ids to leave out.
+     *     @type array        $attribute_exclude pa_taxonomy => term ids to leave out.
+     *     @type string[]     $stock_exclude    Any of STOCK_FILTERS: rows that filter would list are left out.
+     *     @type int[]        $product_include  Product ids listed on top of what the filters and the search match;
+     *                                          with no filter and no search, the list is these products only.
+     *     @type int[]        $product_exclude  Product ids never listed, included or not.
      *     @type float        $min_price        0 = no bound. Current price (sale applied).
      *     @type float        $max_price        0 = no bound.
      *     @type int          $min_sales        0 = no bound. Units sold in the period.
@@ -221,9 +228,11 @@ class DataManager
      * Each item answers the search and the filters itself, as By SKU does: a
      * variation by its own price, stock and attribute values, and by the name,
      * categories and tags of its product. So a variable product whose
-     * variations only partly match contributes only the ones that do.
+     * variations only partly match contributes only the ones that do. When
+     * the list is by product, an item is also taken only if the list shows
+     * its product: nothing is ever changed on a product that is not listed.
      *
-     * @param array $args As get_list(); tab, view, page, per_page, sorting and with_images are ignored
+     * @param array $args As get_list(); tab, page, per_page, sorting and with_images are ignored
      * @return array {
      *     ids (int[], products first by name), products (how many products those items belong to),
      *     error (null, or ['code' => 'db_error', 'message' => string])
@@ -233,10 +242,11 @@ class DataManager
     {
         $args = is_array($args) ? $args : [];
         $args['tab'] = self::TAB_ALL;
-        $args['view'] = self::VIEW_SKU;
         $args['sort_by'] = '';
 
-        $q = $this->normalise_list_args($args);
+        // The list as it is on the screen, and the same arguments read item by item
+        $listed = $this->normalise_list_args($args);
+        $q = $this->normalise_list_args(array_merge($args, ['view' => self::VIEW_SKU]));
         $q['priced'] = true;
 
         $result = ['ids' => [], 'products' => 0, 'error' => null];
@@ -254,12 +264,27 @@ class DataManager
                 'SELECT r.id, r.k_owner FROM (' . $this->select_sql($branches, ['id', 'k_owner', 'k_name', 'k_order']) . ') r'
                 . ' ORDER BY r.k_name ASC, r.k_owner ASC, r.k_order ASC, r.id ASC'
             );
+
+            // By product a filter is answered by the product as a whole: one out-of-stock variation
+            // makes it "out of stock". Item by item its other variations would pass a filter the
+            // product did not, so only items of products the list shows are taken.
+            $shown = null;
+            if ($listed['view'] === self::VIEW_PRODUCT) {
+                $shown = array_flip(array_map('intval', $this->run(
+                    'get_col',
+                    $this->select_sql($this->build_branches($listed, $listed['sales_in_where']), ['id'])
+                )));
+            }
         } catch (\RuntimeException $e) {
             return $this->failed($result, $e);
         }
 
         $owners = [];
         foreach ($rows as $row) {
+            if ($shown !== null && !isset($shown[(int) $row->k_owner])) {
+                continue;
+            }
+
             $result['ids'][] = (int) $row->id;
             $owners[(int) $row->k_owner] = true;
         }
@@ -294,6 +319,7 @@ class DataManager
 
         $q = $this->normalise_list_args($args);
         $q['category_filter'] = [];
+        $q['category_exclude'] = [];
 
         $result = [
             'counts' => [],
@@ -470,6 +496,50 @@ class DataManager
             ]);
         } catch (\RuntimeException $e) {
             return $this->failed($result, $e);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Products by name, SKU, variation SKU or id, for naming a product in a filter
+     *
+     * Drafts are found too: a filter may name one before the list shows drafts.
+     *
+     * @param string $term  As the search of get_list()
+     * @param int    $limit At most 50
+     * @return array {
+     *     products: [id, name, sku], by name
+     *     error (null, or ['code' => 'db_error', 'message' => string])
+     * }
+     */
+    public function find_products($term, $limit = 20)
+    {
+        global $wpdb;
+
+        $term = is_scalar($term) ? trim(preg_replace('/\s+/u', ' ', (string) $term)) : '';
+        $term = function_exists('mb_substr') ? mb_substr($term, 0, 200) : substr($term, 0, 200);
+        $result = ['products' => [], 'error' => null];
+
+        if ($term === '' || !class_exists('WooCommerce')) {
+            return $result;
+        }
+
+        try {
+            $statuses = $this->prepare_in(array_merge(['publish'], self::DRAFT_STATUSES), '%s');
+
+            $rows = $this->run('get_results', $wpdb->prepare(
+                "SELECT p.ID, p.post_title, l.sku FROM {$wpdb->posts} p LEFT JOIN {$this->lookup_table()} l ON l.product_id = p.ID"
+                . " WHERE p.post_type = 'product' AND p.post_status IN ({$statuses}) AND " . $this->search_sql($term, false)
+                . ' ORDER BY p.post_title ASC, p.ID ASC LIMIT %d',
+                max(1, min(50, (int) $limit))
+            ));
+        } catch (\RuntimeException $e) {
+            return $this->failed($result, $e);
+        }
+
+        foreach ($rows as $row) {
+            $result['products'][] = ['id' => (int) $row->ID, 'name' => $this->plain($row->post_title), 'sku' => (string) $row->sku];
         }
 
         return $result;
@@ -660,6 +730,12 @@ class DataManager
             'tag_filter' => [],
             'attribute_filter' => [],
             'stock_filter' => [],
+            'category_exclude' => [],
+            'tag_exclude' => [],
+            'attribute_exclude' => [],
+            'stock_exclude' => [],
+            'product_include' => [],
+            'product_exclude' => [],
             'min_price' => 0,
             'max_price' => 0,
             'min_sales' => 0,
@@ -702,21 +778,29 @@ class DataManager
 
         $q['category_filter'] = $this->clean_ids($args['category_filter']);
         $q['tag_filter'] = $this->clean_ids($args['tag_filter']);
+        $q['category_exclude'] = $this->clean_ids($args['category_exclude']);
+        $q['tag_exclude'] = $this->clean_ids($args['tag_exclude']);
+        $q['product_include'] = $this->clean_ids($args['product_include']);
+        $q['product_exclude'] = $this->clean_ids($args['product_exclude']);
 
-        $q['attribute_filter'] = [];
-        if (is_array($args['attribute_filter'])) {
-            foreach ($args['attribute_filter'] as $taxonomy => $term_ids) {
-                $taxonomy = is_string($taxonomy) ? $taxonomy : '';
-                $term_ids = $this->clean_ids($term_ids);
-                if ($term_ids && strpos($taxonomy, 'pa_') === 0 && taxonomy_exists($taxonomy)) {
-                    $q['attribute_filter'][$taxonomy] = $term_ids;
+        foreach (['attribute_filter', 'attribute_exclude'] as $key) {
+            $q[$key] = [];
+            if (is_array($args[$key])) {
+                foreach ($args[$key] as $taxonomy => $term_ids) {
+                    $taxonomy = is_string($taxonomy) ? $taxonomy : '';
+                    $term_ids = $this->clean_ids($term_ids);
+                    if ($term_ids && strpos($taxonomy, 'pa_') === 0 && taxonomy_exists($taxonomy)) {
+                        $q[$key][$taxonomy] = $term_ids;
+                    }
                 }
             }
         }
 
-        $q['stock_filter'] = is_array($args['stock_filter'])
-            ? array_values(array_intersect(self::STOCK_FILTERS, array_filter($args['stock_filter'], 'is_string')))
-            : [];
+        foreach (['stock_filter', 'stock_exclude'] as $key) {
+            $q[$key] = is_array($args[$key])
+                ? array_values(array_intersect(self::STOCK_FILTERS, array_filter($args[$key], 'is_string')))
+                : [];
+        }
 
         $q['min_price'] = max(0, $number($args['min_price']));
         $q['max_price'] = max(0, $number($args['max_price']));
@@ -871,29 +955,30 @@ class DataManager
         $owner = $is_variation ? 'pp' : 'p';
         $threshold = $this->threshold_sql($q['low_stock_amount'], 'p.ID', $is_variation ? 'pp.ID' : null);
 
-        // Category (with descendants) and tag apply through the product
-        if ($q['category_filter']) {
-            $term_ids = $q['category_filter'];
-            foreach ($q['category_filter'] as $term_id) {
+        // What is passed in says what kind of row this is. What follows is what the user asked for:
+        // the filters and the search, then the products named one by one.
+        $base = $where;
+        $where = [];
+
+        // A category stands for itself and everything below it
+        $with_children = function ($ids) {
+            $term_ids = $ids;
+            foreach ($ids as $term_id) {
                 $children = get_term_children($term_id, 'product_cat');
                 if (is_array($children)) {
                     $term_ids = array_merge($term_ids, array_map('intval', $children));
                 }
             }
-            $where[] = $this->has_term_sql("{$owner}.ID", 'product_cat', array_values(array_unique($term_ids)));
-        }
 
-        if ($q['tag_filter']) {
-            $where[] = $this->has_term_sql("{$owner}.ID", 'product_tag', $q['tag_filter']);
-        }
+            return array_values(array_unique($term_ids));
+        };
 
         // Attribute: a variation's own value, else its product's; a product by its terms
-        foreach ($q['attribute_filter'] as $taxonomy => $term_ids) {
+        $has_value = function ($taxonomy, $term_ids) use ($wpdb, $owner, $is_variation) {
             $on_owner = $this->has_term_sql("{$owner}.ID", $taxonomy, $term_ids);
 
             if (!$is_variation) {
-                $where[] = $on_owner;
-                continue;
+                return $on_owner;
             }
 
             $slugs = get_terms(['taxonomy' => $taxonomy, 'include' => $term_ids, 'hide_empty' => false, 'fields' => 'id=>slug']);
@@ -911,7 +996,29 @@ class DataManager
                 $meta_key
             );
 
-            $where[] = "({$own_value} OR ({$no_own_value} AND {$on_owner}))";
+            return "({$own_value} OR ({$no_own_value} AND {$on_owner}))";
+        };
+
+        // Category and tag apply through the product
+        if ($q['category_filter']) {
+            $where[] = $this->has_term_sql("{$owner}.ID", 'product_cat', $with_children($q['category_filter']));
+        }
+        if ($q['category_exclude']) {
+            $where[] = 'NOT ' . $this->has_term_sql("{$owner}.ID", 'product_cat', $with_children($q['category_exclude']));
+        }
+
+        if ($q['tag_filter']) {
+            $where[] = $this->has_term_sql("{$owner}.ID", 'product_tag', $q['tag_filter']);
+        }
+        if ($q['tag_exclude']) {
+            $where[] = 'NOT ' . $this->has_term_sql("{$owner}.ID", 'product_tag', $q['tag_exclude']);
+        }
+
+        foreach ($q['attribute_filter'] as $taxonomy => $term_ids) {
+            $where[] = $has_value($taxonomy, $term_ids);
+        }
+        foreach ($q['attribute_exclude'] as $taxonomy => $term_ids) {
+            $where[] = 'NOT ' . $has_value($taxonomy, $term_ids);
         }
 
         // Search
@@ -919,9 +1026,13 @@ class DataManager
             $where[] = $this->search_sql($q['search'], $is_variation);
         }
 
-        // Stock status
+        // Stock status: what a status lists, and what leaving it out leaves
         if ($q['stock_filter']) {
             $where[] = $this->stock_filter_sql($q['stock_filter'], $by_sku, $threshold, $q['low_stock_amount'], $is_variation ? 'pl' : null);
+        }
+        if ($q['stock_exclude']) {
+            // COALESCE: a row without a lookup row answers no status, so it is not left out
+            $where[] = 'NOT COALESCE(' . $this->stock_filter_sql($q['stock_exclude'], $by_sku, $threshold, $q['low_stock_amount'], $is_variation ? 'pl' : null) . ', 0)';
         }
 
         // Current price (sale applied). An item answers with its own price; a variable
@@ -947,6 +1058,23 @@ class DataManager
         }
         if ($q['sold_only']) {
             $where[] = 's.sold > 0';
+        }
+
+        // Products named one by one. Included ones are listed on top of what the filters
+        // and the search match, and on their own when there is nothing else to match;
+        // an excluded one is never listed.
+        $asked = $where;
+        $where = $base;
+
+        if ($q['product_include']) {
+            $named = "{$owner}.ID IN (" . $this->prepare_in($q['product_include'], '%d') . ')';
+            $where[] = $asked ? '((' . implode(' AND ', $asked) . ") OR {$named})" : $named;
+        } elseif ($asked) {
+            $where[] = implode(' AND ', $asked);
+        }
+
+        if ($q['product_exclude']) {
+            $where[] = "{$owner}.ID NOT IN (" . $this->prepare_in($q['product_exclude'], '%d') . ')';
         }
 
         $cols = [
