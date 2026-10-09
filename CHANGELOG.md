@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- A new plugin icon, shown on the Updates screen and in the plugin's details window
+
 ## [1.3.0] - 2026-10-09
 
 ### Added

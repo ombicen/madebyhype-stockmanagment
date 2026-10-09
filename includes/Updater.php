@@ -98,7 +98,22 @@ class Updater
             'url' => $release['url'],
             'package' => $release['package'],
             'requires_php' => isset($plugin_data['RequiresPHP']) ? $plugin_data['RequiresPHP'] : '',
+            'icons' => $this->icons(),
         ];
+    }
+
+    /**
+     * The plugin's icon, as the Updates screen and the details window show it.
+     * The files are the installed plugin's own, so nothing is fetched from elsewhere.
+     *
+     * @return array '1x' (128 px), '2x' (256 px) and 'default' => URL
+     */
+    private function icons()
+    {
+        $small = plugins_url('assets/images/icon-128x128.png', $this->plugin_file);
+        $large = plugins_url('assets/images/icon-256x256.png', $this->plugin_file);
+
+        return ['1x' => $small, '2x' => $large, 'default' => $large];
     }
 
     /**
@@ -134,6 +149,7 @@ class Updater
             'requires_php' => $header['RequiresPHP'],
             'last_updated' => $release['published'],
             'download_link' => $release['package'],
+            'icons' => $this->icons(),
             'sections' => [
                 'description' => wpautop(esc_html($header['Description'])),
                 'changelog' => self::notes_as_html($release['notes']),
