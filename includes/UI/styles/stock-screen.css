@@ -802,76 +802,35 @@
     table-layout: fixed;
 }
 
-/* The heading has two tiers: what a set of columns is about (Inventory, Pricing, Sales),
-   and under it the columns themselves. Both stay in view over the rows; --mbh-head-top is
-   where the first tier sticks, the second sits one tier lower. */
+/* The heading: a dark band, as the save bar and the primary buttons are, with the columns in white */
 .mbh-stock .mbh-grid {
     --mbh-head-top: var(--wp-admin--admin-bar--height, 32px);
-    --mbh-tier: 28px;
+    --mbh-head-ink: #fff;
+    --mbh-head-dim: #c3c4c7;
 }
 
-.mbh-grid thead th,
-.mbh-grid thead td {
+.mbh-grid thead th {
     position: sticky;
     top: var(--mbh-head-top);
     z-index: 3;
     padding: 0;
     border: 0;
-    background: var(--mbh-soft);
+    background: var(--mbh-black);
+    color: var(--mbh-head-dim);
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 18px;
     text-align: left;
     vertical-align: bottom;
     white-space: nowrap;
 }
 
-/* First tier: a small label over each group, on a rule as wide as the group */
-.mbh-grid .mbh-group-row th,
-.mbh-grid .mbh-group-row td {
-    height: var(--mbh-tier);
-    width: auto;
-}
-
-.mbh-grid .mbh-group-row .mbh-group > span {
-    display: block;
-    margin: 0 14px;
-    padding: 8px 0 5px;
-    border-bottom: 1px solid var(--mbh-line);
-    color: var(--mbh-faint);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    line-height: 14px;
-    text-transform: uppercase;
-}
-
-.mbh-grid .mbh-group-row > :first-child {
+.mbh-grid thead th:first-child {
     border-top-left-radius: var(--mbh-radius);
 }
 
-.mbh-grid .mbh-group-row > :last-child {
+.mbh-grid thead th:last-child {
     border-top-right-radius: var(--mbh-radius);
-}
-
-/* Second tier: the columns, in the words of the page rather than in capitals */
-.mbh-grid #mbh-head-row th {
-    top: calc(var(--mbh-head-top) + var(--mbh-tier));
-    border-bottom: 1px solid var(--mbh-line);
-    /* The heading stays in view over the rows that scroll under it: a soft edge says so */
-    box-shadow: 0 6px 8px -8px rgba(17, 19, 21, 0.28);
-    color: #3c434a;
-    font-size: 12.5px;
-    font-weight: 600;
-    line-height: 18px;
-}
-
-/* A group starts with a rule that runs down through the rows: the eye finds its two columns together */
-.mbh-grid #mbh-head-row th.mbh-col-stock,
-.mbh-grid #mbh-head-row th.mbh-col-regular,
-.mbh-grid #mbh-head-row th.mbh-col-sold,
-.mbh-grid .mbh-group-row .mbh-group,
-.mbh-grid tbody td.mbh-col-stock,
-.mbh-grid tbody td.mbh-col-regular,
-.mbh-grid tbody td.mbh-col-sold {
-    border-left: 1px solid var(--mbh-line);
 }
 
 .mbh-grid thead th > .mbh-th-label,
@@ -879,33 +838,33 @@
     display: flex;
     align-items: flex-end;
     gap: 6px;
-    padding: 6px 14px 10px;
+    padding: 13px 14px 12px;
 }
 
 .mbh-grid thead th > a {
     color: inherit;
     text-decoration: none;
-    transition: background-color 0.15s, color 0.15s;
+    transition: color 0.15s;
 }
 
-/* A heading that sorts answers the pointer; the one in force is ink on a rule of its own */
-.mbh-grid thead th > a:hover {
-    color: var(--mbh-ink);
+/* A heading that sorts answers the pointer; the one in force is white on a rule of its own */
+.mbh-grid thead th > a:hover,
+.mbh-grid thead th > a:focus {
+    color: var(--mbh-head-ink);
 }
 
-/* The sorted column: ink, on a rule of its own */
-.mbh-grid #mbh-head-row th.is-sorted {
-    border-bottom-color: var(--mbh-black);
-    box-shadow: inset 0 -2px 0 var(--mbh-black), 0 6px 8px -8px rgba(17, 19, 21, 0.28);
+.mbh-grid thead th.is-sorted {
+    box-shadow: inset 0 -3px 0 var(--mbh-head-ink);
 }
 
 .mbh-grid thead th.is-sorted > a {
-    color: var(--mbh-ink);
+    color: var(--mbh-head-ink);
     font-weight: 700;
 }
 
-.mbh-grid thead th > a:focus-visible {
-    outline-offset: -3px;
+.mbh-stock .mbh-grid thead th > a:focus-visible {
+    outline-color: var(--mbh-head-ink);
+    outline-offset: -4px;
 }
 
 .mbh-grid thead th.mbh-num > a,
@@ -924,22 +883,22 @@
     margin-left: -20px;
 }
 
-/* The period the sales are counted over: beside the word, lighter */
+/* A second line under a heading, lighter */
 .mbh-th-sub {
     display: block;
-    color: var(--mbh-faint);
+    color: var(--mbh-head-dim);
     font-size: 11px;
     font-weight: 400;
     line-height: 14px;
 }
 
 /* Direction of the sort: an arrow. Faint on every heading that sorts, so it is seen that it does;
-   ink on the sorted column, and under the pointer (the direction a click gives). */
+   white on the sorted column, and under the pointer (the direction a click gives). */
 .mbh-sort-icon {
     width: 14px;
     height: 14px;
-    margin-bottom: 1px;
-    opacity: 0.32;
+    margin-bottom: 2px;
+    opacity: 0.45;
     transition: opacity 0.15s;
 }
 
@@ -2718,11 +2677,7 @@ body.mbh-dialog-open {
 
     .mbh-grid thead th > .mbh-th-label,
     .mbh-grid thead th > a {
-        padding: 6px 12px 10px;
-    }
-
-    .mbh-grid .mbh-group-row .mbh-group > span {
-        margin: 0 12px;
+        padding: 13px 12px 12px;
     }
 
     .mbh-grid thead th {
@@ -2800,6 +2755,7 @@ body.mbh-dialog-open {
 
     .mbh-grid thead .mbh-col-name {
         z-index: 4;
+        box-shadow: 1px 0 0 #3c434a;
     }
 
     .mbh-msgs {

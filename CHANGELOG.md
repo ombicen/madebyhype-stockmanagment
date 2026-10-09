@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - What is left out shows as its own chip above the list ("Category is not: Clearance") and counts as a filter
 
 ### Changed
-- The table heading has two tiers: the columns are grouped under Inventory, Pricing and Sales, with a rule between the groups that runs down through the rows. Every column that sorts shows an arrow, and the sorted column is marked
+- The table heading is a dark band with the column names in white, an arrow on every column that sorts, and the sorted column marked
 - Undo and History cope with very large saves: an undo runs in steps with its progress shown, and the changes of a save are listed 200 at a time
 
 ## [1.1.0] - 2026-10-09

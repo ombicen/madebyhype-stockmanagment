@@ -73,19 +73,7 @@ $sub = function ($text) {
     <div id="mbh-grid-scroll" class="mbh-grid-scroll">
         <table id="mbh-grid" class="mbh-grid">
             <caption class="screen-reader-text" id="mbh-caption"><?php echo esc_html($list['caption']); ?></caption>
-            <?php // The widths of the columns: the first row of the heading spans them, so it cannot say ?>
-            <colgroup><col class="mbh-col-name"></colgroup>
-            <colgroup><col class="mbh-col-stock"><col class="mbh-col-status"></colgroup>
-            <colgroup><col class="mbh-col-regular"><col class="mbh-col-sale"></colgroup>
-            <colgroup><col class="mbh-col-sold"><col class="mbh-col-cover"></colgroup>
             <thead>
-                <?php // What the columns are about. The script redraws the row of headings below it, never this one. ?>
-                <tr class="mbh-group-row">
-                    <td class="mbh-col-name"></td>
-                    <th scope="colgroup" colspan="2" class="mbh-group mbh-col-stock"><span><?php esc_html_e('Inventory', 'madebyhype-stockmanagment'); ?></span></th>
-                    <th scope="colgroup" colspan="2" class="mbh-group mbh-col-regular"><span><?php esc_html_e('Pricing', 'madebyhype-stockmanagment'); ?></span></th>
-                    <th scope="colgroup" colspan="2" class="mbh-group mbh-col-sold"><span><?php esc_html_e('Sales', 'madebyhype-stockmanagment'); ?></span></th>
-                </tr>
                 <tr id="mbh-head-row">
                     <?php foreach ($list['headings'] as $heading): ?>
                         <th scope="col" class="<?php echo esc_attr($heading['class'] . ($heading['sorted'] ? ' is-sorted' : '')); ?>"<?php echo $heading['ariaSort'] ? ' aria-sort="' . esc_attr($heading['ariaSort']) . '"' : ''; ?><?php echo $heading['help'] !== '' ? ' title="' . esc_attr($heading['help']) . '"' : ''; ?>>
