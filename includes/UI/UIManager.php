@@ -23,6 +23,29 @@ class UIManager
 {
     const COLUMNS = 7;
 
+    // Categories the filter drawer shows before "Show all"
+    const CATEGORY_PREVIEW = 8;
+
+    /**
+     * The icons of the screen: one path each, drawn on a 20 x 20 grid with a
+     * round 1.8 stroke in the colour of the text around it. Templates print
+     * them with icon(); the scripts get the same paths and build the same element.
+     */
+    const ICONS = [
+        'search' => 'M14 8.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0zM12.6 12.6l4.9 4.9',
+        'close' => 'M5.5 5.5l9 9M14.5 5.5l-9 9',
+        'check' => 'M4.5 10.5l3.6 3.6 7.4-8.2',
+        'chevron' => 'M7.5 4.5l5.5 5.5-5.5 5.5',
+        'first' => 'M14.5 4.5L9 10l5.5 5.5M5.5 4.5v11',
+        'last' => 'M5.5 4.5L11 10l-5.5 5.5M14.5 4.5v11',
+        'arrow' => 'M10 15.5v-11M5.5 9L10 4.5 14.5 9',
+        'filter' => 'M3 5.5h14M5.5 10h9M8 14.5h4',
+        'warning' => 'M10 3.2l7.6 13.3H2.4zM10 8.3v3.9M10 14.4v.2',
+        'info' => 'M17.5 10a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0zM10 9.3v4.5M10 6.3v.2',
+        'keyboard' => 'M2.5 5.5h15v9h-15zM5.5 8.5h.1M8.5 8.5h.1M11.5 8.5h.1M14.5 8.5h.1M6.5 11.5h7',
+        'undo' => 'M4 8.5h8a4 4 0 0 1 0 8H8M4 8.5l3.5-3.5M4 8.5L7.5 12',
+    ];
+
     /** @var array Parsed request, see AdminPage::parse_request() */
     private $request = [];
 
@@ -34,6 +57,9 @@ class UIManager
 
     /** @var array What the current user may do, see AdminPage::permissions() */
     private $caps = [];
+
+    /** @var array|null What the grid tabs show around the rows, see list_frame(); null on History and after a failed query */
+    private $list = null;
 
     /** @var array Cached strings() */
     private static $strings = null;
@@ -69,7 +95,48 @@ class UIManager
         $tab = $request['tab'];
         $view = $result ? $result['view'] : $request['view'];
 
+        $this->list = $this->list_frame($attention_count);
+        $list = $this->list;
+
         include __DIR__ . '/templates/page.php';
+    }
+
+    /**
+     * What the list read (madebyhype_get_list) answers: the rows of one page
+     * and everything the screen shows around them, as page.php prints it
+     * for the same request. The script redraws the grid from this.
+     *
+     * @param array $context request, result (without error), period, caps, attention_count: as render_admin_page()
+     * @return array view, search, periodArgs, rows, urls, list (see list_frame())
+     */
+    public function list_payload($context)
+    {
+        $this->request = $context['request'];
+        $this->result = $context['result'];
+        $this->period = $context['period'];
+        $this->caps = $context['caps'];
+        $this->list = $this->list_frame(isset($context['attention_count']) ? $context['attention_count'] : null);
+
+        $data = $this->page_data(null);
+        unset($data['tab']);
+
+        return $data;
+    }
+
+    /**
+     * One icon as inline SVG
+     *
+     * @param string $name  Key of ICONS
+     * @param string $class More classes
+     * @return string Markup, safe to print
+     */
+    public static function icon($name, $class = '')
+    {
+        return sprintf(
+            '<svg class="mbh-icon%s" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false"><path d="%s"/></svg>',
+            $class !== '' ? ' ' . esc_attr($class) : '',
+            esc_attr(isset(self::ICONS[$name]) ? self::ICONS[$name] : '')
+        );
     }
 
     /* ---------------------------------------------------------------------
@@ -132,7 +199,9 @@ class UIManager
             'notTracked' => __('Not tracked', 'madebyhype-stockmanagment'),
             'startTracking' => __('Start tracking', 'madebyhype-stockmanagment'),
             /* translators: %s: low-stock threshold */
-            'threshold' => __('threshold %s', 'madebyhype-stockmanagment'),
+            'thresholdTitle' => __('At or below the low-stock threshold of %s', 'madebyhype-stockmanagment'),
+            /* translators: 1: where the stock is, for example "in 3 variations", 2: what is not counted, for example "2 not tracked" */
+            'stockParts' => __('%1$s · %2$s', 'madebyhype-stockmanagment'),
             /* translators: 1: variations out of stock, 2: all variations */
             'outOf' => __('%1$s of %2$s out', 'madebyhype-stockmanagment'),
             /* translators: 1: variations on sale, 2: all variations */
@@ -220,6 +289,101 @@ class UIManager
             /* translators: %d: number of variations */
             'variationsShown' => _n_noop('%d variation shown.', '%d variations shown.', 'madebyhype-stockmanagment'),
             'allCollapsed' => __('All products collapsed.', 'madebyhype-stockmanagment'),
+
+            // The list, loaded without a page reload
+            'listLoading' => __('Loading the list…', 'madebyhype-stockmanagment'),
+            'listFailed' => __('The list could not be loaded, so the rows below are the ones from before.', 'madebyhype-stockmanagment'),
+            'listSession' => __('The list could not be loaded because your session has expired, so the rows below are the ones from before. Log in again in another browser tab, then try again.', 'madebyhype-stockmanagment'),
+            'waitForSave' => __('Wait until the save has finished.', 'madebyhype-stockmanagment'),
+            /* translators: %s: the filter, for example "Category: Rings" */
+            'removeFilter' => __('Remove %s', 'madebyhype-stockmanagment'),
+            'clearAll' => __('Clear all', 'madebyhype-stockmanagment'),
+            'collapseAll' => __('Collapse all', 'madebyhype-stockmanagment'),
+            'rowsPerPage' => __('Rows per page', 'madebyhype-stockmanagment'),
+            'pageNumber' => __('Page number', 'madebyhype-stockmanagment'),
+            /* translators: 1: the field that holds the page number, 2: number of pages */
+            'pageFieldOf' => __('Page %1$s of %2$s', 'madebyhype-stockmanagment'),
+            'pages' => __('Pages', 'madebyhype-stockmanagment'),
+            'soldOnly' => __('Only items sold in this period', 'madebyhype-stockmanagment'),
+            'kindsLabel' => __('Kinds of items that need attention', 'madebyhype-stockmanagment'),
+            'chipsLabel' => __('Active search and filters', 'madebyhype-stockmanagment'),
+            'filtersOn' => _n_noop('%d filter is on', '%d filters are on', 'madebyhype-stockmanagment'),
+
+            // Keyboard help in the table's footer
+            'keysTitle' => __('Keyboard', 'madebyhype-stockmanagment'),
+            'keysDown' => __('Next row in the column', 'madebyhype-stockmanagment'),
+            'keysUp' => __('Previous row in the column', 'madebyhype-stockmanagment'),
+            'keysEscape' => __('Put the cell back to its stored value', 'madebyhype-stockmanagment'),
+            'keysSave' => __('Save (Cmd+S on a Mac)', 'madebyhype-stockmanagment'),
+            'keyEnter' => __('Enter', 'madebyhype-stockmanagment'),
+            'keyShiftEnter' => __('Shift+Enter', 'madebyhype-stockmanagment'),
+            'keyDown' => __('Down arrow', 'madebyhype-stockmanagment'),
+            'keyUp' => __('Up arrow', 'madebyhype-stockmanagment'),
+            'keyEscape' => __('Esc', 'madebyhype-stockmanagment'),
+            'keyCtrlS' => __('Ctrl+S', 'madebyhype-stockmanagment'),
+            /* translators: between two keys that do the same, for example "Enter or Down arrow" */
+            'keyOr' => __('or', 'madebyhype-stockmanagment'),
+
+            // Filter drawer
+            'filtersActive' => _n_noop('%d active', '%d active', 'madebyhype-stockmanagment'),
+            'filterStock' => __('Stock', 'madebyhype-stockmanagment'),
+            'filterCategory' => __('Category', 'madebyhype-stockmanagment'),
+            'filterTags' => __('Tags', 'madebyhype-stockmanagment'),
+            'filterAttributes' => __('Attributes', 'madebyhype-stockmanagment'),
+            'filterPrice' => __('Price', 'madebyhype-stockmanagment'),
+            'filterSold' => __('Sold in period', 'madebyhype-stockmanagment'),
+            'filterNone' => __('None', 'madebyhype-stockmanagment'),
+            'filterAny' => __('Any', 'madebyhype-stockmanagment'),
+            'includeDrafts' => __('Include drafts', 'madebyhype-stockmanagment'),
+            'draftsIncluded' => __('Drafts included', 'madebyhype-stockmanagment'),
+            'stockFilters' => [
+                'instock' => __('In stock', 'madebyhype-stockmanagment'),
+                'lowstock' => __('Low stock', 'madebyhype-stockmanagment'),
+                'outofstock' => __('Out of stock', 'madebyhype-stockmanagment'),
+                'onbackorder' => __('On backorder', 'madebyhype-stockmanagment'),
+                'untracked' => __('Not tracked', 'madebyhype-stockmanagment'),
+            ],
+            'findCategory' => __('Find a category', 'madebyhype-stockmanagment'),
+            'findTag' => __('Find a tag', 'madebyhype-stockmanagment'),
+            'showAllCategories' => _n_noop('Show all %d category', 'Show all %d categories', 'madebyhype-stockmanagment'),
+            'showFewer' => __('Show fewer', 'madebyhype-stockmanagment'),
+            'noMatches' => __('Nothing matches.', 'madebyhype-stockmanagment'),
+            'tagHint' => _n_noop('Type to search %d tag.', 'Type to search %d tags.', 'madebyhype-stockmanagment'),
+            'moreMatches' => _n_noop('%d more match. Type more to narrow it down.', '%d more matches. Type more to narrow them down.', 'madebyhype-stockmanagment'),
+            'selectedTags' => __('Selected tags', 'madebyhype-stockmanagment'),
+            'matchingTags' => __('Matching tags', 'madebyhype-stockmanagment'),
+            'attribute' => __('Attribute', 'madebyhype-stockmanagment'),
+            /* translators: %s: attribute name, for example "Metal" */
+            'valuesOf' => __('Values of %s', 'madebyhype-stockmanagment'),
+            /* translators: 1: attribute name, 2: its selected values */
+            'attributeValues' => __('%1$s: %2$s', 'madebyhype-stockmanagment'),
+            /* translators: 1: attribute name, 2: number of selected values */
+            'attributeOption' => __('%1$s (%2$s selected)', 'madebyhype-stockmanagment'),
+            'noAttributes' => __('This shop has no attributes to filter on.', 'madebyhype-stockmanagment'),
+            'noCategories' => __('This shop has no categories.', 'madebyhype-stockmanagment'),
+            'noTags' => __('This shop has no tags.', 'madebyhype-stockmanagment'),
+            'min' => __('Min', 'madebyhype-stockmanagment'),
+            'max' => __('Max', 'madebyhype-stockmanagment'),
+            /* translators: between the two fields of a range, as in "10 to 50" */
+            'rangeTo' => __('to', 'madebyhype-stockmanagment'),
+            'minPrice' => __('Lowest price', 'madebyhype-stockmanagment'),
+            'maxPrice' => __('Highest price', 'madebyhype-stockmanagment'),
+            'minSales' => __('Fewest units sold', 'madebyhype-stockmanagment'),
+            'maxSales' => __('Most units sold', 'madebyhype-stockmanagment'),
+            /* translators: 1: lowest value, 2: highest value */
+            'rangeBetween' => __('%1$s – %2$s', 'madebyhype-stockmanagment'),
+            /* translators: %s: lowest value */
+            'rangeFrom' => __('%s or more', 'madebyhype-stockmanagment'),
+            /* translators: %s: highest value */
+            'rangeUpTo' => __('up to %s', 'madebyhype-stockmanagment'),
+            'showResults' => __('Show results', 'madebyhype-stockmanagment'),
+            /* translators: 1: the first names of a list, 2: how many more there are */
+            'andMore' => __('%1$s +%2$s', 'madebyhype-stockmanagment'),
+            'counting' => __('Counting…', 'madebyhype-stockmanagment'),
+            'optionsLoading' => __('Loading the choices…', 'madebyhype-stockmanagment'),
+            'optionsFailed' => __('The choices could not be loaded.', 'madebyhype-stockmanagment'),
+            'optionsSession' => __('The choices could not be loaded because your session has expired. Log in again in another browser tab, then try again.', 'madebyhype-stockmanagment'),
+            'productCountTitle' => __('Published products, whatever else is filtered', 'madebyhype-stockmanagment'),
 
             // Save bar
             'noUnsaved' => __('No unsaved changes', 'madebyhype-stockmanagment'),
@@ -822,7 +986,7 @@ class UIManager
         $term_chips('tag_filter', 'product_tag', $request['tag_filter'], __('Tag', 'madebyhype-stockmanagment'));
 
         foreach ($request['attribute_filter'] as $taxonomy => $ids) {
-            $term_chips('attribute_filter', $taxonomy, $ids, function_exists('wc_attribute_label') ? wc_attribute_label($taxonomy) : $taxonomy, $taxonomy);
+            $term_chips('attribute_filter', $taxonomy, $ids, $this->attribute_label($taxonomy), $taxonomy);
         }
 
         if ($request['tab'] === 'all') {
@@ -923,14 +1087,7 @@ class UIManager
      */
     private function stock_filter_labels()
     {
-
-        return [
-            'instock' => __('In stock', 'madebyhype-stockmanagment'),
-            'lowstock' => __('Low stock', 'madebyhype-stockmanagment'),
-            'outofstock' => __('Out of stock', 'madebyhype-stockmanagment'),
-            'onbackorder' => __('On backorder', 'madebyhype-stockmanagment'),
-            'untracked' => __('Not tracked', 'madebyhype-stockmanagment'),
-        ];
+        return self::strings()['stockFilters'];
     }
 
     /**
@@ -992,38 +1149,295 @@ class UIManager
     }
 
     /**
-     * A column heading that sorts the list
+     * The headings of the grid, as the template and the script draw them
      *
-     * @param string $field      One of DataManager::SORT_FIELDS
-     * @param string $label      Already escaped
-     * @param string $class      Column classes
-     * @param bool   $desc_first Whether the first click sorts from high to low
-     * @param string $help       Plain text shown as the heading's tooltip
+     * @return array List of [
+     *     field (sort field, or null for a heading that does not sort), label, sub (second line, '' for none),
+     *     class, help (tooltip, '' for none), url (the link that sorts; null),
+     *     sorted (bool), direction ('asc'|'desc': the one in force, or the one a click gives),
+     *     ariaSort (null|'ascending'|'descending'), nextLabel (what a click does, for screen readers)
+     * ]
      */
-    private function sort_heading($field, $label, $class, $desc_first = false, $help = '')
+    private function headings()
     {
-        $sorted = $this->request['sort_by'] === $field;
-        $current = strtolower($this->request['sort_order']);
+        $heading = function ($field, $label, $class, $desc_first = false, $help = '', $sub = '') {
+            if ($field === null) {
+                return ['field' => null, 'label' => $label, 'sub' => $sub, 'class' => $class, 'help' => $help, 'url' => null, 'sorted' => false, 'direction' => '', 'ariaSort' => null, 'nextLabel' => ''];
+            }
 
-        // The class says which way the arrow points: the direction in force, or the one a click gives
-        if ($sorted) {
-            $next = $current === 'asc' ? 'desc' : 'asc';
-            $classes = 'sorted ' . $current;
-        } else {
-            $next = $desc_first ? 'desc' : 'asc';
-            $classes = 'sortable ' . $next;
+            $sorted = $this->request['sort_by'] === $field;
+            $current = strtolower($this->request['sort_order']);
+            $next = $sorted ? ($current === 'asc' ? 'desc' : 'asc') : ($desc_first ? 'desc' : 'asc');
+
+            return [
+                'field' => $field,
+                'label' => $label,
+                'sub' => $sub,
+                'class' => $class,
+                'help' => $help,
+                'url' => $this->url(['sort_by' => $field, 'sort_order' => strtoupper($next)]),
+                'sorted' => $sorted,
+                // Which way the arrow points: the direction in force, or the one a click gives
+                'direction' => $sorted ? $current : $next,
+                'ariaSort' => $sorted ? ($current === 'asc' ? 'ascending' : 'descending') : null,
+                'nextLabel' => $next === 'asc' ? __('Sort ascending.', 'madebyhype-stockmanagment') : __('Sort descending.', 'madebyhype-stockmanagment'),
+            ];
+        };
+
+        return [
+            $heading('name', __('Product', 'madebyhype-stockmanagment'), 'mbh-col-name'),
+            $heading('stock_quantity', __('Stock', 'madebyhype-stockmanagment'), 'mbh-col-stock mbh-num'),
+            $heading(null, __('Status', 'madebyhype-stockmanagment'), 'mbh-col-status'),
+            $heading('price', __('Regular price', 'madebyhype-stockmanagment'), 'mbh-col-regular mbh-num', true, __('Sorts by the price customers pay now (the sale price when there is one).', 'madebyhype-stockmanagment')),
+            $heading(null, __('Sale price', 'madebyhype-stockmanagment'), 'mbh-col-sale mbh-num'),
+            // The period is the heading's second line, so the column stays narrow
+            $heading('total_sales', __('Sold', 'madebyhype-stockmanagment'), 'mbh-col-sold mbh-num', true, __('Units in paid orders (processing or completed) placed in this period.', 'madebyhype-stockmanagment'), $this->period_label()),
+            $heading('cover', __('Cover', 'madebyhype-stockmanagment'), 'mbh-col-cover mbh-num', false, __('Days the stock lasts at the rate it sold in this period.', 'madebyhype-stockmanagment')),
+        ];
+    }
+
+    /**
+     * Everything the grid tabs show around the rows: one description, which
+     * the templates print and the script redraws from after it has read
+     * another page of the list. Whatever is a sentence or a number arrives
+     * here ready to show, so the script formats and words nothing itself.
+     *
+     * @param int|null $attention_count The number on the Needs attention tab, null when not known
+     * @return array|null Null on History and when the list could not be read. Else {
+     *     tab, view, url (this view, as a bookmark), base (edit.php), args (the query arguments of this
+     *     view without the page number; the script changes them to navigate),
+     *     search, total, countLabel, showLabel (the drawer's button for this list: "Show 214 products"), collapsible (bool),
+     *     page, pages, perPage, perPageOptions, pager: {first, prev, next, last (urls or null), pattern (%d), pagesLabel},
+     *     headings (see headings()), caption,
+     *     period: {key, label, start, end},
+     *     chips: [{label, url, removeLabel}], clearAllUrl (null when there is nothing to clear),
+     *     filterCount, filterCountLabel,
+     *     filters: {stock: [], drafts: bool, categories: [{id, name}], tags: [{id, name}],
+     *               attributes: [{taxonomy, label, terms: [{id, name}]}], minPrice, maxPrice, minSales, maxSales ('' = none)},
+     *     kinds (Needs attention: [{key, label, count, url, current}], else null), soldOnly (bool),
+     *     views (All stock: [{key, label, url, current}], else null),
+     *     empty (null, or the lines of the empty state: [{text, link: null | {label, url, inPage}}]),
+     *     tabs: {all, attention, history (urls)}, attentionCount (formatted, or null), attentionLabel
+     * }
+     */
+    private function list_frame($attention_count)
+    {
+        $request = $this->request;
+        $result = $this->result;
+
+        if (!$result || !empty($result['error'])) {
+            return null;
         }
 
-        printf(
-            '<th scope="col" class="%1$s %2$s"%3$s%4$s><a href="%5$s"><span>%6$s</span><span class="mbh-sort-arrow" aria-hidden="true"></span> <span class="screen-reader-text">%7$s</span></a></th>',
-            esc_attr($class),
-            esc_attr($classes),
-            $sorted ? ' aria-sort="' . ($current === 'asc' ? 'ascending' : 'descending') . '"' : '',
-            $help !== '' ? ' title="' . esc_attr($help) . '"' : '',
-            esc_url($this->url(['sort_by' => $field, 'sort_order' => strtoupper($next)])),
-            $label,
-            $next === 'asc' ? esc_html__('Sort ascending.', 'madebyhype-stockmanagment') : esc_html__('Sort descending.', 'madebyhype-stockmanagment')
-        );
+        $tab = $request['tab'];
+        $view = $result['view'];
+        $total = (int) $result['total_count'];
+        $pages = (int) $result['total_pages'];
+        $current = (int) $result['current_page'];
+        $period = $this->period;
+
+        $chips = $this->chips();
+        $filter_count = count(array_filter($chips, function ($chip) {
+            return $chip['filter'];
+        }));
+        $has_search = $request['search'] !== '';
+        $sorted_or_switched = $request['sort_by'] !== ''
+            || ($tab === 'all' && $view !== DataManager::VIEW_PRODUCT)
+            || ($tab === 'attention' && $request['attention'] !== 'all');
+
+        if ($view === DataManager::VIEW_SKU) {
+            /* translators: %s: number of SKUs */
+            $count_label = sprintf(_n('%s SKU', '%s SKUs', $total, 'madebyhype-stockmanagment'), number_format_i18n($total));
+        } else {
+            /* translators: %s: number of products */
+            $count_label = sprintf(_n('%s product', '%s products', $total, 'madebyhype-stockmanagment'), number_format_i18n($total));
+        }
+
+        if ($tab === 'attention') {
+            $caption = __('Items that are out of stock or low', 'madebyhype-stockmanagment');
+        } elseif ($view === DataManager::VIEW_SKU) {
+            $caption = __('Stock and prices, one row per SKU', 'madebyhype-stockmanagment');
+        } else {
+            $caption = __('Stock and prices, one row per product', 'madebyhype-stockmanagment');
+        }
+
+        // Paging
+        $page_url = function ($target) use ($current, $pages) {
+            return $target < 1 || $target > $pages || $target === $current ? null : $this->url(['paged' => $target > 1 ? $target : null]);
+        };
+
+        // Needs attention: All | Out of stock | Low stock | On backorder
+        $kinds = null;
+        if ($tab === 'attention') {
+            $kind_labels = [
+                'all' => __('All', 'madebyhype-stockmanagment'),
+                'out' => __('Out of stock', 'madebyhype-stockmanagment'),
+                'low' => __('Low stock', 'madebyhype-stockmanagment'),
+                'backorder' => __('On backorder', 'madebyhype-stockmanagment'),
+            ];
+            $kinds = [];
+            foreach ($kind_labels as $kind => $kind_label) {
+                $kinds[] = [
+                    'key' => $kind,
+                    'label' => $kind_label,
+                    'count' => number_format_i18n(isset($result['counts'][$kind]) ? $result['counts'][$kind] : 0),
+                    'url' => $this->url(['attention' => $kind === 'all' ? null : $kind]),
+                    'current' => $request['attention'] === $kind,
+                ];
+            }
+        }
+
+        $views = null;
+        if ($tab === 'all') {
+            $views = [];
+            foreach ([DataManager::VIEW_PRODUCT => __('By product', 'madebyhype-stockmanagment'), DataManager::VIEW_SKU => __('By SKU', 'madebyhype-stockmanagment')] as $key => $label) {
+                $views[] = ['key' => $key, 'label' => $label, 'url' => $this->url(['view' => $key === DataManager::VIEW_PRODUCT ? null : $key]), 'current' => $key === $view];
+            }
+        }
+
+        // Empty state: what found nothing, and the way out
+        $empty = null;
+        if ($total === 0) {
+            $line = function ($text, $label = '', $url = '', $in_page = true) {
+                return ['text' => $text, 'link' => $label === '' ? null : ['label' => $label, 'url' => $url, 'inPage' => $in_page]];
+            };
+
+            if ($tab === 'attention' && $has_search) {
+                /* translators: %s: search text */
+                $empty = [$line(sprintf(__('Nothing in Needs attention matches "%s".', 'madebyhype-stockmanagment'), $request['search']), __('Search all stock', 'madebyhype-stockmanagment'), $this->tab_url('all', ['s' => $request['search']]), false)];
+            } elseif ($tab === 'attention' && ($filter_count || $request['attention'] !== 'all')) {
+                $empty = [$line(__('Nothing in Needs attention matches these filters.', 'madebyhype-stockmanagment'), __('Clear all filters', 'madebyhype-stockmanagment'), $this->clear_all_url())];
+            } elseif ($tab === 'attention') {
+                $empty = [$line(__('Nothing needs attention. No SKU is out of stock or low.', 'madebyhype-stockmanagment'))];
+            } elseif ($has_search) {
+                /* translators: %s: search text */
+                $empty = [$line(sprintf(__('No products or SKUs match "%s".', 'madebyhype-stockmanagment'), $request['search']), __('Clear search', 'madebyhype-stockmanagment'), $this->url(['s' => null]))];
+                if ($filter_count) {
+                    $empty[] = $line(__('Filters are also active.', 'madebyhype-stockmanagment'), __('Clear all filters', 'madebyhype-stockmanagment'), $this->clear_filters_url());
+                }
+            } elseif ($filter_count) {
+                $empty = [$line(__('No products match these filters.', 'madebyhype-stockmanagment'), __('Clear all filters', 'madebyhype-stockmanagment'), $this->clear_filters_url())];
+            } else {
+                $empty = [$line(__('No products found.', 'madebyhype-stockmanagment'))];
+            }
+        }
+
+        $args = $this->current_args();
+        unset($args['paged']);
+
+        $amount = function ($value) {
+            return $value > 0 ? (string) ($value + 0) : '';
+        };
+
+        return [
+            'tab' => $tab,
+            'view' => $view,
+            'url' => $this->url(['paged' => $current > 1 ? $current : null]),
+            'base' => admin_url('edit.php'),
+            'args' => $args,
+            'search' => $request['search'],
+            'total' => $total,
+            'countLabel' => $count_label,
+            'showLabel' => self::show_count_label($total, $view),
+            'collapsible' => $total > 0 && $tab === 'all' && $view === DataManager::VIEW_PRODUCT,
+            'page' => $current,
+            'pages' => $pages,
+            'perPage' => (int) $request['per_page'],
+            'perPageOptions' => AdminPage::PER_PAGE_OPTIONS,
+            'pager' => [
+                'first' => $page_url(1),
+                'prev' => $page_url($current - 1),
+                'next' => $page_url($current + 1),
+                'last' => $page_url($pages),
+                'pattern' => $this->url(['paged' => null]) . '&paged=%d',
+                'pagesLabel' => number_format_i18n($pages),
+            ],
+            'headings' => $this->headings(),
+            'caption' => $caption,
+            'period' => [
+                'key' => (string) $period['key'],
+                'label' => $this->period_label(),
+                'start' => $period['key'] === 'custom' ? $period['start_date'] : '',
+                'end' => $period['key'] === 'custom' ? $period['end_date'] : '',
+            ],
+            'chips' => array_map(function ($chip) {
+                /* translators: %s: the filter, for example "Category: Rings" */
+                return ['label' => $chip['label'], 'url' => $chip['url'], 'removeLabel' => sprintf(__('Remove %s', 'madebyhype-stockmanagment'), $chip['label'])];
+            }, $chips),
+            'clearAllUrl' => $chips || $sorted_or_switched ? $this->clear_all_url() : null,
+            'filterCount' => $filter_count,
+            /* translators: %d: number of filters that are switched on */
+            'filterCountLabel' => $filter_count ? sprintf(_n('%d filter is on', '%d filters are on', $filter_count, 'madebyhype-stockmanagment'), $filter_count) : '',
+            'filters' => [
+                'stock' => $tab === 'all' ? $request['stock_filter'] : [],
+                'drafts' => $tab === 'all' && $request['include_drafts'],
+                'categories' => $this->term_labels($request['category_filter'], 'product_cat'),
+                'tags' => $this->term_labels($request['tag_filter'], 'product_tag'),
+                'attributes' => array_values(array_filter(array_map(function ($taxonomy) use ($request) {
+                    $terms = $this->term_labels($request['attribute_filter'][$taxonomy], $taxonomy);
+
+                    return $terms ? ['taxonomy' => $taxonomy, 'label' => $this->attribute_label($taxonomy), 'terms' => $terms] : null;
+                }, array_keys($request['attribute_filter'])))),
+                'minPrice' => $amount($request['min_price']),
+                'maxPrice' => $amount($request['max_price']),
+                'minSales' => $amount($request['min_sales']),
+                'maxSales' => $amount($request['max_sales']),
+            ],
+            'kinds' => $kinds,
+            'soldOnly' => $tab === 'attention' && $request['sold_only'],
+            'views' => $views,
+            'empty' => $empty,
+            'tabs' => [
+                'all' => $this->tab_url('all'),
+                'attention' => $this->tab_url('attention'),
+                'history' => $this->tab_url('history'),
+            ],
+            'attentionCount' => $attention_count === null ? null : number_format_i18n($attention_count),
+            /* translators: %s: number of items */
+            'attentionLabel' => $attention_count === null ? '' : sprintf(_n('%s item', '%s items', $attention_count, 'madebyhype-stockmanagment'), number_format_i18n($attention_count)),
+        ];
+    }
+
+    /**
+     * Names of the given terms, for the drawer's summaries and its selected options
+     *
+     * @return array List of ['id' => int, 'name' => string (plain text)]; terms that no longer exist are left out
+     */
+    private function term_labels($ids, $taxonomy)
+    {
+        $labels = [];
+
+        foreach ($ids as $id) {
+            $term = get_term($id, $taxonomy);
+            if ($term && !is_wp_error($term)) {
+                $labels[] = ['id' => (int) $term->term_id, 'name' => html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8')];
+            }
+        }
+
+        return $labels;
+    }
+
+    private function attribute_label($taxonomy)
+    {
+        return html_entity_decode(function_exists('wc_attribute_label') ? wc_attribute_label($taxonomy) : $taxonomy, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    /**
+     * The text of the drawer's button for a number of results: "Show 214 products"
+     *
+     * @param int    $total
+     * @param string $view product or sku
+     * @return string Not escaped
+     */
+    public static function show_count_label($total, $view)
+    {
+        if ($view === DataManager::VIEW_SKU) {
+            /* translators: %s: number of SKUs */
+            return sprintf(_n('Show %s SKU', 'Show %s SKUs', $total, 'madebyhype-stockmanagment'), number_format_i18n($total));
+        }
+
+        /* translators: %s: number of products */
+        return sprintf(_n('Show %s product', 'Show %s products', $total, 'madebyhype-stockmanagment'), number_format_i18n($total));
     }
 
     /**
@@ -1068,6 +1482,7 @@ class UIManager
                 'edit' => admin_url('post.php?action=edit&post=%d'),
                 'history' => $this->tab_url('history') . '&item=%d',
             ],
+            'list' => $this->list,
         ];
 
         if ($request['tab'] === 'history') {

@@ -19,6 +19,7 @@ $filtered = $request['search'] !== '' || $request['user'];
 ?>
 <div id="mbh-history" class="mbh-history">
     <?php if ($history_item): ?>
+        <div class="mbh-history-head">
         <h2 class="mbh-history-title">
             <?php
             if ($history_item['name'] === null) {
@@ -33,7 +34,8 @@ $filtered = $request['search'] !== '' || $request['user'];
             }
             ?>
         </h2>
-        <p><a href="<?php echo esc_url($this->tab_url('history')); ?>"><?php esc_html_e('Show all history', 'madebyhype-stockmanagment'); ?></a></p>
+        <a class="mbh-back-link" href="<?php echo esc_url($this->tab_url('history')); ?>"><?php echo self::icon('chevron', 'mbh-icon--flip'); ?><span><?php esc_html_e('Show all history', 'madebyhype-stockmanagment'); ?></span></a>
+        </div>
     <?php else: ?>
         <form class="mbh-get-form mbh-toolbar mbh-history-filters" method="get" action="<?php echo esc_url(admin_url('edit.php')); ?>" role="search">
             <input type="hidden" name="post_type" value="product">
@@ -41,15 +43,15 @@ $filtered = $request['search'] !== '' || $request['user'];
             <input type="hidden" name="tab" value="history">
 
             <div class="mbh-search">
-                <span class="dashicons dashicons-search" aria-hidden="true"></span>
+                <?php echo self::icon('search'); ?>
                 <label class="screen-reader-text" for="mbh-history-search"><?php esc_html_e('Search name or SKU', 'madebyhype-stockmanagment'); ?></label>
-                <input type="search" id="mbh-history-search" name="s" value="<?php echo esc_attr($request['search']); ?>" placeholder="<?php esc_attr_e('Search name or SKU', 'madebyhype-stockmanagment'); ?>">
+                <input type="search" id="mbh-history-search" name="s" value="<?php echo esc_attr($request['search']); ?>" placeholder="<?php esc_attr_e('Search name or SKU', 'madebyhype-stockmanagment'); ?>" autocomplete="off">
             </div>
 
             <span class="mbh-period">
                 <label for="mbh-history-user"><?php esc_html_e('Saved by', 'madebyhype-stockmanagment'); ?></label>
                 <?php // The script adds everyone who has a save in History (the history action, view=users) ?>
-                <select id="mbh-history-user" name="user">
+                <select id="mbh-history-user" class="mbh-select" name="user">
                     <option value=""><?php esc_html_e('Everyone', 'madebyhype-stockmanagment'); ?></option>
                     <?php if ($request['user']): ?>
                         <option value="<?php echo esc_attr($request['user']); ?>" selected><?php echo esc_html($this->history_user_name($request['user'])); ?></option>

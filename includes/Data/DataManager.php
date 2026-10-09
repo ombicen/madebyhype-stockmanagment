@@ -19,6 +19,8 @@ if (! defined('ABSPATH')) {
  *
  * Public entry points:
  *   get_list()        the list: All stock (by product or by SKU) and Needs attention
+ *   count_list()      how many rows a list has, without reading any
+ *   get_filter_options() the categories, tags and attribute values a list can be filtered on
  *   get_variations()  the variations of one variable product, on demand
  *   get_rows()        given products and variations again, after a save or an undo
  */
@@ -127,10 +129,10 @@ class DataManager
                 $q['exact_ids'] = $this->exact_sku_ids($q['search']);
             }
 
-            $branches = $this->build_branches($q);
+            $branches = $this->build_branches($q, $q['needs_sales']);
 
-            // 1. How many rows match
-            $counts = $this->count_rows($q, $branches);
+            // 1. How many rows match. The count is joined to the sales only when they select rows.
+            $counts = $this->count_rows($q, $q['sales_in_where'] === $q['needs_sales'] ? $branches : $this->build_branches($q, false));
             if ($q['tab'] === self::TAB_ATTENTION) {
                 $result['counts'] = $counts;
             }
@@ -152,6 +154,56 @@ class DataManager
                 'images' => $q['with_images'],
                 'search' => $q['search'],
             ]);
+        } catch (\RuntimeException $e) {
+            return $this->failed($result, $e);
+        }
+
+        return $result;
+    }
+
+    /**
+     * How many rows a list has, without reading any of them
+     *
+     * For a number that is shown on its own: the Needs attention tab, and
+     * the result a set of filters would give before it is applied.
+     *
+     * @param array $args As get_list(); page, per_page, sorting and with_images are ignored
+     * @return array {
+     *     total_count, view, tab,
+     *     counts (Needs attention: all/out/low/backorder, else null),
+     *     error (null, or ['code' => 'db_error', 'message' => string])
+     * }
+     */
+    public function count_list($args = [])
+    {
+        $q = $this->normalise_list_args($args);
+
+        $result = [
+            'total_count' => 0,
+            'view' => $q['view'],
+            'tab' => $q['tab'],
+            'counts' => null,
+            'error' => null,
+        ];
+
+        if (!class_exists('WooCommerce')) {
+            return $result;
+        }
+
+        try {
+            if ($q['search'] !== '') {
+                $q['exact_ids'] = $this->exact_sku_ids($q['search']);
+            }
+
+            // The sales are joined only when they decide which rows match
+            $counts = $this->count_rows($q, $this->build_branches($q, $q['sales_in_where']));
+
+            if ($q['tab'] === self::TAB_ATTENTION) {
+                $result['counts'] = $counts;
+                $result['total_count'] = $counts[$q['attention']];
+            } else {
+                $result['total_count'] = $counts['all'];
+            }
         } catch (\RuntimeException $e) {
             return $this->failed($result, $e);
         }
@@ -267,6 +319,97 @@ class DataManager
             ]);
         } catch (\RuntimeException $e) {
             return $this->failed($result, $e);
+        }
+
+        return $result;
+    }
+
+    /**
+     * What a list can be filtered on: categories, tags, attributes and their values
+     *
+     * Terms no product uses are left out, as WordPress counts them. Names are
+     * plain text. The count beside a category or tag is the number of
+     * published products in it (for a category: in it or in a category
+     * below it), which is what the list by product shows when that term is
+     * the only filter. It does not follow the search, the other filters or
+     * Include drafts.
+     *
+     * @return array {
+     *     categories: [id, name, parent (0 at the top), count], in the shop's own order
+     *     tags: [id, name, count]
+     *     attributes: [taxonomy, label, terms: [id, name]]
+     *     error (null, or ['code' => 'db_error', 'message' => string])
+     * }
+     */
+    public function get_filter_options()
+    {
+        global $wpdb;
+
+        $result = ['categories' => [], 'tags' => [], 'attributes' => [], 'error' => null];
+
+        if (!class_exists('WooCommerce')) {
+            return $result;
+        }
+
+        try {
+            // Which published product has which category or tag, in one query
+            $pairs = $this->run(
+                'get_results',
+                "SELECT tt.taxonomy, tt.term_id, tr.object_id FROM {$wpdb->term_relationships} tr"
+                . " INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id"
+                . " INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id"
+                . " WHERE tt.taxonomy IN ('product_cat','product_tag') AND p.post_type = 'product' AND p.post_status = 'publish'"
+            );
+        } catch (\RuntimeException $e) {
+            return $this->failed($result, $e);
+        }
+
+        $members = ['product_cat' => [], 'product_tag' => []];
+        foreach ($pairs as $pair) {
+            $members[$pair->taxonomy][(int) $pair->term_id][(int) $pair->object_id] = true;
+        }
+        unset($pairs);
+
+        $terms_of = function ($taxonomy) {
+            $terms = get_terms(['taxonomy' => $taxonomy, 'hide_empty' => true, 'update_term_meta_cache' => false]);
+
+            return is_array($terms) ? $terms : [];
+        };
+
+        foreach ($terms_of('product_cat') as $term) {
+            $id = (int) $term->term_id;
+            $products = isset($members['product_cat'][$id]) ? $members['product_cat'][$id] : [];
+
+            // The category filter includes the categories below
+            $children = get_term_children($id, 'product_cat');
+            foreach (is_array($children) ? $children : [] as $child_id) {
+                if (isset($members['product_cat'][(int) $child_id])) {
+                    $products += $members['product_cat'][(int) $child_id];
+                }
+            }
+
+            $result['categories'][] = ['id' => $id, 'name' => $this->plain($term->name), 'parent' => (int) $term->parent, 'count' => count($products)];
+        }
+
+        foreach ($terms_of('product_tag') as $term) {
+            $id = (int) $term->term_id;
+            $result['tags'][] = ['id' => $id, 'name' => $this->plain($term->name), 'count' => isset($members['product_tag'][$id]) ? count($members['product_tag'][$id]) : 0];
+        }
+
+        foreach (function_exists('wc_get_attribute_taxonomies') ? wc_get_attribute_taxonomies() : [] as $attribute) {
+            $taxonomy = 'pa_' . $attribute->attribute_name;
+            if (!taxonomy_exists($taxonomy)) {
+                continue;
+            }
+
+            $terms = [];
+            foreach ($terms_of($taxonomy) as $term) {
+                $terms[] = ['id' => (int) $term->term_id, 'name' => $this->plain($term->name)];
+            }
+
+            if ($terms) {
+                $result['attributes'][] = ['taxonomy' => $taxonomy, 'label' => $this->plain(wc_attribute_label($taxonomy)), 'terms' => $terms];
+            }
         }
 
         return $result;
@@ -442,12 +585,12 @@ class DataManager
 
         $q['low_stock_amount'] = (int) get_option('woocommerce_notify_low_stock_amount', 2);
 
-        // Sales are totalled for the whole catalogue only when the order or the selection depends on them
-        $q['needs_sales'] = in_array($q['sort_by'], ['total_sales', 'cover'], true)
-            || $q['min_sales'] > 0
-            || $q['max_sales'] > 0
-            || $q['sold_only']
-            || ($q['tab'] === self::TAB_ATTENTION && $q['sort_by'] === '');
+        // Sales are totalled for the whole catalogue only when the selection or the order depends on
+        // them, and joined to every candidate row only then. Needs attention in its own order uses
+        // them as its second sort key: there they are joined once, to the rows already selected
+        // (page_ids()).
+        $q['sales_in_where'] = $q['min_sales'] > 0 || $q['max_sales'] > 0 || $q['sold_only'];
+        $q['needs_sales'] = $q['sales_in_where'] || in_array($q['sort_by'], ['total_sales', 'cover'], true);
 
         return $q;
     }
@@ -492,7 +635,13 @@ class DataManager
      * By SKU:     products that hold stock or could, plus variations that do.
      * ------------------------------------------------------------------- */
 
-    private function build_branches($q)
+    /**
+     * @param array $q          Normalised arguments
+     * @param bool  $with_sales Whether every candidate row is joined to its sales (alias s).
+     *                          Without them the branches serve for counting, or for an order
+     *                          that does not use the sales.
+     */
+    private function build_branches($q, $with_sales)
     {
         global $wpdb;
 
@@ -500,7 +649,7 @@ class DataManager
         $statuses = $this->prepare_in($q['statuses'], '%s');
         $by_sku = $q['view'] === self::VIEW_SKU;
         $variable = $this->type_tt_ids(self::VARIABLE_TYPES);
-        $sales = $q['needs_sales'] ? ' LEFT JOIN (' . $this->sales_subquery($q['period']) . ') s ON s.id = p.ID' : '';
+        $sales = $with_sales ? ' LEFT JOIN (' . $this->sales_subquery($q['period']) . ') s ON s.id = p.ID' : '';
 
         $branches = [];
 
@@ -523,7 +672,7 @@ class DataManager
             $where[] = "({$simple} OR {$holder})";
         }
 
-        $branches[] = $this->finish_branch('product', $from, $where, $q);
+        $branches[] = $this->finish_branch('product', $from, $where, $q, $with_sales);
 
         // Variations that do not use their product's stock
         if ($by_sku && $variable) {
@@ -540,7 +689,7 @@ class DataManager
                 '(l.stock_quantity IS NOT NULL OR pl.stock_quantity IS NULL)',
             ];
 
-            $branches[] = $this->finish_branch('variation', $from, $where, $q);
+            $branches[] = $this->finish_branch('variation', $from, $where, $q, $with_sales);
         }
 
         return $branches;
@@ -551,7 +700,7 @@ class DataManager
      *
      * @return array from (sql), where (sql), cols (name => sql)
      */
-    private function finish_branch($kind, $from, $where, $q)
+    private function finish_branch($kind, $from, $where, $q, $with_sales)
     {
         global $wpdb;
 
@@ -691,8 +840,15 @@ class DataManager
             default:
                 if ($q['tab'] === self::TAB_ATTENTION) {
                     $cols['k_sort'] = 'l.stock_quantity';
-                    $cols['k_sort2'] = 'COALESCE(s.sold, 0)';
+                    if ($with_sales) {
+                        $cols['k_sort2'] = 'COALESCE(s.sold, 0)';
+                    }
                 }
+        }
+
+        if (!$with_sales && in_array($q['sort_by'], ['total_sales', 'cover'], true)) {
+            // Branches for counting: the sort key reads the sales and is never selected
+            unset($cols['k_sort']);
         }
 
         return ['from' => $from, 'where' => implode(' AND ', $where), 'cols' => $cols];
@@ -735,11 +891,13 @@ class DataManager
         ];
     }
 
-    private function page_ids($q, $branches, $page)
+    /**
+     * The ORDER BY of the id query (the union is r)
+     *
+     * @param string $second The second key of Needs attention's own order, units sold, as SQL
+     */
+    private function order_sql($q, $second = 'r.k_sort2')
     {
-        global $wpdb;
-
-        $col_names = array_keys($branches[0]['cols']);
         $direction = $q['sort_order'] === 'ASC' ? 'ASC' : 'DESC';
 
         // Name, then a product's variations together in the product's own order
@@ -767,15 +925,32 @@ class DataManager
                 break;
             default:
                 $order[] = $q['tab'] === self::TAB_ATTENTION
-                    ? "r.k_sort ASC, r.k_sort2 DESC, {$by_name}"
+                    ? "r.k_sort ASC, {$second} DESC, {$by_name}"
                     : $by_name;
         }
 
-        $sql = 'SELECT r.id FROM (' . $this->select_sql($branches, $col_names) . ') r';
+        return ' ORDER BY ' . implode(', ', $order);
+    }
+
+    private function page_ids($q, $branches, $page)
+    {
+        global $wpdb;
+
+        $sql = 'SELECT r.id FROM (' . $this->select_sql($branches, array_keys($branches[0]['cols'])) . ') r';
+        $second = 'r.k_sort2';
+
+        if ($q['tab'] === self::TAB_ATTENTION && $q['sort_by'] === '' && !$q['needs_sales']) {
+            // Needs attention in its own order: units sold are only the second sort key, so they
+            // are joined here, once, to the rows that matched, not to every candidate of each branch
+            $sql .= ' LEFT JOIN (' . $this->sales_subquery($q['period']) . ') s ON s.id = r.id';
+            $second = 'COALESCE(s.sold, 0)';
+        }
+
         if ($q['tab'] === self::TAB_ATTENTION && $q['attention'] !== 'all') {
             $sql .= $wpdb->prepare(' WHERE r.cls = %s', $q['attention']);
         }
-        $sql .= ' ORDER BY ' . implode(', ', $order);
+
+        $sql .= $this->order_sql($q, $second);
         $sql .= $wpdb->prepare(' LIMIT %d OFFSET %d', $q['per_page'], ($page - 1) * $q['per_page']);
 
         return array_map('intval', $this->run('get_col', $sql));
@@ -894,7 +1069,50 @@ class DataManager
             $parts[] = "NULLIF((SELECT t2.meta_value FROM {$wpdb->postmeta} t2 WHERE t2.post_id = {$parent_id_sql} AND t2.meta_key = '_low_stock_amount' LIMIT 1), '')";
         }
 
-        return $wpdb->prepare('CAST(COALESCE(' . implode(', ', $parts) . ', %d) AS SIGNED)', $store_amount);
+        $stored = $wpdb->prepare('CAST(COALESCE(' . implode(', ', $parts) . ', %d) AS SIGNED)', $store_amount);
+
+        // Only some items store a threshold of their own. For those it is looked up as
+        // before; every other row gets the store-wide number without a sub-select.
+        $ids = $this->own_threshold_ids();
+        if ($ids === null) {
+            return $stored;
+        }
+
+        $store = $wpdb->prepare('%d', $store_amount);
+        if (!$ids) {
+            return $store;
+        }
+
+        $in = implode(',', $ids);
+        $has_own = "{$id_sql} IN ({$in})" . ($parent_id_sql ? " OR {$parent_id_sql} IN ({$in})" : '');
+
+        return "(CASE WHEN {$has_own} THEN {$stored} ELSE {$store} END)";
+    }
+
+    // Above this many, the list of ids would cost more than the sub-selects it saves
+    const OWN_THRESHOLD_LIMIT = 3000;
+
+    private $own_threshold_ids = false;
+
+    /**
+     * Ids of the products and variations that store a low-stock threshold of their own
+     *
+     * @return int[]|null Null when there are too many to name in a query
+     */
+    private function own_threshold_ids()
+    {
+        global $wpdb;
+
+        if ($this->own_threshold_ids === false) {
+            $ids = array_map('intval', $this->run('get_col', $wpdb->prepare(
+                "SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_low_stock_amount' AND meta_value <> '' LIMIT %d",
+                self::OWN_THRESHOLD_LIMIT + 1
+            )));
+
+            $this->own_threshold_ids = count($ids) > self::OWN_THRESHOLD_LIMIT ? null : $ids;
+        }
+
+        return $this->own_threshold_ids;
     }
 
     /**

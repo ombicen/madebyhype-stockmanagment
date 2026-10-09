@@ -258,8 +258,9 @@
     $(body)
       .empty()
       .append(
-        el("div", { class: "notice notice-error inline" }, [
-          el("p", {}, [
+        el("div", { class: "mbh-notice mbh-notice--error notice notice-error inline" }, [
+          MBH.icon("warning"),
+          el("p", { role: "alert" }, [
             answer.kind === "session" ? t("historySession") : answer.kind === "refused" && answer.message ? answer.message : t("historyFailed"),
             " ",
             el("button", { type: "button", class: "button button-small", text: t("tryAgain"), onclick: retry }),
@@ -276,25 +277,24 @@
       return el("div", { class: "mbh-foot mbh-foot--plain" }, count);
     }
 
-    function link(target, label, symbol) {
+    function link(target, label, icon, flip) {
+      var svg = MBH.icon(icon, flip ? "mbh-icon--flip" : "");
+
       if (target < 1 || target > pages || target === current) {
-        return el("span", { class: "button disabled", "aria-hidden": "true", text: symbol });
+        return el("span", { class: "mbh-page-link is-disabled", "aria-hidden": "true" }, svg);
       }
 
-      return el("a", { class: "button", href: view.pageUrl.replace("%d", String(target)) }, [
-        el("span", { class: "screen-reader-text", text: label }),
-        el("span", { "aria-hidden": "true", text: symbol }),
-      ]);
+      return el("a", { class: "mbh-page-link", href: view.pageUrl.replace("%d", String(target)), "aria-label": label }, svg);
     }
 
     return el("div", { class: "mbh-foot mbh-foot--plain" }, [
       count,
-      el("nav", { class: "mbh-pager" }, [
-        link(1, t("firstPage"), "«"),
-        link(current - 1, t("previousPage"), "‹"),
+      el("nav", { class: "mbh-pager", "aria-label": t("pages") }, [
+        link(1, t("firstPage"), "first"),
+        link(current - 1, t("previousPage"), "chevron", true),
         el("span", { class: "mbh-paging-text", text: t("pageOf", current, pages) }),
-        link(current + 1, t("nextPage"), "›"),
-        link(pages, t("lastPage"), "»"),
+        link(current + 1, t("nextPage"), "chevron"),
+        link(pages, t("lastPage"), "last"),
       ]),
     ]);
   }
@@ -420,7 +420,7 @@
 
     var viewButton = el("button", {
       type: "button",
-      class: "button-link mbh-view",
+      class: "mbh-text-button mbh-view",
       "aria-expanded": "false",
       "aria-controls": detailId,
       "aria-label": t("viewChangesOf", save.id),
@@ -525,7 +525,7 @@
         body.appendChild(dataTable("mbh-saves-table", saveHeadings(), saveRows(single.data.save, true, "-pinned")));
         body.appendChild(el("h3", { text: t("allSavesHeading") }));
       } else if (single && !single.ok && single.message) {
-        body.appendChild(el("div", { class: "notice notice-warning inline" }, el("p", { text: single.message })));
+        body.appendChild(el("div", { class: "mbh-notice mbh-notice--warning notice notice-warning inline" }, [MBH.icon("warning"), el("p", { text: single.message })]));
       }
 
       data.saves.forEach(function (save) {
@@ -596,9 +596,8 @@
               "tr",
               { class: "mbh-gap" },
               el("td", { colspan: 8 }, [
-                el("span", { class: "dashicons dashicons-info", "aria-hidden": "true" }),
-                " ",
-                t("gapLine", change.label, change.gap.from_display, change.gap.to_display),
+                MBH.icon("info"),
+                el("span", { text: t("gapLine", change.label, change.gap.from_display, change.gap.to_display) }),
               ])
             )
           );

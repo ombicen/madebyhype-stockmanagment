@@ -1,10 +1,12 @@
 /**
  * Stock screen: what every part of the page shares.
  *
- * Strings, DOM building, requests, notices, announcements for screen readers,
- * dialogs, the nonce refresh, the guard against leaving with unsaved edits,
- * the toolbar, the filter drawer, the page-number field and the page's layout lengths.
- * The grid (stock-grid.js) and History (stock-history.js) build on this.
+ * Strings, DOM building, icons, requests, notices, announcements for screen
+ * readers, dialogs, the nonce refresh, the guard against leaving with unsaved
+ * edits, the address of the list and the controls that change it (toolbar,
+ * rows per page, page number), and the page's layout lengths.
+ * The filter drawer (stock-filters.js), the grid (stock-grid.js) and History
+ * (stock-history.js) build on this.
  *
  * Every user-visible string comes from madebyhypeStockData.strings; nothing
  * the server sends is ever put into the page as HTML.
@@ -155,6 +157,54 @@
     return node;
   };
 
+  var SVG = "http://www.w3.org/2000/svg";
+
+  /**
+   * One icon as inline SVG, the element UIManager::icon() prints
+   *
+   * @param {string} name  Key of UIManager::ICONS
+   * @param {string} extra More classes
+   */
+  MBH.icon = function (name, extra) {
+    var svg = document.createElementNS(SVG, "svg");
+    var path = document.createElementNS(SVG, "path");
+
+    svg.setAttribute("class", "mbh-icon" + (extra ? " " + extra : ""));
+    svg.setAttribute("viewBox", "0 0 20 20");
+    svg.setAttribute("width", "16");
+    svg.setAttribute("height", "16");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    path.setAttribute("d", (config.icons || {})[name] || "");
+    svg.appendChild(path);
+
+    return svg;
+  };
+
+  /**
+   * A sentence with elements in it: the pattern's %1$s, %2$s are replaced by
+   * the given nodes, the words between them stay text
+   *
+   * @return {Array} Strings and nodes, in order
+   */
+  MBH.fillNodes = function (pattern, nodes) {
+    var parts = [];
+    var expression = /%(\d+)\$s/g;
+    var last = 0;
+    var match;
+
+    while ((match = expression.exec(pattern))) {
+      parts.push(pattern.slice(last, match.index), nodes[parseInt(match[1], 10) - 1] || "");
+      last = match.index + match[0].length;
+    }
+
+    parts.push(pattern.slice(last));
+
+    return parts.filter(function (part) {
+      return part !== "";
+    });
+  };
+
   /* ------------------------------------------------------------------
    * Requests
    * ---------------------------------------------------------------- */
@@ -282,18 +332,20 @@
       })
       .remove();
 
-    var notice = MBH.el("div", { class: "notice notice-" + type + " inline is-dismissible mbh-notice", "data-slot": slot }, [
+    var notice = MBH.el("div", { class: "mbh-notice mbh-notice--" + type + " notice notice-" + type + " inline", "data-slot": slot }, [
+      MBH.icon(type === "success" ? "check" : type === "info" ? "info" : "warning"),
       MBH.el("p", {}, content),
       MBH.el(
         "button",
         {
           type: "button",
-          class: "notice-dismiss",
+          class: "mbh-icon-button mbh-notice-close",
+          "aria-label": MBH.t("dismissNotice"),
           onclick: function () {
             $(notice).remove();
           },
         },
-        MBH.el("span", { class: "screen-reader-text", text: MBH.t("dismissNotice") })
+        MBH.icon("close")
       ),
     ]);
 
@@ -515,6 +567,7 @@
     save: function () {
       return $.Deferred().resolve(true).promise();
     },
+    discard: function () {},
   };
 
   /**
@@ -523,12 +576,22 @@
    *
    * @param {function} go       Performs the navigation
    * @param {function} onCancel Called when the user stays
+   * @param {boolean}  inPage   The page stays and only the list is read again: "Discard"
+   *                            then has to put the cells back itself, and the page
+   *                            keeps its guard against being closed
    */
-  MBH.navigate = function (go, onCancel) {
+  MBH.navigate = function (go, onCancel, inPage) {
     var count = MBH.guard.count();
 
-    function leave() {
-      MBH.allowUnload = true;
+    function leave(discard) {
+      if (inPage) {
+        if (discard) {
+          MBH.guard.discard();
+        }
+      } else {
+        MBH.allowUnload = true;
+      }
+
       go();
     }
 
@@ -564,7 +627,7 @@
           danger: true,
           action: function (dialog) {
             dialog.close();
-            leave();
+            leave(true);
           },
         },
         {
@@ -630,13 +693,95 @@
   }
 
   /* ------------------------------------------------------------------
-   * Toolbar and filter panel
+   * The list: its address, and going to another view of it
+   *
+   * The address of the page is the state of the list. Every control that
+   * changes the list makes the address of the view it wants and hands it to
+   * MBH.list.go(). The grid (stock-grid.js) replaces go() with one that reads
+   * the list and redraws it in place; without a grid (a list that could not
+   * be read) the browser simply goes to that address.
    * ---------------------------------------------------------------- */
+
+  MBH.list = {
+    // UIManager::list_frame() of the view on the page; null when there is none
+    state: MBH.page.list || null,
+
+    /**
+     * The address of the view now shown, with some arguments changed
+     *
+     * @param {object} changes Argument => new value; null, "" or [] removes it
+     */
+    url: function (changes) {
+      var state = MBH.list.state;
+      var args = $.extend(true, {}, state ? state.args : {});
+
+      Object.keys(changes || {}).forEach(function (name) {
+        var value = changes[name];
+
+        if (value === null || value === undefined || value === "" || ($.isArray(value) && !value.length) || ($.isPlainObject(value) && $.isEmptyObject(value))) {
+          delete args[name];
+        } else {
+          args[name] = value;
+        }
+      });
+
+      return (state ? state.base : window.location.pathname) + "?" + $.param(args);
+    },
+
+    /**
+     * Show another view of the list
+     *
+     * @param {string} url     Its address
+     * @param {object} options {focus: what gets the focus afterwards (a data-nav key or an id), onCancel()}
+     */
+    go: function (url, options) {
+      MBH.navigate(function () {
+        window.location.href = url;
+      }, options && options.onCancel);
+    },
+
+    /** Put the controls back to the view that is shown (after a navigation that did not happen) */
+    sync: function () {},
+  };
+
+  /** What the toolbar's fields ask for: the search and the sales period */
+  function toolbarChanges(form) {
+    var changes = { s: $.trim(form.elements.s.value) };
+    var period = form.elements.period.value;
+
+    if (period === "custom") {
+      var start = form.elements.start_date.value;
+      var end = form.elements.end_date.value;
+
+      // Half a range changes nothing: the period in force stays
+      if (start && end) {
+        changes.period = null;
+        changes.start_date = start;
+        changes.end_date = end;
+      }
+    } else {
+      changes.period = period;
+      changes.start_date = null;
+      changes.end_date = null;
+    }
+
+    return changes;
+  }
 
   function initNavigation() {
     var $wrap = $(".mbh-stock");
 
-    // Links of the page itself: tabs, sorting, paging, chips, views, row actions
+    function go(url, focus) {
+      MBH.list.go(url, {
+        focus: focus,
+        onCancel: function () {
+          MBH.list.sync();
+        },
+      });
+    }
+
+    // Links of the page itself. Those that only change the list (sorting, paging, chips, views,
+    // kinds: they carry data-nav) load it in place; tabs and row actions leave the page.
     $wrap.on("click", "a[href]", function (event) {
       var href = this.getAttribute("href");
 
@@ -653,6 +798,12 @@
         return;
       }
 
+      if (this.hasAttribute("data-nav") && MBH.list.state) {
+        event.preventDefault();
+        go(href, this.getAttribute("data-nav"));
+        return;
+      }
+
       if (!MBH.guard.count()) {
         return;
       }
@@ -665,179 +816,52 @@
 
     $(document).on("submit", "form.mbh-get-form", function (event) {
       event.preventDefault();
+
+      // The search box and the custom period of the grid tabs
+      if (this.id === "mbh-list-form" && MBH.list.state) {
+        go(MBH.list.url(toolbarChanges(this)), document.activeElement && document.activeElement.id === "mbh-period-apply" ? "#mbh-period-apply" : "#mbh-search");
+        return;
+      }
+
       submitForm(this);
     });
 
-    // Selects and checkboxes that apply at once
-    $wrap.on("change", "[data-mbh-submit]", function () {
-      var field = this;
-      var form = field.form;
-      var previous = field.type === "checkbox" ? !field.checked : field.getAttribute("data-current");
+    // The sales period applies at once, except "Custom range", which first shows its two dates
+    $wrap.on("change", "#mbh-period", function () {
+      var custom = this.value === "custom";
 
-      if (field.id === "mbh-period") {
-        var custom = field.value === "custom";
+      $("#mbh-period-custom").prop("hidden", !custom);
 
-        $("#mbh-period-custom").prop("hidden", !custom);
-        if (custom) {
-          $("#mbh-period-start").trigger("focus");
-          return;
-        }
-      }
-
-      if (!form) {
+      if (custom) {
+        $("#mbh-period-start").trigger("focus");
         return;
       }
 
-      submitForm(form, function () {
-        // Stayed on the page: put the control back
-        if (field.type === "checkbox") {
-          field.checked = previous;
-        } else if (previous !== null) {
-          field.value = previous;
-          $("#mbh-period-custom").prop("hidden", field.id !== "mbh-period" || previous !== "custom");
-        }
-      });
-    });
-  }
-
-  /* ------------------------------------------------------------------
-   * Filters: a drawer over the page. Focus goes in and stays in, Escape
-   * and the backdrop close it, focus goes back to the Filters button.
-   * ---------------------------------------------------------------- */
-
-  function initFilterPanel() {
-    var panel = document.getElementById("mbh-filters");
-    var toggle = document.getElementById("mbh-filters-toggle");
-    var close = document.getElementById("mbh-filters-close");
-
-    if (!panel || !toggle) {
-      return;
-    }
-
-    var backdrop = MBH.el("div", { class: "mbh-filters-backdrop", hidden: true });
-
-    panel.parentNode.insertBefore(backdrop, panel);
-
-    function focusable() {
-      return $(panel)
-        .find("a[href], button, input, select")
-        .filter(function () {
-          return !this.disabled && this.tabIndex !== -1 && this.offsetParent !== null;
-        })
-        .get();
-    }
-
-    function show(open) {
-      panel.hidden = !open;
-      backdrop.hidden = !open;
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-
-      if (open) {
-        panel.focus();
+      if (MBH.list.state) {
+        go(MBH.list.url(toolbarChanges(this.form)), "#mbh-period");
       } else {
-        toggle.focus();
-      }
-    }
-
-    MBH.filtersOpen = function () {
-      return !panel.hidden;
-    };
-
-    toggle.addEventListener("click", function () {
-      show(panel.hidden);
-    });
-    backdrop.addEventListener("mousedown", function () {
-      show(false);
-    });
-    if (close) {
-      close.addEventListener("click", function () {
-        show(false);
-      });
-    }
-
-    panel.addEventListener("keydown", function (event) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        show(false);
-        return;
-      }
-
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      var items = focusable();
-      var first = items[0];
-      var last = items[items.length - 1];
-
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
+        submitForm(this.form);
       }
     });
 
-    // Focus that leaves the open drawer (a click on the page's edge) is put back; a dialog on top keeps its own
-    document.addEventListener("focusin", function (event) {
-      if (!panel.hidden && !MBH.dialogOpen() && !panel.contains(event.target)) {
-        panel.focus();
-      }
+    $wrap.on("change", "#mbh-per-page", function () {
+      go(MBH.list.url({ per_page: this.value }), "#mbh-per-page");
     });
 
-    // Groups that fold: category children, attribute terms
-    $(panel).on("click", ".mbh-fold-toggle", function () {
-      var target = document.getElementById(this.getAttribute("aria-controls"));
-      var open = this.getAttribute("aria-expanded") !== "true";
-
-      this.setAttribute("aria-expanded", open ? "true" : "false");
-      if (target) {
-        target.hidden = !open;
-      }
+    $wrap.on("change", "#mbh-sold-only", function () {
+      go(MBH.list.url({ sold_only: this.checked ? 1 : null }), "#mbh-sold-only");
     });
 
-    // Find a term among all attributes
-    $("#mbh-attribute-search").on("input", function () {
-      var query = this.value.toLowerCase().trim();
-
-      $(panel)
-        .find(".mbh-attribute-group")
-        .each(function () {
-          var $group = $(this);
-          var matches = 0;
-
-          $group.find(".mbh-filter-option").each(function () {
-            var match = query === "" || $(this).text().toLowerCase().indexOf(query) !== -1;
-
-            this.hidden = !match;
-            matches += match ? 1 : 0;
-          });
-
-          var open = query !== "" ? matches > 0 : $group.find("input:checked").length > 0;
-
-          this.hidden = query !== "" && matches === 0;
-          $group.find(".mbh-fold-toggle").attr("aria-expanded", open ? "true" : "false");
-          $group.find(".mbh-fold").prop("hidden", !open);
-        });
-    });
-  }
-
-  /* ------------------------------------------------------------------
-   * The page-number field: Enter goes to that page
-   * ---------------------------------------------------------------- */
-
-  function initPageField() {
-    $(".mbh-stock").on("keydown", ".mbh-page-field", function (event) {
-      if (event.key !== "Enter") {
+    // The page-number field: Enter goes to that page
+    $wrap.on("keydown", ".mbh-page-field", function (event) {
+      if (event.key !== "Enter" || !MBH.list.state) {
         return;
       }
 
       event.preventDefault();
 
       var field = this;
-      var current = parseInt(field.getAttribute("data-page"), 10);
-      var pages = parseInt(field.getAttribute("data-pages"), 10);
+      var current = MBH.list.state.page;
       var typed = /^\s*\d+\s*$/.test(field.value) ? parseInt(field.value, 10) : NaN;
 
       if (isNaN(typed)) {
@@ -847,7 +871,7 @@
       }
 
       // A page beyond the last is the last, as the server reads it
-      var target = Math.max(1, Math.min(pages, typed));
+      var target = Math.max(1, Math.min(MBH.list.state.pages, typed));
 
       field.value = target;
 
@@ -856,14 +880,25 @@
         return;
       }
 
-      MBH.navigate(
-        function () {
-          window.location.href = field.getAttribute("data-url").replace("%d", String(target));
-        },
-        function () {
-          field.value = current;
+      go(MBH.list.state.pager.pattern.replace("%d", String(target)), "#mbh-page-field");
+    });
+
+    // The keyboard help closes on Escape and when the focus or a click goes elsewhere
+    $(document).on("keydown click focusin", function (event) {
+      var keys = document.getElementById("mbh-keys");
+
+      if (!keys || !keys.open) {
+        return;
+      }
+
+      if (event.type === "keydown") {
+        if (event.key === "Escape" && keys.contains(event.target)) {
+          keys.open = false;
+          keys.querySelector("summary").focus();
         }
-      );
+      } else if (!keys.contains(event.target)) {
+        keys.open = false;
+      }
     });
   }
 
@@ -920,8 +955,6 @@
 
   $(function () {
     initNavigation();
-    initFilterPanel();
-    initPageField();
 
     layout();
     window.addEventListener("resize", MBH.layout);

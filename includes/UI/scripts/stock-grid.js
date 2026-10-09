@@ -11,8 +11,12 @@
  * did not store unless it is marked as an unsaved edit.
  *
  * The server prints the rows of the list; buildRow() here builds the same
- * markup for rows that arrive later (variations) and for every redraw.
- * MBHStock.grid.checkRender() compares the two.
+ * markup for rows that arrive later (variations, another page of the list)
+ * and for every redraw. MBHStock.grid.checkRender() compares the two.
+ *
+ * Sorting, paging, searching and filtering read the list through the
+ * madebyhype_get_list action and redraw the grid in place (see "The list,
+ * without a page reload" below); the address of the page follows.
  *
  * Keys in the grid: Enter and the arrows move down and up a column, Escape
  * puts a cell back, Ctrl+S saves (see onCellKey()).
@@ -29,8 +33,9 @@
   var caps = MBH.caps;
   var format = MBH.config.format || { decimals: 2, decimalSep: ".", thousandSep: "," };
   var table = document.getElementById("mbh-grid");
+  var tbody = document.getElementById("mbh-rows");
 
-  if (!table) {
+  if (!table || !tbody || !page.list) {
     return;
   }
 
@@ -51,6 +56,7 @@
     retryToken: null, // kept while a save may have reached the server without an answer
     lastSave: null,
     savedHere: false, // a save was made in this page view: the save bar stays, with its Undo
+    generation: 0, // goes up each time the list is replaced: answers about an earlier list are dropped
   };
 
   (page.rows || []).forEach(function (row) {
@@ -186,10 +192,20 @@
         ];
 
       case "total":
+        // One value and one line under it, so the row is as high as every other
+        if (summary.stock_total === null) {
+          return [el("span", { class: "mbh-note", text: t("notTracked") }), sub(tn("variationCount", summary.count))];
+        }
+
         return [
-          summary.stock_total === null ? none() : value(String(summary.stock_total)),
-          summary.own_stock_count > 0 ? sub(tn("inVariations", summary.own_stock_count)) : null,
-          summary.untracked_count > 0 ? sub(tn("notTrackedCount", summary.untracked_count)) : null,
+          value(String(summary.stock_total)),
+          summary.own_stock_count > 0 && summary.untracked_count > 0
+            ? sub(t("stockParts", tn("inVariations", summary.own_stock_count), tn("notTrackedCount", summary.untracked_count)))
+            : summary.own_stock_count > 0
+            ? sub(tn("inVariations", summary.own_stock_count))
+            : summary.untracked_count > 0
+            ? sub(tn("notTrackedCount", summary.untracked_count))
+            : null,
         ];
 
       case "untracked":
@@ -198,7 +214,7 @@
           kinds.start
             ? el("button", {
                 type: "button",
-                class: "button-link mbh-start",
+                class: "mbh-text-button mbh-start",
                 "aria-label": t("cellLabel", t("startTracking"), label),
                 text: t("startTracking"),
               })
@@ -209,8 +225,8 @@
     return [none()];
   }
 
-  function statusBadge(key) {
-    return el("span", { class: "mbh-status mbh-status--" + key, text: statusLabel(key) });
+  function statusBadge(key, title) {
+    return el("span", { class: "mbh-status mbh-status--" + key, title: title || false, text: statusLabel(key) });
   }
 
   function statusCell(row, kinds, label) {
@@ -236,9 +252,10 @@
         return [statusBadge(row.stock_status)];
 
       case "badge":
+        // The threshold a low item is measured against is in the badge's tooltip
         var key = model.statusKey(row);
 
-        return [statusBadge(key), key === "lowstock" && row.low_stock_threshold !== null ? sub(t("threshold", row.low_stock_threshold)) : null];
+        return [statusBadge(key, key === "lowstock" && row.low_stock_threshold !== null ? t("thresholdTitle", row.low_stock_threshold) : "")];
 
       case "summary":
         return [
@@ -310,7 +327,7 @@
     return row.parent_id ? row.full_name : row.name;
   }
 
-  /** The small tags after SKU and id: type (with the number of variations), Draft, Disabled */
+  /** After SKU and id: the type (with the number of variations), and the tags Draft and Disabled */
   function tags(row, isChild) {
     var list = [];
     var productStatus = row.parent_id ? row.parent_status : row.post_status;
@@ -320,7 +337,7 @@
     if (!isChild) {
       list.push(
         el("span", {
-          class: "mbh-tag mbh-tag--type",
+          class: "mbh-type",
           title: row.variation_count > 0 ? tn("variationCount", row.variation_count) : false,
           text: row.variation_count > 0 ? t("typeWithCount", type, row.variation_count) : type,
         })
@@ -356,8 +373,7 @@
           tabindex: "-1",
           "aria-label": t("editProductOf", row.full_name),
           text: t("editProduct"),
-        }),
-        el("span", { "aria-hidden": "true", text: "|" })
+        })
       );
     }
 
@@ -407,11 +423,11 @@
                     "aria-expanded": "false",
                     "aria-label": t("variationsOf", row.full_name),
                   },
-                  el("span", { class: "mbh-chevron", "aria-hidden": "true" })
+                  MBH.icon("chevron")
                 )
               : el("span", { class: "mbh-expand-space", "aria-hidden": "true" }),
             row.thumbnail_url
-              ? el("img", { class: "mbh-thumb", src: row.thumbnail_url, alt: "", width: "32", height: "32", loading: "lazy", decoding: "async" })
+              ? el("img", { class: "mbh-thumb", src: row.thumbnail_url, alt: "", width: "36", height: "36", loading: "lazy", decoding: "async" })
               : el("span", { class: "mbh-thumb mbh-thumb--none", "aria-hidden": "true" }),
             el("div", { class: "mbh-prod-text" }, [
               el("strong", { class: "mbh-name", title: name, text: name }),
@@ -553,7 +569,7 @@
 
     $(stock)
       .empty()
-      .append(input, el("button", { type: "button", class: "button-link mbh-start-cancel", text: t("cancelTracking") }));
+      .append(input, el("button", { type: "button", class: "mbh-text-button mbh-start-cancel", text: t("cancelTracking") }));
     $(status)
       .empty()
       .append(el("span", { class: "mbh-note", text: t("statusFromQuantity") }));
@@ -669,7 +685,7 @@
 
       items.push(
         messageItem(id, field, mark.status, mark.message, [
-          el("button", { type: "button", class: "button-link", "data-act": "dismiss", "data-field": field, text: t("dismiss") }),
+          el("button", { type: "button", class: "mbh-text-button", "data-act": "dismiss", "data-field": field, text: t("dismiss") }),
         ])
       );
     });
@@ -698,6 +714,7 @@
 
   function messageItem(id, field, kind, message, buttons) {
     return el("li", { class: "mbh-msg mbh-msg--" + kind, id: "mbh-msg-" + id + "-" + field }, [
+      MBH.icon(kind === "conflict" || kind === "refused" ? "warning" : "info"),
       el("span", { class: "mbh-msg-text" }, [el("strong", { text: t("fieldPrefix", fieldLabel(field)) }), " ", message]),
       buttons && buttons.length ? el("span", { class: "mbh-msg-actions" }, buttons) : null,
     ]);
@@ -922,7 +939,7 @@
           error,
           el("div", { class: "mbh-start-buttons" }, [
             el("button", { type: "button", class: "button button-small button-primary", onclick: add, text: t("addToChanges") }),
-            el("button", { type: "button", class: "button-link", onclick: cancel, text: t("cancel") }),
+            el("button", { type: "button", class: "mbh-text-button", onclick: cancel, text: t("cancel") }),
           ]),
         ])
       );
@@ -1072,11 +1089,17 @@
       return;
     }
 
+    var generation = state.generation;
+
     family.loading = true;
     statusRow(parentId, el("span", { class: "mbh-loading", text: tn("loadingVariations", count) }));
     MBH.announce(tn("loadingVariations", count));
 
     variationRequest(parentId).then(function (answer) {
+      if (generation !== state.generation) {
+        return; // Another page of the list is shown by now
+      }
+
       family.loading = false;
 
       if (!answer.ok) {
@@ -1176,11 +1199,16 @@
    */
   function refreshRows(ids) {
     var chunks = model.chunkIds(ids, ROWS_CHUNK);
+    var generation = state.generation;
 
     return chunks.reduce(function (chain, chunk) {
       return chain.then(function () {
+        if (generation !== state.generation) {
+          return; // Another page of the list is shown by now
+        }
+
         return MBH.request("madebyhype_get_rows", "read", $.extend({ ids: chunk }, page.periodArgs || {})).then(function (answer) {
-          if (!answer.ok) {
+          if (!answer.ok || generation !== state.generation) {
             return; // The rows keep their dash for the figures nobody confirmed
           }
 
@@ -1210,10 +1238,16 @@
    * totals, status and cover are the server's and not worked out here
    */
   function refreshFamily(parentId) {
+    var generation = state.generation;
+
+    if (!rowNode(parentId)) {
+      return $.Deferred().resolve().promise();
+    }
+
     var family = familyOf(parentId);
 
     return variationRequest(parentId).then(function (answer) {
-      if (!answer.ok || !rowNode(parentId)) {
+      if (!answer.ok || generation !== state.generation || !rowNode(parentId)) {
         return;
       }
 
@@ -1367,6 +1401,17 @@
     }
   }
 
+  /** Drop every unsaved edit and show the stored values again */
+  function discardAll() {
+    var ids = Object.keys(state.pending);
+
+    state.pending = {};
+    state.retryToken = null;
+    ids.forEach(renderRow);
+    ids.forEach(refreshParentOf);
+    updateSaveBar();
+  }
+
   function discard() {
     var total = countPending();
 
@@ -1382,14 +1427,8 @@
           label: t("discard"),
           danger: true,
           action: function (dialog) {
-            var ids = Object.keys(state.pending);
-
-            state.pending = {};
-            state.retryToken = null;
             dialog.close();
-            ids.forEach(renderRow);
-            ids.forEach(refreshParentOf);
-            updateSaveBar();
+            discardAll();
             MBH.notice("success", t("discarded"), "save");
           },
         },
@@ -1625,7 +1664,7 @@
   function showFirstButton() {
     return el("button", {
       type: "button",
-      class: "button-link",
+      class: "mbh-text-button",
       text: t("showFirst"),
       onclick: function () {
         showFirst(function (entry) {
@@ -2178,7 +2217,470 @@
       });
     },
     save: save,
+    discard: discardAll,
   };
+
+  /* ------------------------------------------------------------------
+   * The list, without a page reload
+   *
+   * Sorting, paging, rows per page, search, the view switch, the sales
+   * period, filters, the kinds of Needs attention and removing a chip all
+   * ask for another view of the list by its address (MBH.list.go, see
+   * stock-core.js). Here that address is read through the
+   * madebyhype_get_list action, the rows and everything around them are
+   * redrawn from the answer, and the address bar follows (pushState), so
+   * Back and Forward walk through the views and a reload or a bookmark
+   * gives the same view from the server.
+   *
+   * Unsaved edits: the rows they belong to are about to go, so the user is
+   * asked first, with the dialog that guards leaving the page: save and
+   * continue, discard, or stay. Nothing is carried over to the new rows.
+   * The same holds for Back and Forward; staying puts the address back.
+   * While a save is running the list does not change.
+   *
+   * A list that cannot be read leaves the rows that are shown, says so in a
+   * notice with "Try again", and leaves the address as it was.
+   * ---------------------------------------------------------------- */
+
+  var wrap = document.querySelector(".mbh-stock");
+  var main = document.getElementById("mbh-list");
+  var card = document.getElementById("mbh-card");
+  var progress = document.getElementById("mbh-progress");
+  var countNode = document.getElementById("mbh-count");
+  var nav = { seq: 0, index: 0, skipPop: false };
+
+  /**
+   * The parts around the rows that change with the list, built from its
+   * description as templates/grid.php, chips.php and pagination.php print them
+   *
+   * @param {object} list UIManager::list_frame()
+   * @return {object} kinds, chips, headings, pager, empty: lists of nodes
+   */
+  function buildFrame(list) {
+    function pageLink(key, icon, label) {
+      var svg = MBH.icon(icon, key === "prev" ? "mbh-icon--flip" : "");
+
+      if (list.pager[key] === null) {
+        return el("span", { class: "mbh-page-link is-disabled", "aria-hidden": "true" }, svg);
+      }
+
+      return el("a", { class: "mbh-page-link", href: list.pager[key], "data-nav": "page-" + key, "aria-label": label }, svg);
+    }
+
+    var chips = [];
+
+    if (list.chips.length) {
+      chips.push(
+        el(
+          "ul",
+          { class: "mbh-chip-list", "aria-label": t("chipsLabel") },
+          list.chips.map(function (chip) {
+            return el("li", { class: "mbh-chip" }, [
+              el("span", { class: "mbh-chip-label", text: chip.label }),
+              el("a", { href: chip.url, class: "mbh-chip-remove", "data-nav": "chip", "aria-label": chip.removeLabel }, MBH.icon("close")),
+            ]);
+          })
+        )
+      );
+    }
+
+    if (list.clearAllUrl) {
+      chips.push(el("a", { href: list.clearAllUrl, class: "mbh-clear-all", "data-nav": "clear", text: t("clearAll") }));
+    }
+
+    return {
+      kinds: (list.kinds || []).map(function (kind) {
+        return el(
+          "li",
+          {},
+          el("a", { href: kind.url, "data-nav": "kind-" + kind.key, class: kind.current ? "is-current" : false, "aria-current": kind.current ? "page" : false }, [
+            kind.label + " ",
+            el("span", { class: "mbh-kind-count", text: kind.count }),
+          ])
+        );
+      }),
+
+      chips: chips,
+
+      headings: list.headings.map(function (heading) {
+        return el(
+          "th",
+          { scope: "col", class: heading.class + (heading.sorted ? " is-sorted" : ""), "aria-sort": heading.ariaSort || false, title: heading.help || false },
+          heading.field === null
+            ? el("span", { class: "mbh-th-label", text: heading.label })
+            : el("a", { href: heading.url, "data-nav": "sort-" + heading.field }, [
+                el("span", { class: "mbh-th-label" }, [heading.label, heading.sub ? el("span", { class: "mbh-th-sub", text: heading.sub }) : null]),
+                MBH.icon("arrow", "mbh-sort-icon mbh-sort-icon--" + heading.direction),
+                el("span", { class: "screen-reader-text", text: heading.nextLabel }),
+              ])
+        );
+      }),
+
+      pager: [
+        pageLink("first", "first", t("firstPage")),
+        pageLink("prev", "chevron", t("previousPage")),
+        el(
+          "span",
+          { class: "mbh-paging-text" },
+          MBH.fillNodes(t("pageFieldOf", "%1$s", "%2$s"), [
+            el("input", {
+              class: "mbh-page-field",
+              id: "mbh-page-field",
+              type: "text",
+              inputmode: "numeric",
+              autocomplete: "off",
+              value: String(list.page),
+              "aria-label": t("pageNumber"),
+            }),
+            el("span", { class: "mbh-total-pages", text: list.pager.pagesLabel }),
+          ])
+        ),
+        pageLink("next", "chevron", t("nextPage")),
+        pageLink("last", "last", t("lastPage")),
+      ],
+
+      empty: (list.empty || []).map(function (line) {
+        return el("p", {}, [
+          el("span", { text: line.text }),
+          line.link ? el("a", { href: line.link.url, "data-nav": line.link.inPage ? "empty" : false, text: line.link.label }) : null,
+        ]);
+      }),
+    };
+  }
+
+  function fill(id, nodes) {
+    var node = document.getElementById(id);
+
+    if (!node) {
+      return;
+    }
+
+    $(node).empty();
+    nodes.forEach(function (child) {
+      node.appendChild(child);
+    });
+  }
+
+  /** The controls that state the view: search box, period, rows per page, "sold only", page number */
+  function syncControls(list) {
+    var search = document.getElementById("mbh-search");
+    var period = document.getElementById("mbh-period");
+    var perPage = document.getElementById("mbh-per-page");
+    var soldOnly = document.getElementById("mbh-sold-only");
+    var pageField = document.getElementById("mbh-page-field");
+
+    // What is being typed is left alone
+    if (search && document.activeElement !== search) {
+      search.value = list.search;
+    }
+
+    if (period) {
+      period.value = list.period.key;
+      period.setAttribute("data-current", list.period.key);
+      document.getElementById("mbh-period-custom").hidden = list.period.key !== "custom";
+      document.getElementById("mbh-period-start").value = list.period.start;
+      document.getElementById("mbh-period-end").value = list.period.end;
+    }
+
+    if (perPage) {
+      perPage.value = String(list.perPage);
+    }
+
+    if (soldOnly) {
+      soldOnly.checked = !!list.soldOnly;
+    }
+
+    if (pageField) {
+      pageField.value = String(list.page);
+    }
+  }
+
+  /** Redraw everything around the rows from the description of the list */
+  function renderFrame(list) {
+    var frame = buildFrame(list);
+
+    fill("mbh-kinds", frame.kinds);
+    fill("mbh-chips", frame.chips);
+    fill("mbh-head-row", frame.headings);
+    fill("mbh-pager", frame.pager);
+    fill("mbh-empty", frame.empty);
+
+    countNode.textContent = list.countLabel;
+    document.getElementById("mbh-caption").textContent = list.caption;
+    document.getElementById("mbh-pager").hidden = list.pages <= 1;
+    document.getElementById("mbh-empty").hidden = !list.empty;
+    card.hidden = !!list.empty;
+
+    syncControls(list);
+
+    // Toolbar: the view switch and the number on the Filters button
+    (list.views || []).forEach(function (view) {
+      var link = wrap.querySelector('#mbh-view-switch a[data-nav="view-' + view.key + '"]');
+
+      if (link) {
+        link.setAttribute("href", view.url);
+        link.classList.toggle("is-current", view.current);
+
+        if (view.current) {
+          link.setAttribute("aria-current", "true");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      }
+    });
+
+    var dot = document.getElementById("mbh-filters-dot");
+
+    if (dot) {
+      dot.hidden = !list.filterCount;
+      dot.textContent = list.filterCount ? String(list.filterCount) : "";
+      document.getElementById("mbh-filters-dot-text").textContent = list.filterCountLabel;
+    }
+
+    // Tabs: their links carry the period and the page size; the count when this list has it
+    $(wrap)
+      .find(".mbh-tab[data-tab]")
+      .each(function () {
+        var url = list.tabs[this.getAttribute("data-tab")];
+
+        if (url) {
+          this.setAttribute("href", url);
+        }
+      });
+
+    var badge = document.getElementById("mbh-attention-count");
+
+    if (badge && list.attentionCount !== null) {
+      badge.hidden = false;
+      badge.children[0].textContent = list.attentionCount;
+      badge.children[1].textContent = list.attentionLabel;
+    }
+  }
+
+  /** Take in the answer of the list read: the rows of the page and their frame */
+  function applyList(data) {
+    var fragment = document.createDocumentFragment();
+
+    state.generation++;
+    state.rows = {};
+    state.childOf = {};
+    state.children = {};
+    state.family = {};
+    state.pending = {};
+    state.marks = {};
+    linkedRow = null;
+
+    page.view = data.view;
+    page.search = data.search;
+    page.periodArgs = data.periodArgs;
+    page.rows = data.rows;
+    page.urls = data.urls;
+    page.list = data.list;
+    MBH.list.state = data.list;
+
+    data.rows.forEach(function (row) {
+      state.rows[row.id] = row;
+      fragment.appendChild(buildRow(row, false));
+    });
+
+    $(tbody).empty();
+    tbody.appendChild(fragment);
+
+    renderFrame(data.list);
+    updateCollapseAll();
+    updateSaveBar();
+
+    // What the last save said was about rows that are no longer shown
+    MBH.clearNotice("save");
+  }
+
+  function setLoading(on) {
+    main.classList.toggle("is-loading", on);
+    progress.hidden = !on;
+    countNode.textContent = on ? t("listLoading") : page.list.countLabel;
+    countNode.classList.toggle("mbh-loading", on);
+
+    if (on) {
+      table.setAttribute("aria-busy", "true");
+    } else if (!state.saving) {
+      table.removeAttribute("aria-busy");
+    }
+  }
+
+  function sameAddress(a, b) {
+    var link = document.createElement("a");
+
+    link.href = a;
+    a = link.href;
+    link.href = b;
+
+    return a.split("#")[0] === link.href.split("#")[0];
+  }
+
+  /** After a list arrived: its top in view, the count said, the focus where the user expects it */
+  function finishList(options) {
+    var scroll = document.getElementById("mbh-grid-scroll");
+    var top = document.getElementById("mbh-meta").getBoundingClientRect().top;
+
+    scroll.scrollTop = 0;
+    scroll.scrollLeft = 0;
+
+    // Paging from the footer, or sorting from a heading that stuck to the top: back to the first row
+    if (top < 0) {
+      window.scrollTo(0, Math.max(0, window.pageYOffset + top - 56));
+    }
+
+    MBH.announce(page.list.countLabel);
+    MBH.layout();
+
+    if (settleList() || !options.focus) {
+      return;
+    }
+
+    var key = options.focus;
+    var target = key.charAt(0) === "#" ? document.getElementById(key.slice(1)) : wrap.querySelector('[data-nav="' + key + '"]');
+
+    // The control may be gone (the last chip, "next" on the last page): the page field, else the search box
+    if (!target || target.offsetParent === null) {
+      target = document.getElementById("mbh-page-field");
+    }
+    if (!target || target.offsetParent === null) {
+      target = document.getElementById("mbh-search");
+    }
+
+    if (target && document.activeElement !== target) {
+      target.focus({ preventScroll: true });
+    }
+  }
+
+  /**
+   * Read the view at an address and show it
+   *
+   * @param {string} url
+   * @param {object} options {focus, popped (the address bar is there already), stay()}
+   */
+  function loadList(url, options) {
+    options = options || {};
+
+    var seq = ++nav.seq;
+    var question = url.indexOf("?");
+    var query = question === -1 ? "" : url.slice(question + 1).split("#")[0];
+
+    setLoading(true);
+    MBH.announce(t("listLoading"));
+
+    return MBH.request("madebyhype_get_list", "read", { query: query }).then(function (answer) {
+      if (seq !== nav.seq) {
+        return; // A newer request is on its way
+      }
+
+      setLoading(false);
+
+      if (!answer.ok) {
+        MBH.notice(
+          "error",
+          [
+            answer.kind === "session" ? t("listSession") : t("listFailed"),
+            " ",
+            el("button", {
+              type: "button",
+              class: "button button-small",
+              text: t("tryAgain"),
+              onclick: function () {
+                go(url, { focus: options.focus });
+              },
+            }),
+          ],
+          "list"
+        );
+
+        if (options.stay) {
+          options.stay();
+        }
+        return;
+      }
+
+      MBH.clearNotice("list");
+      applyList(answer.data);
+
+      // The address the server gives this view: defaults left out, the page number it really has
+      if (!options.popped) {
+        if (sameAddress(answer.data.list.url, window.location.href)) {
+          window.history.replaceState({ mbhIndex: nav.index }, "", answer.data.list.url);
+        } else {
+          nav.index++;
+          window.history.pushState({ mbhIndex: nav.index }, "", answer.data.list.url);
+        }
+      }
+
+      finishList(options);
+    });
+  }
+
+  /**
+   * Go to another view of the list, asking first when edits are unsaved
+   *
+   * @param {string} url
+   * @param {object} options {focus, onCancel(), popped, from, delta}
+   */
+  function go(url, options) {
+    options = options || {};
+
+    function stay() {
+      // Back or Forward that did not happen: the address goes back to the view that is shown
+      if (options.popped) {
+        nav.index = options.from;
+        nav.skipPop = true;
+        window.history.go(options.delta);
+      }
+
+      syncControls(page.list);
+
+      if (options.onCancel) {
+        options.onCancel();
+      }
+    }
+
+    if (state.saving) {
+      MBH.notice("warning", t("waitForSave"), "list");
+      stay();
+      return;
+    }
+
+    MBH.navigate(
+      function () {
+        loadList(url, { focus: options.focus, popped: options.popped, stay: stay });
+      },
+      stay,
+      true
+    );
+  }
+
+  MBH.list.go = go;
+  MBH.list.sync = function () {
+    syncControls(page.list);
+  };
+
+  // Back and Forward between the views of this page view
+  window.history.replaceState({ mbhIndex: 0 }, "", window.location.href);
+
+  window.addEventListener("popstate", function (event) {
+    if (nav.skipPop) {
+      nav.skipPop = false;
+      return;
+    }
+
+    var target = event.state && typeof event.state.mbhIndex === "number" ? event.state.mbhIndex : null;
+
+    if (target === null || target === nav.index) {
+      return; // Not a view of the list (a #fragment)
+    }
+
+    var from = nav.index;
+
+    nav.index = target;
+    go(window.location.href, { popped: true, from: from, delta: from - target });
+  });
 
   /* ------------------------------------------------------------------
    * Start
@@ -2215,6 +2717,28 @@
 
     settleRowLinks(null);
 
+    // The parts around the rows, as the server printed them or as renderFrame() last drew them
+    var frame = buildFrame(page.list);
+
+    [
+      ["kinds", document.getElementById("mbh-kinds"), frame.kinds],
+      ["chips", document.getElementById("mbh-chips"), frame.chips],
+      ["headings", document.getElementById("mbh-head-row"), frame.headings],
+      ["pager", document.getElementById("mbh-pager"), frame.pager],
+      ["empty", document.getElementById("mbh-empty"), frame.empty],
+    ].forEach(function (part) {
+      if (!part[1]) {
+        return;
+      }
+
+      var printed = Array.prototype.map.call(part[1].childNodes, outline).join("");
+      var built = part[2].map(outline).join("");
+
+      if (printed !== built) {
+        differences.push({ id: part[0], server: printed, script: built });
+      }
+    });
+
     (page.rows || []).forEach(function (row) {
       var printed = rowNode(row.id);
 
@@ -2240,7 +2764,38 @@
     save: save,
     applyUndo: applyUndo,
     checkRender: checkRender,
+    load: loadList,
   };
+
+  /**
+   * What follows the arrival of a list, on page load and after each one read
+   * in place: products a search matched by a variation are opened
+   *
+   * @return {boolean} Whether the focus went into the one result's stock cell
+   */
+  function settleList() {
+    // A search that matched a variation opens its product
+    if (page.view === "product" && page.search) {
+      (page.rows || [])
+        .filter(function (row) {
+          return !row.matched_self && (row.matched_variation_ids || []).length > 0 && row.variation_count > 0;
+        })
+        .slice(0, AUTO_OPEN_LIMIT)
+        .forEach(function (row) {
+          openFamily(row.id);
+        });
+    }
+
+    // One result: straight into its stock
+    var inputs = $(table).find('tr.mbh-row input.mbh-input[data-field="stock_quantity"]');
+
+    if ((page.rows || []).length === 1 && inputs.length === 1) {
+      inputs[0].focus();
+      return true;
+    }
+
+    return false;
+  }
 
   $(function () {
     updateSaveBar();
@@ -2254,25 +2809,10 @@
       });
     }
 
-    // A search that matched a variation opens its product
-    if (page.view === "product" && page.search) {
-      (page.rows || [])
-        .filter(function (row) {
-          return !row.matched_self && (row.matched_variation_ids || []).length > 0 && row.variation_count > 0;
-        })
-        .slice(0, AUTO_OPEN_LIMIT)
-        .forEach(function (row) {
-          openFamily(row.id);
-        });
-    }
-
-    // One result: straight into its stock. Otherwise the search box.
-    var inputs = $(table).find('tr.mbh-row input.mbh-input[data-field="stock_quantity"]');
+    // Otherwise the search box
     var search = document.getElementById("mbh-search");
 
-    if ((page.rows || []).length === 1 && inputs.length === 1) {
-      inputs[0].focus();
-    } else if (search && !window.location.hash) {
+    if (!settleList() && search && !window.location.hash) {
       search.focus({ preventScroll: true });
     }
   });

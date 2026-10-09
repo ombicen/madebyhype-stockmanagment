@@ -1,78 +1,99 @@
 <?php
 
 /**
- * Footer of the table's card: rows per page on the left, paging on the right
+ * Footer of the table's card: rows per page on the left, the keyboard help, paging on the right
  *
- * The rows-per-page select belongs to the list form in the toolbar. The
- * page-number field is read by the script (Enter goes to that page); its
- * data-url holds the link with %d for the page.
+ * The script reads the rows-per-page select and the page-number field
+ * (Enter goes to that page) and loads the list without leaving the page.
+ * It redraws the pager from the same description (renderFrame() in
+ * scripts/stock-grid.js).
  *
  * @var \MadeByHypeStockmanagment\UI\UIManager $this
- * @var array $request
- * @var array $result DataManager::get_list()
+ * @var array $list UIManager::list_frame()
+ * @var array $caps
  */
-
-use MadeByHypeStockmanagment\Admin\AdminPage;
 
 if (! defined('ABSPATH')) {
     exit;
 }
 
-$current = (int) $result['current_page'];
-$pages = (int) $result['total_pages'];
+$pager = $list['pager'];
 
-$page_link = function ($target, $class, $label, $symbol) use ($current, $pages) {
-    if ($target < 1 || $target > $pages || $target === $current) {
-        echo '<span class="button disabled ' . esc_attr($class) . '" aria-hidden="true">' . esc_html($symbol) . '</span>';
+$page_link = function ($key, $icon, $label) use ($pager) {
+    $flip = $key === 'prev' ? ' mbh-icon--flip' : '';
+
+    if ($pager[$key] === null) {
+        echo '<span class="mbh-page-link is-disabled" aria-hidden="true">' . self::icon($icon, ltrim($flip)) . '</span>';
         return;
     }
 
     printf(
-        '<a class="%1$s button" href="%2$s"><span class="screen-reader-text">%3$s</span><span aria-hidden="true">%4$s</span></a>',
-        esc_attr($class),
-        esc_url($this->url(['paged' => $target > 1 ? $target : null])),
-        esc_html($label),
-        esc_html($symbol)
+        '<a class="mbh-page-link" href="%1$s" data-nav="page-%2$s" aria-label="%3$s">%4$s</a>',
+        esc_url($pager[$key]),
+        esc_attr($key),
+        esc_attr($label),
+        self::icon($icon, ltrim($flip))
     );
 };
+
+$keys = [
+    [['keyEnter', 'keyDown'], 'keysDown'],
+    [['keyShiftEnter', 'keyUp'], 'keysUp'],
+    [['keyEscape'], 'keysEscape'],
+    [['keyCtrlS'], 'keysSave'],
+];
 ?>
-<div class="mbh-foot">
-    <label for="mbh-per-page">
-        <?php esc_html_e('Rows per page', 'madebyhype-stockmanagment'); ?>
-        <select id="mbh-per-page" form="mbh-list-form" name="per_page" data-mbh-submit data-current="<?php echo esc_attr($request['per_page']); ?>" data-default="<?php echo esc_attr(AdminPage::DEFAULT_PER_PAGE); ?>">
-            <?php foreach (AdminPage::PER_PAGE_OPTIONS as $size): ?>
-                <option value="<?php echo esc_attr($size); ?>"<?php selected($request['per_page'], $size); ?>><?php echo esc_html($size); ?></option>
+<div class="mbh-foot" id="mbh-foot">
+    <label class="mbh-per-page" for="mbh-per-page">
+        <span><?php echo esc_html($this->t('rowsPerPage')); ?></span>
+        <select id="mbh-per-page" class="mbh-select" name="per_page">
+            <?php foreach ($list['perPageOptions'] as $size): ?>
+                <option value="<?php echo esc_attr($size); ?>"<?php selected($list['perPage'], $size); ?>><?php echo esc_html($size); ?></option>
             <?php endforeach; ?>
         </select>
     </label>
 
-    <?php if ($pages > 1): ?>
-        <nav class="mbh-pager" aria-label="<?php esc_attr_e('Pages', 'madebyhype-stockmanagment'); ?>">
-            <?php
-            $page_link(1, 'first-page', __('First page', 'madebyhype-stockmanagment'), '«');
-            $page_link($current - 1, 'prev-page', __('Previous page', 'madebyhype-stockmanagment'), '‹');
-
-            $field = sprintf(
-                '<input class="mbh-page-field" id="mbh-page-field" type="text" inputmode="numeric" autocomplete="off" value="%1$d" aria-label="%2$s" data-page="%1$d" data-pages="%3$d" data-url="%4$s">',
-                $current,
-                esc_attr__('Page number', 'madebyhype-stockmanagment'),
-                $pages,
-                esc_url($this->url(['paged' => null]) . '&paged=%d')
-            );
-
-            printf(
-                '<span class="mbh-paging-text">%s</span>',
-                sprintf(
-                    /* translators: 1: the field that holds the page number, 2: number of pages */
-                    esc_html__('Page %1$s of %2$s', 'madebyhype-stockmanagment'),
-                    $field,
-                    '<span class="total-pages">' . esc_html(number_format_i18n($pages)) . '</span>'
-                )
-            );
-
-            $page_link($current + 1, 'next-page', __('Next page', 'madebyhype-stockmanagment'), '›');
-            $page_link($pages, 'last-page', __('Last page', 'madebyhype-stockmanagment'), '»');
-            ?>
-        </nav>
+    <?php if (!empty($caps['stock']) || !empty($caps['prices'])): ?>
+        <details class="mbh-keys" id="mbh-keys">
+            <summary><?php echo self::icon('keyboard'); ?><span><?php echo esc_html($this->t('keysTitle')); ?></span></summary>
+            <dl class="mbh-keys-pop">
+                <?php foreach ($keys as $entry): ?>
+                    <div>
+                        <dt>
+                            <?php foreach ($entry[0] as $index => $key): ?>
+                                <?php echo $index ? '<span class="mbh-key-or">' . esc_html($this->t('keyOr')) . '</span>' : ''; ?>
+                                <kbd><?php echo esc_html($this->t($key)); ?></kbd>
+                            <?php endforeach; ?>
+                        </dt>
+                        <dd><?php echo esc_html($this->t($entry[1])); ?></dd>
+                    </div>
+                <?php endforeach; ?>
+            </dl>
+        </details>
     <?php endif; ?>
+
+    <nav class="mbh-pager" id="mbh-pager" aria-label="<?php echo esc_attr($this->t('pages')); ?>"<?php echo $list['pages'] > 1 ? '' : ' hidden'; ?>>
+        <?php
+        $page_link('first', 'first', $this->t('firstPage'));
+        $page_link('prev', 'chevron', $this->t('previousPage'));
+
+        $field = sprintf(
+            '<input class="mbh-page-field" id="mbh-page-field" type="text" inputmode="numeric" autocomplete="off" value="%1$d" aria-label="%2$s">',
+            $list['page'],
+            esc_attr($this->t('pageNumber'))
+        );
+
+        printf(
+            '<span class="mbh-paging-text">%s</span>',
+            sprintf(
+                esc_html($this->t('pageFieldOf', '%1$s', '%2$s')),
+                $field,
+                '<span class="mbh-total-pages">' . esc_html($pager['pagesLabel']) . '</span>'
+            )
+        );
+
+        $page_link('next', 'chevron', $this->t('nextPage'));
+        $page_link('last', 'last', $this->t('lastPage'));
+        ?>
+    </nav>
 </div>

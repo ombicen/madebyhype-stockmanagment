@@ -57,11 +57,12 @@ $input = function ($field, $kind, $shown, $placeholder = '') use ($label, $strin
     );
 };
 
-$badge = function ($key) use ($strings) {
+$badge = function ($key, $title = '') use ($strings) {
     printf(
-        '<span class="mbh-status mbh-status--%1$s">%2$s</span>',
+        '<span class="mbh-status mbh-status--%1$s"%3$s>%2$s</span>',
         esc_attr($key),
-        esc_html(isset($strings['statuses'][$key]) ? $strings['statuses'][$key] : $key)
+        esc_html(isset($strings['statuses'][$key]) ? $strings['statuses'][$key] : $key),
+        $title !== '' ? ' title="' . esc_attr($title) . '"' : ''
     );
 };
 ?>
@@ -69,12 +70,12 @@ $badge = function ($key) use ($strings) {
     <td class="mbh-col-name">
         <div class="mbh-prod">
             <?php if ($expandable): ?>
-                <button type="button" class="mbh-expand" aria-expanded="false" aria-label="<?php echo esc_attr($this->t('variationsOf', $row['full_name'])); ?>"><span class="mbh-chevron" aria-hidden="true"></span></button>
+                <button type="button" class="mbh-expand" aria-expanded="false" aria-label="<?php echo esc_attr($this->t('variationsOf', $row['full_name'])); ?>"><?php echo self::icon('chevron'); ?></button>
             <?php else: ?>
                 <span class="mbh-expand-space" aria-hidden="true"></span>
             <?php endif; ?>
             <?php if ($row['thumbnail_url'] !== ''): ?>
-                <img class="mbh-thumb" src="<?php echo esc_url($row['thumbnail_url']); ?>" alt="" width="32" height="32" loading="lazy" decoding="async">
+                <img class="mbh-thumb" src="<?php echo esc_url($row['thumbnail_url']); ?>" alt="" width="36" height="36" loading="lazy" decoding="async">
             <?php else: ?>
                 <span class="mbh-thumb mbh-thumb--none" aria-hidden="true"></span>
             <?php endif; ?>
@@ -85,7 +86,7 @@ $badge = function ($key) use ($strings) {
                         <span class="mbh-sku"><?php echo esc_html($sku); ?></span>
                     <?php endif; ?>
                     <span class="mbh-id"><?php echo esc_html($this->t('idNumber', $row['id'])); ?></span>
-                    <span class="mbh-tag mbh-tag--type"<?php echo $row['variation_count'] > 0 ? ' title="' . esc_attr($this->tn('variationCount', $row['variation_count'])) . '"' : ''; ?>><?php echo esc_html($row['variation_count'] > 0 ? $this->t('typeWithCount', $type_label, $row['variation_count']) : $type_label); ?></span>
+                    <span class="mbh-type"<?php echo $row['variation_count'] > 0 ? ' title="' . esc_attr($this->tn('variationCount', $row['variation_count'])) . '"' : ''; ?>><?php echo esc_html($row['variation_count'] > 0 ? $this->t('typeWithCount', $type_label, $row['variation_count']) : $type_label); ?></span>
                     <?php if ($product_status && $product_status !== 'publish'): ?>
                         <span class="mbh-tag mbh-tag--draft"><?php echo esc_html(isset($strings['postStatuses'][$product_status]) ? $strings['postStatuses'][$product_status] : $product_status); ?></span>
                     <?php endif; ?>
@@ -95,7 +96,6 @@ $badge = function ($key) use ($strings) {
                     <span class="mbh-row-links">
                         <?php if (!empty($caps['editProducts'])): ?>
                             <a class="mbh-link-edit" href="<?php echo esc_url(str_replace('%d', (string) ($row['parent_id'] ? $row['parent_id'] : $row['id']), $edit_url)); ?>" target="_blank" rel="noopener" tabindex="-1" aria-label="<?php echo esc_attr($this->t('editProductOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('editProduct')); ?></a>
-                            <span aria-hidden="true">|</span>
                         <?php endif; ?>
                         <a class="mbh-link-history" href="<?php echo esc_url(str_replace('%d', (string) $row['id'], $history_url)); ?>" tabindex="-1" aria-label="<?php echo esc_attr($this->t('historyOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('history')); ?></a>
                     </span>
@@ -120,12 +120,19 @@ $badge = function ($key) use ($strings) {
                 break;
 
             case 'total':
-                $summary['stock_total'] === null ? $none() : $value((string) $summary['stock_total']);
-                if ($summary['own_stock_count'] > 0) {
-                    $sub($this->tn('inVariations', $summary['own_stock_count']));
-                }
-                if ($summary['untracked_count'] > 0) {
-                    $sub($this->tn('notTrackedCount', $summary['untracked_count']));
+                // One value and one line under it, so the row is as high as every other
+                if ($summary['stock_total'] === null) {
+                    echo '<span class="mbh-note">' . esc_html($this->t('notTracked')) . '</span>';
+                    $sub($this->tn('variationCount', $summary['count']));
+                } else {
+                    $value((string) $summary['stock_total']);
+                    if ($summary['own_stock_count'] > 0 && $summary['untracked_count'] > 0) {
+                        $sub($this->t('stockParts', $this->tn('inVariations', $summary['own_stock_count']), $this->tn('notTrackedCount', $summary['untracked_count'])));
+                    } elseif ($summary['own_stock_count'] > 0) {
+                        $sub($this->tn('inVariations', $summary['own_stock_count']));
+                    } elseif ($summary['untracked_count'] > 0) {
+                        $sub($this->tn('notTrackedCount', $summary['untracked_count']));
+                    }
                 }
                 break;
 
@@ -133,7 +140,7 @@ $badge = function ($key) use ($strings) {
                 echo '<span class="mbh-note">' . esc_html($this->t('notTracked')) . '</span>';
                 if ($kinds['start']) {
                     printf(
-                        '<button type="button" class="button-link mbh-start" aria-label="%1$s">%2$s</button>',
+                        '<button type="button" class="mbh-text-button mbh-start" aria-label="%1$s">%2$s</button>',
                         esc_attr($this->t('cellLabel', $this->t('startTracking'), $label)),
                         esc_html($this->t('startTracking'))
                     );
@@ -169,11 +176,9 @@ $badge = function ($key) use ($strings) {
                 break;
 
             case 'badge':
+                // The threshold a low item is measured against is in the badge's tooltip
                 $key = $row['attention'] === 'low' ? 'lowstock' : $row['stock_status'];
-                $badge($key);
-                if ($key === 'lowstock' && $row['low_stock_threshold'] !== null) {
-                    $sub($this->t('threshold', $row['low_stock_threshold']));
-                }
+                $badge($key, $key === 'lowstock' && $row['low_stock_threshold'] !== null ? $this->t('thresholdTitle', $row['low_stock_threshold']) : '');
                 break;
 
             case 'summary':

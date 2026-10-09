@@ -43,11 +43,12 @@ class AssetsManager
 
         $this->style('madebyhype-stock-screen', 'includes/UI/styles/stock-screen.css', [], $plugin_file);
 
-        // The rules (no DOM), then what every tab shares, then the grid and History
+        // The rules (no DOM), then what every tab shares, then History, the grid and its filter drawer
         $this->script('madebyhype-stock-model', 'includes/UI/scripts/stock-model.js', [], $plugin_file);
         $this->script('madebyhype-stock-core', 'includes/UI/scripts/stock-core.js', ['jquery', 'heartbeat', 'madebyhype-stock-model'], $plugin_file);
         $this->script('madebyhype-stock-history', 'includes/UI/scripts/stock-history.js', ['madebyhype-stock-core'], $plugin_file);
         $this->script('madebyhype-stock-grid', 'includes/UI/scripts/stock-grid.js', ['madebyhype-stock-core', 'madebyhype-stock-history'], $plugin_file);
+        $this->script('madebyhype-stock-filters', 'includes/UI/scripts/stock-filters.js', ['madebyhype-stock-core', 'madebyhype-stock-grid'], $plugin_file);
 
         wp_localize_script('madebyhype-stock-core', self::SCRIPT_DATA, $this->script_data());
     }
@@ -68,6 +69,8 @@ class AssetsManager
             'format' => UIManager::price_format(),
             // Counted strings in every plural form of the page's language, and which form a count takes
             'strings' => UIManager::script_strings(),
+            // The paths of the icons, so the scripts draw the ones the templates print
+            'icons' => UIManager::ICONS,
             'plural' => UIManager::plural_rule()['table'],
         ];
     }

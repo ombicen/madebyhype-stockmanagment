@@ -290,6 +290,10 @@ class AdminPage
      * The number on the Needs attention tab: everything that needs attention,
      * whatever the search and filters of the page are
      *
+     * Once per page view: the Needs attention tab has it already, any other
+     * tab asks for the count alone (no rows are read, no sales are totalled).
+     * A list loaded without a page reload does not ask again.
+     *
      * @param array      $request From parse_request()
      * @param array|null $result  The list of the page, when it has one
      * @return int|null Null when the count could not be read
@@ -300,7 +304,26 @@ class AdminPage
             return null;
         }
 
-        // The Needs attention tab without search, filter or "sold only" has just counted it
+        $known = self::known_attention_count($request, $result);
+        if ($known !== null) {
+            return $known;
+        }
+
+        $count = $this->data_manager->count_list(['tab' => DataManager::TAB_ATTENTION]);
+
+        return empty($count['error']) && isset($count['counts']['all']) ? (int) $count['counts']['all'] : null;
+    }
+
+    /**
+     * The same number when the list just read has counted it anyway: the
+     * Needs attention tab without search, filter or "sold only"
+     *
+     * @param array      $request From parse_request()
+     * @param array|null $result  DataManager::get_list()
+     * @return int|null Null when this list does not say
+     */
+    public static function known_attention_count($request, $result)
+    {
         $plain = $request['tab'] === 'attention' && $request['search'] === '' && !$request['sold_only']
             && !$request['category_filter'] && !$request['tag_filter'] && !$request['attribute_filter']
             && !($request['min_price'] > 0) && !($request['max_price'] > 0) && !($request['min_sales'] > 0) && !($request['max_sales'] > 0);
@@ -309,9 +332,7 @@ class AdminPage
             return (int) $result['counts']['all'];
         }
 
-        $list = $this->data_manager->get_list(['tab' => DataManager::TAB_ATTENTION, 'per_page' => 1, 'with_images' => false]);
-
-        return empty($list['error']) && isset($list['counts']['all']) ? (int) $list['counts']['all'] : null;
+        return null;
     }
 
     /**

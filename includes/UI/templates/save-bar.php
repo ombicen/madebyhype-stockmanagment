@@ -15,24 +15,26 @@ if (! defined('ABSPATH')) {
 }
 ?>
 <div class="mbh-save-bar" id="mbh-save-bar" role="region" aria-label="<?php esc_attr_e('Unsaved changes and saving', 'madebyhype-stockmanagment'); ?>" hidden>
-    <span id="mbh-save-status" class="mbh-save-status" role="status"><?php esc_html_e('No unsaved changes', 'madebyhype-stockmanagment'); ?></span>
+    <span class="mbh-save-summary">
+        <span id="mbh-save-status" class="mbh-save-status" role="status"><?php esc_html_e('No unsaved changes', 'madebyhype-stockmanagment'); ?></span>
 
-    <?php // Why Save is off ?>
-    <span id="mbh-save-invalid" class="mbh-save-reason mbh-save-invalid" hidden>
-        <span class="dashicons dashicons-warning" aria-hidden="true"></span>
-        <span id="mbh-save-invalid-text"></span>
-        <button type="button" class="button-link"><?php esc_html_e('Show', 'madebyhype-stockmanagment'); ?></button>
-    </span>
-    <span id="mbh-save-conflicts" class="mbh-save-reason mbh-save-conflicts" hidden>
-        <span class="dashicons dashicons-warning" aria-hidden="true"></span>
-        <span id="mbh-save-conflicts-text"></span>
+        <?php // Why Save is off ?>
+        <span id="mbh-save-invalid" class="mbh-save-reason mbh-save-invalid" hidden>
+            <?php echo self::icon('warning'); ?>
+            <span id="mbh-save-invalid-text"></span>
+            <button type="button" class="mbh-text-button"><?php esc_html_e('Show', 'madebyhype-stockmanagment'); ?></button>
+        </span>
+        <span id="mbh-save-conflicts" class="mbh-save-reason mbh-save-conflicts" hidden>
+            <?php echo self::icon('warning'); ?>
+            <span id="mbh-save-conflicts-text"></span>
+        </span>
     </span>
 
     <span id="mbh-last-save" class="mbh-last-save" hidden>
         <span id="mbh-last-save-text"></span>
         <span id="mbh-last-save-state"></span>
         <?php if (!empty($caps['undo'])): ?>
-            <button type="button" class="button-link" id="mbh-undo-last" aria-describedby="mbh-undo-hint" hidden><?php esc_html_e('Undo…', 'madebyhype-stockmanagment'); ?></button>
+            <button type="button" class="mbh-text-button" id="mbh-undo-last" aria-describedby="mbh-undo-hint" hidden><?php esc_html_e('Undo…', 'madebyhype-stockmanagment'); ?></button>
             <span id="mbh-undo-hint" class="mbh-undo-hint" hidden><?php esc_html_e('Save or discard your changes first.', 'madebyhype-stockmanagment'); ?></span>
         <?php endif; ?>
     </span>
