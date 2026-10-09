@@ -1413,8 +1413,8 @@ class UIManager
             $heading(null, __('Status', 'madebyhype-stockmanagment'), 'mbh-col-status'),
             $heading('price', __('Regular price', 'madebyhype-stockmanagment'), 'mbh-col-regular mbh-num', true, __('Sorts by the price customers pay now (the sale price when there is one).', 'madebyhype-stockmanagment')),
             $heading(null, __('Sale price', 'madebyhype-stockmanagment'), 'mbh-col-sale mbh-num'),
-            // The period is the heading's second line, so the column stays narrow
-            $heading('total_sales', __('Sold', 'madebyhype-stockmanagment'), 'mbh-col-sold mbh-num', true, __('Units in paid orders (processing or completed) placed in this period.', 'madebyhype-stockmanagment'), $this->period_label()),
+            // The period is not repeated here: the "Sold in" control of the toolbar says it
+            $heading('total_sales', __('Sold', 'madebyhype-stockmanagment'), 'mbh-col-sold mbh-num', true, __('Units in paid orders (processing or completed) placed in this period.', 'madebyhype-stockmanagment')),
             $heading('cover', __('Cover', 'madebyhype-stockmanagment'), 'mbh-col-cover mbh-num', false, __('Days the stock lasts at the rate it sold in this period.', 'madebyhype-stockmanagment')),
         ];
     }
