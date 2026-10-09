@@ -822,6 +822,143 @@
     return result;
   }
 
+  /* ------------------------------------------------------------------
+   * Three states: a value of a filter is off, included or left out
+   *
+   * One click moves a value on: off, included, left out, off. For the
+   * categories two sets of boxes are kept, both holding a category together
+   * with everything below it: the ticked ones (included) and the crossed
+   * ones (left out). A cross wins over a tick, so "Rings but not Wedding
+   * rings" is Rings ticked as a whole and Wedding rings crossed inside it.
+   * ---------------------------------------------------------------- */
+
+  /** The state a click moves a value to */
+  function nextState(state) {
+    return state === "off" ? "in" : state === "in" ? "out" : "off";
+  }
+
+  /**
+   * What every category shows
+   *
+   * @param {object} tree
+   * @param {object} ticks   id => anything but undefined: included
+   * @param {object} crosses id => anything but undefined: left out
+   * @return {object} id => {state: 'in' | 'out' | 'off', mixed: something below it has another state,
+   *                  locked: a category above it is left out, so it cannot be anything else,
+   *                  inside: categories below it that are included, outside: below it that are left out}
+   */
+  function categoryTriStates(tree, ticks, crosses) {
+    var states = {};
+    var index;
+
+    function own(id) {
+      return crosses[id] !== undefined ? "out" : ticks[id] !== undefined ? "in" : "off";
+    }
+
+    // Children before parents: what is below a category is known when it is reached
+    for (index = tree.order.length - 1; index >= 0; index--) {
+      var id = tree.order[index];
+      var state = { state: own(id), mixed: false, locked: false, inside: 0, outside: 0 };
+
+      tree.children[id].forEach(function (child) {
+        var below = states[child];
+
+        state.inside += below.inside + (below.state === "in" ? 1 : 0);
+        state.outside += below.outside + (below.state === "out" ? 1 : 0);
+        state.mixed = state.mixed || below.mixed || below.state !== state.state;
+      });
+
+      states[id] = state;
+    }
+
+    // Parents before children: a cross above locks everything under it
+    tree.order.forEach(function (id) {
+      var parent = tree.parent[id];
+
+      states[id].locked = !!parent && (states[parent].locked || states[parent].state === "out");
+    });
+
+    return states;
+  }
+
+  /**
+   * One click on a category
+   *
+   * Setting a category sets everything below it. Inside an included
+   * category a click moves between included and left out: taking the
+   * cross off puts it back with the category above. Inside a category
+   * that is left out nothing moves.
+   *
+   * @param {object} tree
+   * @param {object} ticks
+   * @param {object} crosses
+   * @param {number|string} id
+   * @return {object} {ticks, crosses: the new sets (id => true), state: what the category shows now}
+   */
+  function categoryCycle(tree, ticks, crosses, id) {
+    var newTicks = {};
+    var newCrosses = {};
+    var branch = [Number(id)].concat(categoryBelow(tree, id));
+    var above = categoryAbove(tree, id);
+
+    Object.keys(ticks).forEach(function (key) {
+      if (ticks[key] !== undefined) {
+        newTicks[key] = true;
+      }
+    });
+    Object.keys(crosses).forEach(function (key) {
+      if (crosses[key] !== undefined) {
+        newCrosses[key] = true;
+      }
+    });
+
+    var current = newCrosses[id] ? "out" : newTicks[id] ? "in" : "off";
+    var locked = above.some(function (up) {
+      return newCrosses[up];
+    });
+    var held = above.some(function (up) {
+      return newTicks[up];
+    });
+
+    if (locked) {
+      return { ticks: newTicks, crosses: newCrosses, state: current };
+    }
+
+    if (current === "off") {
+      // Included, with everything below it, whatever that was before
+      branch.forEach(function (one) {
+        newTicks[one] = true;
+        delete newCrosses[one];
+      });
+
+      return { ticks: newTicks, crosses: newCrosses, state: "in" };
+    }
+
+    if (current === "in") {
+      branch.forEach(function (one) {
+        newCrosses[one] = true;
+
+        // Its own tick goes; a tick it has from the category above stays for when the cross comes off
+        if (!held) {
+          delete newTicks[one];
+        }
+      });
+
+      return { ticks: newTicks, crosses: newCrosses, state: "out" };
+    }
+
+    branch.forEach(function (one) {
+      delete newCrosses[one];
+
+      // Inside an included category everything is included again
+      if (held) {
+        newTicks[one] = true;
+      }
+    });
+
+    return { ticks: newTicks, crosses: newCrosses, state: held ? "in" : "off" };
+  }
+
   return {
     FIELDS: FIELDS,
     PRICE_FIELDS: PRICE_FIELDS,
@@ -853,6 +990,9 @@
     categoryIds: categoryIds,
     categoryToggle: categoryToggle,
     categoryStates: categoryStates,
+    categoryTriStates: categoryTriStates,
+    categoryCycle: categoryCycle,
+    nextState: nextState,
     categoryLabels: categoryLabels,
     categorySearch: categorySearch,
   };

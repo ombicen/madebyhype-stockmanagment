@@ -98,6 +98,9 @@ $badge = function ($key, $title = '') use ($strings) {
                             <a class="mbh-link-edit" href="<?php echo esc_url(str_replace('%d', (string) ($row['parent_id'] ? $row['parent_id'] : $row['id']), $edit_url)); ?>" target="_blank" rel="noopener" tabindex="-1" aria-label="<?php echo esc_attr($this->t('editProductOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('editProduct')); ?></a>
                         <?php endif; ?>
                         <a class="mbh-link-history" href="<?php echo esc_url(str_replace('%d', (string) $row['id'], $history_url)); ?>" tabindex="-1" aria-label="<?php echo esc_attr($this->t('historyOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('history')); ?></a>
+                        <?php if (!$row['parent_id']): ?>
+                            <button type="button" class="mbh-link-exclude" data-exclude="<?php echo esc_attr($row['id']); ?>" tabindex="-1" aria-label="<?php echo esc_attr($this->t('rowExcludeOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('rowExclude')); ?></button>
+                        <?php endif; ?>
                     </span>
                 </div>
             </div>

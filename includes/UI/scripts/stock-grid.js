@@ -356,7 +356,7 @@
   }
 
   /**
-   * Edit product | History. Out of the tab order as built (as the server
+   * Edit product | History | Leave out. Out of the tab order as built (as the server
    * prints them); settleRowLinks() puts the links of the row that holds the
    * focus back into it.
    */
@@ -386,6 +386,20 @@
         text: t("history"),
       })
     );
+
+    // A product can be left out of the list from its own row; the filter drawer names it under Products
+    if (!row.parent_id) {
+      actions.push(
+        el("button", {
+          type: "button",
+          class: "mbh-link-exclude",
+          "data-exclude": row.id,
+          tabindex: "-1",
+          "aria-label": t("rowExcludeOf", row.full_name),
+          text: t("rowExclude"),
+        })
+      );
+    }
 
     return el("span", { class: "mbh-row-links" }, actions);
   }
@@ -1994,6 +2008,29 @@
     .on("click", ".mbh-start", function () {
       openStartForm(this);
     })
+    .on("click", ".mbh-link-exclude", function () {
+      var id = Number(this.getAttribute("data-exclude"));
+      var args = (MBH.list.state && MBH.list.state.args) || {};
+      var numbers = function (list) {
+        return $.map(list || [], Number);
+      };
+      var left = numbers(args.product_exclude);
+
+      if (left.indexOf(id) === -1) {
+        left.push(id);
+      }
+
+      // Left out wins over included, so the product does not stay named as both
+      MBH.list.go(
+        MBH.list.url({
+          product_exclude: left,
+          product_include: numbers(args.product_include).filter(function (one) {
+            return one !== id;
+          }),
+        }),
+        { focus: "#mbh-search" }
+      );
+    })
     .on("click", ".mbh-start-cancel", function () {
       cancelTracking(this);
     })
@@ -2166,13 +2203,13 @@
     }
 
     if (linkedRow) {
-      $(linkedRow).find(".mbh-row-links a").attr("tabindex", "-1");
+      $(linkedRow).find(".mbh-row-links a, .mbh-row-links button").attr("tabindex", "-1");
     }
 
     linkedRow = tr;
 
     if (tr) {
-      $(tr).find(".mbh-row-links a").attr("tabindex", "0");
+      $(tr).find(".mbh-row-links a, .mbh-row-links button").attr("tabindex", "0");
     }
   }
 
@@ -2275,7 +2312,7 @@
           "ul",
           { class: "mbh-chip-list", "aria-label": t("chipsLabel") },
           list.chips.map(function (chip) {
-            return el("li", { class: "mbh-chip" }, [
+            return el("li", { class: "mbh-chip" + (chip.exclude ? " mbh-chip--not" : "") }, [
               el("span", { class: "mbh-chip-label", text: chip.label }),
               el("a", { href: chip.url, class: "mbh-chip-remove", "data-nav": "chip", "aria-label": chip.removeLabel }, MBH.icon("close")),
             ]);

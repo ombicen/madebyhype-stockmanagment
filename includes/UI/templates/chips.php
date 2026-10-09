@@ -18,7 +18,7 @@ if (! defined('ABSPATH')) {
 <?php if ($list['chips']): ?>
     <ul class="mbh-chip-list" aria-label="<?php echo esc_attr($this->t('chipsLabel')); ?>">
         <?php foreach ($list['chips'] as $chip): ?>
-            <li class="mbh-chip">
+            <li class="mbh-chip<?php echo $chip['exclude'] ? ' mbh-chip--not' : ''; ?>">
                 <span class="mbh-chip-label"><?php echo esc_html($chip['label']); ?></span>
                 <a href="<?php echo esc_url($chip['url']); ?>" class="mbh-chip-remove" data-nav="chip" aria-label="<?php echo esc_attr($chip['removeLabel']); ?>"><?php echo self::icon('close'); ?></a>
             </li>

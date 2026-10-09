@@ -60,7 +60,9 @@
   var sections = {}; // key => {node, summary, inner, render()}
   // categoryOpen: the branches the user has open (null until the tree is first drawn);
   // categoryFound: the branches closed (false) or opened in full (true) by hand during a search
-  var ui = { open: {}, categoryQuery: "", categoryAll: false, categoryOpen: null, categoryFound: {}, tagQuery: "", attribute: "" };
+  var ui = { open: {}, categoryQuery: "", categoryAll: false, categoryOpen: null, categoryFound: {}, tagQuery: "", attribute: "", productQuery: "" };
+  // The products a search for one found: null before a search, the text they answer, how far the request is
+  var productSearch = { found: null, state: "none", seq: 0, timer: null };
   var countSeq = 0;
   var countTimer = null;
   var tree = null; // model.categoryTree() of the categories, once they are read
@@ -78,32 +80,54 @@
     return MBH.list.state.tab;
   }
 
-  /** The filters in force, as a draft the controls can change */
+  /**
+   * The filters in force, as a draft the controls can change
+   *
+   * A value is included, left out or neither. What is included is kept as
+   * it always was (stock, categories, tags, an attribute's terms); what is
+   * left out sits beside it (stockNot, categoriesNot, tagsNot, an
+   * attribute's not). Products are named one by one: products, productsNot.
+   */
   function draftFrom(filters) {
+    var not = filters.not || {};
     var copy = {
       stock: (filters.stock || []).slice(),
+      stockNot: (not.stock || []).slice(),
       drafts: !!filters.drafts,
       categories: {},
+      categoriesNot: {},
       tags: {},
+      tagsNot: {},
       attributes: {},
+      products: {},
+      productsNot: {},
       minPrice: filters.minPrice || "",
       maxPrice: filters.maxPrice || "",
       minSales: filters.minSales || "",
       maxSales: filters.maxSales || "",
     };
 
-    (filters.categories || []).forEach(function (term) {
-      copy.categories[term.id] = term.name;
-    });
-    (filters.tags || []).forEach(function (term) {
-      copy.tags[term.id] = term.name;
-    });
-    (filters.attributes || []).forEach(function (attribute) {
-      copy.attributes[attribute.taxonomy] = { label: attribute.label, terms: {} };
-      attribute.terms.forEach(function (term) {
-        copy.attributes[attribute.taxonomy].terms[term.id] = term.name;
+    function fill(map, terms) {
+      (terms || []).forEach(function (term) {
+        map[term.id] = term.name;
       });
-    });
+    }
+
+    function fillAttributes(list, key) {
+      (list || []).forEach(function (attribute) {
+        copy.attributes[attribute.taxonomy] = copy.attributes[attribute.taxonomy] || { label: attribute.label, terms: {}, not: {} };
+        fill(copy.attributes[attribute.taxonomy][key], attribute.terms);
+      });
+    }
+
+    fill(copy.categories, filters.categories);
+    fill(copy.categoriesNot, not.categories);
+    fill(copy.tags, filters.tags);
+    fill(copy.tagsNot, not.tags);
+    fill(copy.products, filters.products);
+    fill(copy.productsNot, not.products);
+    fillAttributes(filters.attributes, "terms");
+    fillAttributes(not.attributes, "not");
 
     return copy;
   }
@@ -130,21 +154,32 @@
   /** The draft as the arguments of the list's address */
   function draftChanges() {
     var attributes = {};
+    var attributesNot = {};
 
     Object.keys(draft.attributes).forEach(function (taxonomy) {
       var chosen = ids(draft.attributes[taxonomy].terms);
+      var left = ids(draft.attributes[taxonomy].not);
 
       if (chosen.length) {
         attributes[taxonomy] = chosen;
+      }
+      if (left.length) {
+        attributesNot[taxonomy] = left;
       }
     });
 
     return {
       stock_filter: tab() === "all" ? draft.stock.slice().sort() : null,
+      stock_exclude: tab() === "all" ? draft.stockNot.slice().sort() : null,
       include_drafts: tab() === "all" && draft.drafts ? 1 : null,
       category_filter: categoryIds(),
+      category_exclude: categoryNotIds(),
       tag_filter: ids(draft.tags),
+      tag_exclude: ids(draft.tagsNot),
       attribute_filter: attributes,
+      attribute_exclude: attributesNot,
+      product_include: ids(draft.products),
+      product_exclude: ids(draft.productsNot),
       min_price: amount(draft.minPrice, true),
       max_price: amount(draft.maxPrice, true),
       min_sales: amount(draft.minSales, false),
@@ -157,10 +192,14 @@
   }
 
   function activeCount() {
-    var count = draft.stock.length + (draft.drafts ? 1 : 0) + categoryIds().length + ids(draft.tags).length;
+    var count = draft.stock.length + draft.stockNot.length + (draft.drafts ? 1 : 0);
+
+    count += categoryIds().length + categoryNotIds().length;
+    count += ids(draft.tags).length + ids(draft.tagsNot).length;
+    count += ids(draft.products).length + ids(draft.productsNot).length;
 
     Object.keys(draft.attributes).forEach(function (taxonomy) {
-      count += ids(draft.attributes[taxonomy].terms).length;
+      count += ids(draft.attributes[taxonomy].terms).length + ids(draft.attributes[taxonomy].not).length;
     });
 
     count += amount(draft.minPrice, true) || amount(draft.maxPrice, true) ? 1 : 0;
@@ -197,12 +236,55 @@
     return String(name).toLowerCase().indexOf(query) !== -1;
   }
 
-  function pill(label, pressed, attrs, count, countTitle) {
+  /**
+   * A value as a pill. Included it is pressed; left out it is pressed too and says "Not ...".
+   *
+   * @param {string} state "in", "out" or "off"; true and false stand for "in" and "off"
+   */
+  function pill(label, state, attrs, count, countTitle) {
+    state = state === true ? "in" : state || "off";
+
     return el(
       "button",
-      $.extend({ type: "button", class: "mbh-pill", "aria-pressed": pressed ? "true" : "false" }, attrs || {}),
-      [el("span", { text: label }), count === undefined || count === null ? null : el("small", { title: countTitle || false, text: grouped(count) })]
+      $.extend({ type: "button", class: "mbh-pill", "aria-pressed": state === "off" ? "false" : "true", "data-state": state }, attrs || {}),
+      [el("span", { text: state === "out" ? t("notValue", label) : label }), count === undefined || count === null ? null : el("small", { title: countTitle || false, text: grouped(count) })]
     );
+  }
+
+  /* A value in two maps (id => name): included, left out, or in neither */
+
+  function mapState(included, left, id) {
+    return left[id] !== undefined ? "out" : included[id] !== undefined ? "in" : "off";
+  }
+
+  function setMapState(included, left, id, name, state) {
+    delete included[id];
+    delete left[id];
+
+    if (state === "in") {
+      included[id] = name;
+    } else if (state === "out") {
+      left[id] = name;
+    }
+  }
+
+  /** The ids of both maps, in order */
+  function eitherIds(included, left) {
+    return ids($.extend({}, included, left));
+  }
+
+  /** Names for a summary line: the included ones, then the ones left out as "Not ..." */
+  function withNot(included, left) {
+    return included.concat(
+      left.map(function (name) {
+        return t("notValue", name);
+      })
+    );
+  }
+
+  /** Tell a screen reader what a click did: the state is not only in how the control looks */
+  function say(name, state) {
+    MBH.announce(t(state === "in" ? "stateIn" : state === "out" ? "stateOut" : "stateOff", name));
   }
 
   function loadingLine() {
@@ -268,6 +350,10 @@
 
   /* --- stock status and drafts --- */
 
+  function stockState(status) {
+    return draft.stockNot.indexOf(status) !== -1 ? "out" : draft.stock.indexOf(status) !== -1 ? "in" : "off";
+  }
+
   function stockSection() {
     var labels = strings.stockFilters || {};
 
@@ -281,7 +367,7 @@
             "div",
             { class: "mbh-pills", role: "group", "aria-label": t("filterStock") },
             STOCK_ORDER.map(function (status) {
-              return pill(labels[status] || status, draft.stock.indexOf(status) !== -1, { "data-stock": status });
+              return pill(labels[status] || status, stockState(status), { "data-stock": status, "data-name": labels[status] || status });
             })
           )
         );
@@ -294,11 +380,14 @@
         );
       },
       function () {
-        var list = STOCK_ORDER.filter(function (status) {
-          return draft.stock.indexOf(status) !== -1;
-        }).map(function (status) {
-          return labels[status] || status;
-        });
+        var named = function (chosen) {
+          return STOCK_ORDER.filter(function (status) {
+            return chosen.indexOf(status) !== -1;
+          }).map(function (status) {
+            return labels[status] || status;
+          });
+        };
+        var list = withNot(named(draft.stock), named(draft.stockNot));
 
         if (draft.drafts) {
           list.push(t("draftsIncluded"));
@@ -309,14 +398,14 @@
     );
   }
 
-  /* --- categories: a searchable tree of checkboxes ---
+  /* --- categories: a searchable tree of three-state boxes ---
    *
-   * A parent opens to show its direct children. Ticking a category ticks
-   * everything below it; a category with only some of its branch ticked is
-   * shown as mixed. Which boxes are ticked for which categories, and which
-   * categories are sent, is decided in stock-model.js (category*): the
-   * draft holds the ticked boxes, the address gets the top of each ticked
-   * branch.
+   * A parent opens to show its direct children. A click moves a category
+   * on: included, left out, off; everything below it goes with it, and a
+   * category whose branch holds another state is shown as partly. Which
+   * boxes are ticked or crossed for which categories, and which categories
+   * are sent, is decided in stock-model.js (category*): the draft holds the
+   * ticked and the crossed boxes, the address gets the top of each branch.
    */
 
   /**
@@ -330,9 +419,9 @@
     (options.categories || []).forEach(function (category) {
       known[category.id] = true;
     });
-    ids(draft.categories).forEach(function (id) {
+    eitherIds(draft.categories, draft.categoriesNot).forEach(function (id) {
       if (!known[id]) {
-        extra.push({ id: id, name: draft.categories[id], parent: 0 });
+        extra.push({ id: id, name: categoryName(id), parent: 0 });
       }
     });
 
@@ -343,20 +432,32 @@
     });
   }
 
-  /** A set of ticked boxes as the draft keeps it: id => name */
+  function categoryName(id) {
+    if (tree && tree.name[id] !== undefined) {
+      return tree.name[id];
+    }
+
+    return draft.categories[id] !== undefined ? draft.categories[id] : draft.categoriesNot[id] || "";
+  }
+
+  /** A set of boxes as the draft keeps it: id => name */
   function namedTicks(ticks) {
     var named = {};
 
     Object.keys(ticks).forEach(function (id) {
-      named[id] = tree.name[id] !== undefined ? tree.name[id] : draft.categories[id] || "";
+      named[id] = categoryName(id);
     });
 
     return named;
   }
 
-  /** The draft's categories as ticked boxes: each one and everything below it */
+  /** The draft's categories as boxes: each one and everything below it, ticked or crossed */
   function linkCategories() {
-    draft.categories = namedTicks(model.categoryTicks(tree, ids(draft.categories)));
+    var ticks = namedTicks(model.categoryTicks(tree, ids(draft.categories)));
+    var crosses = namedTicks(model.categoryTicks(tree, ids(draft.categoriesNot)));
+
+    draft.categories = ticks;
+    draft.categoriesNot = crosses;
   }
 
   /** Open or close a branch: of the tree, or of the search's layout while a search is on */
@@ -374,13 +475,18 @@
     return tree ? model.categoryIds(tree, draft.categories) : ids(draft.categories);
   }
 
-  /** Their names, for the section's summary line; "Men's › Rings" where "Rings" alone could be one of several categories */
-  function categoryNames() {
+  /** And the ones it gets to leave out: the top of each crossed branch */
+  function categoryNotIds() {
+    return tree ? model.categoryIds(tree, draft.categoriesNot) : ids(draft.categoriesNot);
+  }
+
+  /** Names for the section's summary line; "Men's › Rings" where "Rings" alone could be one of several categories */
+  function categoryNames(chosen, fallback) {
     if (!tree) {
-      return valuesOf(draft.categories);
+      return valuesOf(fallback);
     }
 
-    return model.categoryLabels(tree, categoryIds()).map(function (label) {
+    return model.categoryLabels(tree, chosen).map(function (label) {
       return (label.under || []).concat(label.name).reduce(function (path, name) {
         return t("categoryUnder", path, name);
       });
@@ -460,11 +566,13 @@
     // First time: open the way to every selected category. A branch that is ticked as a whole stays closed.
     if (ui.categoryOpen === null) {
       ui.categoryOpen = {};
-      categoryIds().forEach(function (id) {
-        model.categoryAbove(tree, id).forEach(function (up) {
-          ui.categoryOpen[up] = true;
+      categoryIds()
+        .concat(categoryNotIds())
+        .forEach(function (id) {
+          model.categoryAbove(tree, id).forEach(function (up) {
+            ui.categoryOpen[up] = true;
+          });
         });
-      });
     }
 
     var top = 0;
@@ -477,7 +585,7 @@
         shown = visible[parent] && ui.categoryOpen[parent] === true;
       } else {
         // Beyond the first few, a top-level category still shows while it holds a selection
-        shown = ++top <= CATEGORY_PREVIEW || ui.categoryAll || states[id].state !== "off";
+        shown = ++top <= CATEGORY_PREVIEW || ui.categoryAll || states[id].state !== "off" || states[id].mixed;
       }
 
       visible[id] = shown;
@@ -490,6 +598,14 @@
     return result;
   }
 
+  /** A number of categories below a closed one that are included, or left out */
+  function belowBadge(count, key, extra) {
+    return el("span", { class: "mbh-opt-inside" + (extra || ""), title: tn(key, count) }, [
+      el("span", { "aria-hidden": "true", text: grouped(count) }),
+      el("span", { class: "screen-reader-text", text: tn(key, count) }),
+    ]);
+  }
+
   function categoryRow(row, states, counts, query) {
     var id = row.id;
     var name = tree.name[id];
@@ -497,25 +613,27 @@
     var hasChildren = tree.children[id].length > 0;
     var count = counts && (counts.live || counts.of[id] !== undefined) ? counts.of[id] || 0 : null;
     var none = !!counts && counts.live && count === 0;
-    var box = el("input", {
-      type: "checkbox",
-      "data-category": id,
-      checked: state.state === "on",
-      // A category that would list nothing cannot be added, but one that is ticked can be taken off
-      disabled: none && state.state === "off",
-    });
-
-    // Partly ticked: the checkbox's own third state, which assistive technology reads as "mixed"
-    box.indeterminate = state.state === "mixed";
+    // A category that would list nothing cannot be added or left out, but one that is set can be taken off
+    var unavailable = none && state.state === "off" && !state.mixed;
+    // The state in words: the box says it with a tick, a cross or a dash, which a screen reader does not see
+    var said = (state.state === "in" ? t("srIncluded") : state.state === "out" ? t("srExcluded") : "") + (state.mixed ? t("srPartly") : "");
 
     return el(
       "div",
       {
-        class: "mbh-opt mbh-opt--tree mbh-opt--t" + Math.min(tree.depth[id], 4) + (row.context ? " is-context" : "") + (none ? " is-none" : "") + (none && state.state === "off" ? " is-unavailable" : ""),
+        class:
+          "mbh-opt mbh-opt--tree mbh-opt--t" +
+          Math.min(tree.depth[id], 4) +
+          " is-" +
+          state.state +
+          (state.locked ? " is-locked" : "") +
+          (row.context ? " is-context" : "") +
+          (none ? " is-none" : "") +
+          (unavailable ? " is-unavailable" : ""),
         "data-category-row": id,
       },
       [
-        // The arrow sits left of the checkbox and opens the direct children
+        // The arrow sits left of the box and opens the direct children
         hasChildren
           ? el(
               "button",
@@ -529,29 +647,38 @@
               [MBH.icon("chevron")]
             )
           : el("span", { class: "mbh-opt-toggle mbh-opt-toggle--none", "aria-hidden": "true" }),
-        el("label", { class: "mbh-opt-label" }, [
-          box,
-          el("span", { class: "mbh-opt-name" }, nameWithHit(name, query)),
-          // What is ticked out of sight, below a closed category
-          hasChildren && !row.open && state.inside
-            ? el("span", { class: "mbh-opt-inside", title: tn("selectedInside", state.inside) }, [
-                el("span", { "aria-hidden": "true", text: grouped(state.inside) }),
-                el("span", { class: "screen-reader-text", text: tn("selectedInside", state.inside) }),
-              ])
-            : null,
-          count === null
-            ? null
-            : el("span", { class: "mbh-opt-count", title: !counts.live ? t("productCountTitle") : t(facet.view === "sku" ? "categoryCountSkus" : "categoryCountProducts") }, [
-                grouped(count),
-                none ? el("span", { class: "screen-reader-text", text: t("categoryNothing") }) : null,
-              ]),
-        ]),
+        el(
+          "button",
+          {
+            type: "button",
+            class: "mbh-opt-label",
+            "data-category": id,
+            "data-state": state.state,
+            // Left out with the category above it: only that one can change it
+            disabled: unavailable || state.locked,
+            title: state.locked ? t("categoryLocked") : false,
+          },
+          [
+            el("span", { class: "mbh-tri" + (state.mixed ? " is-mixed" : ""), "aria-hidden": "true" }),
+            el("span", { class: "mbh-opt-name" }, nameWithHit(name, query)),
+            said ? el("span", { class: "screen-reader-text", text: said }) : null,
+            // What is set out of sight, below a closed category
+            hasChildren && !row.open && state.inside && state.state !== "out" ? belowBadge(state.inside, "selectedInside") : null,
+            hasChildren && !row.open && state.outside && state.state !== "out" ? belowBadge(state.outside, "excludedInside", " mbh-opt-inside--not") : null,
+            count === null
+              ? null
+              : el("span", { class: "mbh-opt-count", title: !counts.live ? t("productCountTitle") : t(facet.view === "sku" ? "categoryCountSkus" : "categoryCountProducts") }, [
+                  grouped(count),
+                  none ? el("span", { class: "screen-reader-text", text: t("categoryNothing") }) : null,
+                ]),
+          ]
+        ),
       ]
     );
   }
 
   function categoryList() {
-    var states = model.categoryStates(tree, draft.categories);
+    var states = model.categoryTriStates(tree, draft.categories, draft.categoriesNot);
     var counts = categoryCounts();
     var query = ui.categoryQuery.toLowerCase();
     var view;
@@ -605,7 +732,7 @@
 
     if (!focus && active && list.contains(active)) {
       if (active.hasAttribute("data-category")) {
-        focus = 'input[data-category="' + active.getAttribute("data-category") + '"]';
+        focus = 'button[data-category="' + active.getAttribute("data-category") + '"]';
       } else if (active.hasAttribute("data-category-toggle")) {
         focus = '[data-category-toggle="' + active.getAttribute("data-category-toggle") + '"]';
       } else if (active.id) {
@@ -661,7 +788,7 @@
         inner.appendChild(el("div", { id: "mbh-category-list" }, categoryList()));
       },
       function () {
-        var list = categoryNames();
+        var list = withNot(categoryNames(categoryIds(), draft.categories), categoryNames(categoryNotIds(), draft.categoriesNot));
 
         return list.length ? { text: names(list), set: true } : { text: t("filterNone") };
       }
@@ -672,7 +799,7 @@
 
   /** The draft without its categories, and without what makes no difference to a count */
   function facetArgs() {
-    return $.extend(draftChanges(), { category_filter: null, sort_by: null, sort_order: null, paged: null, per_page: null });
+    return $.extend(draftChanges(), { category_filter: null, category_exclude: null, sort_by: null, sort_order: null, paged: null, per_page: null });
   }
 
   function facetQuery() {
@@ -759,7 +886,7 @@
 
   function tagResults() {
     var query = ui.tagQuery.toLowerCase();
-    var selected = ids(draft.tags);
+    var selected = eitherIds(draft.tags, draft.tagsNot);
     var parts = [];
     var counts = {};
 
@@ -773,7 +900,9 @@
           "div",
           { class: "mbh-pills", role: "group", "aria-label": t("selectedTags") },
           selected.map(function (id) {
-            return pill(draft.tags[id], true, { "data-tag": id, "data-name": draft.tags[id] }, counts[id], t("productCountTitle"));
+            var name = draft.tags[id] !== undefined ? draft.tags[id] : draft.tagsNot[id];
+
+            return pill(name, mapState(draft.tags, draft.tagsNot, id), { "data-tag": id, "data-name": name }, counts[id], t("productCountTitle"));
           })
         )
       );
@@ -785,7 +914,7 @@
     }
 
     var found = (options.tags || []).filter(function (tag) {
-      return draft.tags[tag.id] === undefined && matches(tag.name, query);
+      return mapState(draft.tags, draft.tagsNot, tag.id) === "off" && matches(tag.name, query);
     });
 
     if (!found.length) {
@@ -825,7 +954,7 @@
         inner.appendChild(el("div", { id: "mbh-tag-results", class: "mbh-fsec-results" }, tagResults()));
       },
       function () {
-        var list = valuesOf(draft.tags);
+        var list = withNot(valuesOf(draft.tags), valuesOf(draft.tagsNot));
 
         return list.length ? { text: names(list), set: true } : { text: t("filterNone") };
       }
@@ -842,7 +971,7 @@
 
   function attributePills() {
     var attribute = attributeOf(ui.attribute);
-    var chosen = draft.attributes[ui.attribute] ? draft.attributes[ui.attribute].terms : {};
+    var entry = draft.attributes[ui.attribute] || { terms: {}, not: {} };
 
     if (!attribute) {
       return [];
@@ -853,14 +982,15 @@
         "div",
         { class: "mbh-pills", role: "group", "aria-label": t("valuesOf", attribute.label) },
         attribute.terms.map(function (term) {
-          return pill(term.name, chosen[term.id] !== undefined, { "data-term": term.id, "data-name": term.name });
+          return pill(term.name, mapState(entry.terms, entry.not, term.id), { "data-term": term.id, "data-name": term.name });
         })
       ),
     ];
   }
 
   function attributeOptionText(attribute) {
-    var chosen = draft.attributes[attribute.taxonomy] ? ids(draft.attributes[attribute.taxonomy].terms).length : 0;
+    var entry = draft.attributes[attribute.taxonomy];
+    var chosen = entry ? eitherIds(entry.terms, entry.not).length : 0;
 
     return chosen ? t("attributeOption", attribute.label, chosen) : attribute.label;
   }
@@ -886,7 +1016,9 @@
         if (!attributeOf(ui.attribute)) {
           // The first attribute that has a value selected, else the first
           var withSelection = list.filter(function (attribute) {
-            return draft.attributes[attribute.taxonomy] && ids(draft.attributes[attribute.taxonomy].terms).length;
+            var entry = draft.attributes[attribute.taxonomy];
+
+            return entry && eitherIds(entry.terms, entry.not).length;
           })[0];
 
           ui.attribute = (withSelection || list[0]).taxonomy;
@@ -905,23 +1037,147 @@
       },
       function () {
         var taxonomies = Object.keys(draft.attributes).filter(function (taxonomy) {
-          return ids(draft.attributes[taxonomy].terms).length;
+          return eitherIds(draft.attributes[taxonomy].terms, draft.attributes[taxonomy].not).length;
         });
+        var valuesIn = function (taxonomy) {
+          return withNot(valuesOf(draft.attributes[taxonomy].terms), valuesOf(draft.attributes[taxonomy].not));
+        };
 
         if (!taxonomies.length) {
           return { text: t("filterNone") };
         }
 
         if (taxonomies.length === 1) {
-          return { text: t("attributeValues", draft.attributes[taxonomies[0]].label, names(valuesOf(draft.attributes[taxonomies[0]].terms))), set: true };
+          return { text: t("attributeValues", draft.attributes[taxonomies[0]].label, names(valuesIn(taxonomies[0]))), set: true };
         }
 
         var all = [];
         taxonomies.forEach(function (taxonomy) {
-          all = all.concat(valuesOf(draft.attributes[taxonomy].terms));
+          all = all.concat(valuesIn(taxonomy));
         });
 
         return { text: names(all), set: true };
+      }
+    );
+  }
+
+  /* --- products named one by one: find as you type; the named ones stay in view as pills ---
+   *
+   * An included product is listed on top of what the other filters match
+   * (and on its own when nothing else is set); one that is left out is never
+   * listed. The products are found by the server, as the list's search finds them.
+   */
+
+  function productResults() {
+    var selected = eitherIds(draft.products, draft.productsNot);
+    var parts = [];
+
+    if (selected.length) {
+      parts.push(
+        el(
+          "div",
+          { class: "mbh-pills", role: "group", "aria-label": t("selectedProducts") },
+          selected.map(function (id) {
+            var name = draft.products[id] !== undefined ? draft.products[id] : draft.productsNot[id];
+
+            return pill(name, mapState(draft.products, draft.productsNot, id), { "data-product": id, "data-name": name });
+          })
+        )
+      );
+    }
+
+    if (!ui.productQuery) {
+      parts.push(el("p", { class: "mbh-fsec-hint", text: t("productHint") }));
+      return parts;
+    }
+
+    if (productSearch.state === "loading") {
+      parts.push(el("p", { class: "mbh-loading", role: "status", text: t("productsLoading") }));
+      return parts;
+    }
+
+    if (productSearch.state === "failed") {
+      parts.push(el("p", { class: "mbh-fsec-hint", role: "alert", text: t("productsFailed") }));
+      return parts;
+    }
+
+    var found = (productSearch.found || []).filter(function (product) {
+      return mapState(draft.products, draft.productsNot, product.id) === "off";
+    });
+
+    if (!found.length) {
+      parts.push(el("p", { class: "mbh-fsec-hint", text: t("noMatches") }));
+      return parts;
+    }
+
+    parts.push(
+      el(
+        "div",
+        { class: "mbh-pills mbh-pills--list", role: "group", "aria-label": t("matchingProducts") },
+        found.map(function (product) {
+          var node = pill(product.name, "off", { "data-product": product.id, "data-name": product.name });
+
+          if (product.sku) {
+            node.appendChild(el("small", { text: product.sku }));
+          }
+
+          return node;
+        })
+      )
+    );
+
+    return parts;
+  }
+
+  function redrawProducts() {
+    $("#mbh-product-results").empty().append(productResults());
+  }
+
+  /** Ask the server for the products the find box names, once the typing pauses */
+  function searchProducts() {
+    var query = ui.productQuery;
+    var seq = ++productSearch.seq;
+
+    window.clearTimeout(productSearch.timer);
+
+    if (!query) {
+      productSearch.state = "none";
+      productSearch.found = null;
+      redrawProducts();
+      return;
+    }
+
+    productSearch.state = "loading";
+    redrawProducts();
+
+    productSearch.timer = window.setTimeout(function () {
+      MBH.request("madebyhype_find_products", "read", { s: query }).then(function (answer) {
+        if (seq !== productSearch.seq) {
+          return; // The text has changed since, or the drawer was closed
+        }
+
+        productSearch.state = answer.ok ? "ready" : "failed";
+        productSearch.found = answer.ok ? answer.data.products || [] : null;
+        redrawProducts();
+      });
+    }, COUNT_DELAY);
+  }
+
+  function productSection() {
+    return section(
+      "products",
+      t("filterProducts"),
+      false,
+      function (inner) {
+        inner.appendChild(
+          el("input", { type: "search", class: "mbh-field", id: "mbh-product-find", placeholder: t("findProduct"), "aria-label": t("findProduct"), autocomplete: "off", value: ui.productQuery })
+        );
+        inner.appendChild(el("div", { id: "mbh-product-results", class: "mbh-fsec-results" }, productResults()));
+      },
+      function () {
+        var list = withNot(valuesOf(draft.products), valuesOf(draft.productsNot));
+
+        return list.length ? { text: names(list), set: true } : { text: t("filterNone") };
       }
     );
   }
@@ -982,6 +1238,9 @@
     sections = {};
     $(body).empty();
 
+    // Leaving out is a second click: said once, where it is seen before the first one
+    body.appendChild(el("p", { class: "mbh-drawer-hint", text: t("triHint") }));
+
     if (tab() === "all") {
       body.appendChild(stockSection());
     }
@@ -989,6 +1248,7 @@
     body.appendChild(categorySection());
     body.appendChild(tagSection());
     body.appendChild(attributeSection());
+    body.appendChild(productSection());
     body.appendChild(rangeSection("price", t("filterPrice"), true, "minPrice", "maxPrice", t("minPrice"), t("maxPrice")));
     body.appendChild(rangeSection("sold", t("filterSold"), false, "minSales", "maxSales", t("minSales"), t("maxSales")));
 
@@ -1118,6 +1378,11 @@
       ui.categoryQuery = "";
       ui.categoryFound = {};
       ui.tagQuery = "";
+      ui.productQuery = "";
+      productSearch.found = null;
+      productSearch.state = "none";
+      productSearch.seq++;
+      window.clearTimeout(productSearch.timer);
 
       // The numbers beside the categories are read again at every opening; the ones on show stay
       // until then if they are for the same search and filters
@@ -1138,6 +1403,8 @@
       window.clearTimeout(facet.timer);
       facet.seq++;
       facet.wanted = null;
+      window.clearTimeout(productSearch.timer);
+      productSearch.seq++;
     }
 
     panel.hidden = !open;
@@ -1221,15 +1488,28 @@
   $(body)
     .on("click", ".mbh-pill[data-stock]", function () {
       var status = this.getAttribute("data-stock");
-      var index = draft.stock.indexOf(status);
+      var name = this.getAttribute("data-name");
+      var next = model.nextState(stockState(status));
+      var drop = function (list) {
+        return list.filter(function (one) {
+          return one !== status;
+        });
+      };
 
-      if (index === -1) {
+      draft.stock = drop(draft.stock);
+      draft.stockNot = drop(draft.stockNot);
+
+      if (next === "in") {
         draft.stock.push(status);
-      } else {
-        draft.stock.splice(index, 1);
+      } else if (next === "out") {
+        draft.stockNot.push(status);
       }
 
-      this.setAttribute("aria-pressed", index === -1 ? "true" : "false");
+      var fresh = pill(name, next, { "data-stock": status, "data-name": name });
+
+      $(this).replaceWith(fresh);
+      fresh.focus();
+      say(name, next);
       changed("stock");
     })
     .on("change", "#mbh-filter-drafts", function () {
@@ -1242,12 +1522,15 @@
       ui.categoryFound = {};
       redrawCategories();
     })
-    .on("change", "input[data-category]", function () {
+    .on("click", "button[data-category]", function () {
       var id = this.getAttribute("data-category");
+      // Everything below goes with it: included, then left out, then off
+      var result = model.categoryCycle(tree, draft.categories, draft.categoriesNot, id);
 
-      // Everything below goes with it; the categories above lose their tick when one below is taken off
-      draft.categories = namedTicks(model.categoryToggle(tree, draft.categories, id, this.checked));
-      redrawCategories('input[data-category="' + id + '"]');
+      draft.categories = namedTicks(result.ticks);
+      draft.categoriesNot = namedTicks(result.crosses);
+      redrawCategories('button[data-category="' + id + '"]');
+      say(tree.name[id], result.state);
       changed("category");
     })
     .on("click", "[data-category-toggle]", function () {
@@ -1267,12 +1550,12 @@
       var isOpen = !!arrow && arrow.getAttribute("aria-expanded") === "true";
       var onArrow = event.target === arrow;
       var same = function (other) {
-        return (onArrow ? "[data-category-toggle" : "input[data-category") + '="' + other + '"]';
+        return (onArrow ? "button[data-category-toggle" : "button[data-category") + '="' + other + '"]';
       };
       var step = function (other) {
         // The same control of another row, else whichever of its two controls takes the focus
         var row = body.querySelector('[data-category-row="' + other + '"]');
-        var target = row && (row.querySelector(same(other) + ":not(:disabled)") || row.querySelector("input:not(:disabled), button"));
+        var target = row && (row.querySelector(same(other) + ":not(:disabled)") || row.querySelector("button:not(:disabled)"));
 
         if (target) {
           target.focus();
@@ -1328,15 +1611,14 @@
     })
     .on("click", ".mbh-pill[data-tag]", function () {
       var id = this.getAttribute("data-tag");
+      var name = this.getAttribute("data-name");
+      var next = model.nextState(mapState(draft.tags, draft.tagsNot, id));
 
-      if (draft.tags[id] === undefined) {
-        draft.tags[id] = this.getAttribute("data-name");
-      } else {
-        delete draft.tags[id];
-      }
+      setMapState(draft.tags, draft.tagsNot, id, name, next);
 
       // The pill moves between "selected" and "matching": draw both again and stay on it
       $("#mbh-tag-results").empty().append(tagResults());
+      say(name, next);
       changed("tags");
 
       if (body.querySelector('.mbh-pill[data-tag="' + id + '"]')) {
@@ -1345,23 +1627,43 @@
         refocus("#mbh-tag-find");
       }
     })
+    .on("input", "#mbh-product-find", function () {
+      ui.productQuery = $.trim(this.value);
+      searchProducts();
+    })
+    .on("click", ".mbh-pill[data-product]", function () {
+      var id = this.getAttribute("data-product");
+      var name = this.getAttribute("data-name");
+      var next = model.nextState(mapState(draft.products, draft.productsNot, id));
+
+      setMapState(draft.products, draft.productsNot, id, name, next);
+      redrawProducts();
+      say(name, next);
+      changed("products");
+
+      if (body.querySelector('.mbh-pill[data-product="' + id + '"]')) {
+        refocus('.mbh-pill[data-product="' + id + '"]');
+      } else {
+        refocus("#mbh-product-find");
+      }
+    })
     .on("change", "#mbh-attribute", function () {
       ui.attribute = this.value;
       $("#mbh-attribute-values").empty().append(attributePills());
     })
     .on("click", ".mbh-pill[data-term]", function () {
       var id = this.getAttribute("data-term");
+      var name = this.getAttribute("data-name");
       var attribute = attributeOf(ui.attribute);
-      var entry = (draft.attributes[ui.attribute] = draft.attributes[ui.attribute] || { label: attribute.label, terms: {} });
-      var pressed = entry.terms[id] === undefined;
+      var entry = (draft.attributes[ui.attribute] = draft.attributes[ui.attribute] || { label: attribute.label, terms: {}, not: {} });
+      var next = model.nextState(mapState(entry.terms, entry.not, id));
 
-      if (pressed) {
-        entry.terms[id] = this.getAttribute("data-name");
-      } else {
-        delete entry.terms[id];
-      }
+      setMapState(entry.terms, entry.not, id, name, next);
 
-      this.setAttribute("aria-pressed", pressed ? "true" : "false");
+      var fresh = pill(name, next, { "data-term": id, "data-name": name });
+
+      $(this).replaceWith(fresh);
+      fresh.focus();
 
       // The attribute's entry in the selector says how many of its values are selected
       var option = body.querySelector('#mbh-attribute option[value="' + ui.attribute + '"]');
@@ -1369,6 +1671,7 @@
         option.textContent = attributeOptionText(attribute);
       }
 
+      say(name, next);
       changed("attributes");
     })
     .on("input", "input[data-range]", function () {
@@ -1399,6 +1702,10 @@
     draft = draftFrom({});
     ui.categoryQuery = "";
     ui.tagQuery = "";
+    ui.productQuery = "";
+    productSearch.found = null;
+    productSearch.state = "none";
+    productSearch.seq++;
     build();
     scheduleCount();
     scheduleFacet();

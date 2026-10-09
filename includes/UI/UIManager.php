@@ -47,6 +47,13 @@ class UIManager
         'price' => 'M3.5 3.5h6.2l6.8 6.8-6.2 6.2-6.8-6.8zM7 7h.1',
     ];
 
+    // The filters that are lists of values: what to list, what to leave out, and products named one by one
+    const LIST_FILTERS = [
+        'category_filter', 'tag_filter', 'attribute_filter', 'stock_filter',
+        'category_exclude', 'tag_exclude', 'attribute_exclude', 'stock_exclude',
+        'product_include', 'product_exclude',
+    ];
+
     /** @var array Parsed request, see AdminPage::parse_request() */
     private $request = [];
 
@@ -572,6 +579,32 @@ class UIManager
             /* translators: 1: field name, 2: value now, 3: value after the undo */
             'undoResult' => __('%1$s %2$s → %3$s', 'madebyhype-stockmanagment'),
 
+            // Filters: a value is included, left out or neither; products named one by one
+            'triHint' => __('Click a value to include it, click again to leave it out, a third time to clear it.', 'madebyhype-stockmanagment'),
+            /* translators: %s: a value that is left out, for example a category or a stock status */
+            'notValue' => __('Not %s', 'madebyhype-stockmanagment'),
+            /* translators: %s: the value that was clicked */
+            'stateIn' => __('%s: included', 'madebyhype-stockmanagment'),
+            /* translators: %s: the value that was clicked */
+            'stateOut' => __('%s: left out', 'madebyhype-stockmanagment'),
+            /* translators: %s: the value that was clicked */
+            'stateOff' => __('%s: cleared', 'madebyhype-stockmanagment'),
+            'srIncluded' => __(', included', 'madebyhype-stockmanagment'),
+            'srExcluded' => __(', left out', 'madebyhype-stockmanagment'),
+            'srPartly' => __(', partly', 'madebyhype-stockmanagment'),
+            'excludedInside' => _n_noop('%d left out inside', '%d left out inside', 'madebyhype-stockmanagment'),
+            'categoryLocked' => __('Left out with the category above it', 'madebyhype-stockmanagment'),
+            'filterProducts' => __('Products', 'madebyhype-stockmanagment'),
+            'findProduct' => __('Find a product by name, SKU or ID', 'madebyhype-stockmanagment'),
+            'productHint' => __('An included product is listed on top of what the other filters match. A product that is left out is never listed.', 'madebyhype-stockmanagment'),
+            'selectedProducts' => __('Named products', 'madebyhype-stockmanagment'),
+            'matchingProducts' => __('Matching products', 'madebyhype-stockmanagment'),
+            'productsLoading' => __('Searching…', 'madebyhype-stockmanagment'),
+            'productsFailed' => __('The products could not be searched. Try again.', 'madebyhype-stockmanagment'),
+            'rowExclude' => __('Leave out', 'madebyhype-stockmanagment'),
+            /* translators: %s: product name */
+            'rowExcludeOf' => __('Leave %s out of the list', 'madebyhype-stockmanagment'),
+
             // Bulk price change
             'bulk' => [
                 'changes' => [
@@ -943,7 +976,7 @@ class UIManager
             $args['per_page'] = $request['per_page'];
         }
 
-        foreach (['category_filter', 'tag_filter', 'attribute_filter', 'stock_filter'] as $key) {
+        foreach (self::LIST_FILTERS as $key) {
             if ($request[$key]) {
                 $args[$key] = $request[$key];
             }
@@ -1069,7 +1102,8 @@ class UIManager
     /**
      * Active search and filters, each with the link that removes it
      *
-     * @return array List of ['label' => string, 'url' => string, 'filter' => bool (false for the search)]
+     * @return array List of ['label' => string, 'url' => string, 'filter' => bool (false for the search),
+     *               'exclude' => bool (set and true on a chip that leaves something out)]
      */
     private function chips()
     {
@@ -1081,7 +1115,14 @@ class UIManager
             $chips[] = ['label' => sprintf(__('Search: "%s"', 'madebyhype-stockmanagment'), $request['search']), 'url' => $this->url(['s' => null]), 'filter' => false];
         }
 
-        $term_chips = function ($key, $taxonomy, $ids, $label, $nested = null) use (&$chips, $request) {
+        /* translators: 1: what is filtered on, for example "Category" or "Size", 2: the value */
+        $is = __('%1$s: %2$s', 'madebyhype-stockmanagment');
+        /* translators: 1: what is filtered on, for example "Category" or "Size", 2: the value that is left out */
+        $is_not = __('%1$s is not: %2$s', 'madebyhype-stockmanagment');
+
+        $term_chips = function ($key, $taxonomy, $ids, $label, $nested = null) use (&$chips, $request, $is, $is_not) {
+            $exclude = substr($key, -8) === '_exclude';
+
             foreach ($ids as $id) {
                 $term = get_term($id, $taxonomy);
                 if (!$term || is_wp_error($term)) {
@@ -1098,50 +1139,91 @@ class UIManager
                 }
 
                 $chips[] = [
-                    /* translators: 1: what is filtered on, for example "Category" or "Size", 2: the value */
-                    'label' => sprintf(__('%1$s: %2$s', 'madebyhype-stockmanagment'), $label, html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+                    'label' => sprintf($exclude ? $is_not : $is, $label, html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
                     'url' => $this->url([$key => $value ? $value : null]),
                     'filter' => true,
+                    'exclude' => $exclude,
                 ];
             }
         };
 
         // Categories: a category stands for the whole branch below it, so one that is listed together
         // with a category above it gets no chip of its own, and removing a chip takes what it covers along
-        foreach ($request['category_filter'] as $id) {
-            $term = get_term($id, 'product_cat');
-            if (!$term || is_wp_error($term) || array_intersect(get_ancestors($id, 'product_cat', 'taxonomy'), $request['category_filter'])) {
-                continue;
+        $category_chips = function ($key) use (&$chips, $request, $is, $is_not) {
+            $exclude = $key === 'category_exclude';
+
+            foreach ($request[$key] as $id) {
+                $term = get_term($id, 'product_cat');
+                if (!$term || is_wp_error($term) || array_intersect(get_ancestors($id, 'product_cat', 'taxonomy'), $request[$key])) {
+                    continue;
+                }
+
+                $below = get_term_children($id, 'product_cat');
+                $rest = array_values(array_diff($request[$key], [$id], is_array($below) ? array_map('intval', $below) : []));
+
+                $chips[] = [
+                    'label' => sprintf($exclude ? $is_not : $is, __('Category', 'madebyhype-stockmanagment'), $this->category_label($term)),
+                    'url' => $this->url([$key => $rest ? $rest : null]),
+                    'filter' => true,
+                    'exclude' => $exclude,
+                ];
             }
+        };
 
-            $below = get_term_children($id, 'product_cat');
-            $rest = array_values(array_diff($request['category_filter'], [$id], is_array($below) ? array_map('intval', $below) : []));
+        // Products named one by one; one that no longer exists gets no chip
+        $product_chips = function ($key) use (&$chips, $request, $is, $is_not) {
+            $exclude = $key === 'product_exclude';
 
-            $chips[] = [
-                /* translators: 1: what is filtered on, for example "Category" or "Size", 2: the value */
-                'label' => sprintf(__('%1$s: %2$s', 'madebyhype-stockmanagment'), __('Category', 'madebyhype-stockmanagment'), $this->category_label($term)),
-                'url' => $this->url(['category_filter' => $rest ? $rest : null]),
-                'filter' => true,
-            ];
-        }
+            foreach ($request[$key] as $id) {
+                $post = get_post($id);
+                if (!$post || $post->post_type !== 'product') {
+                    continue;
+                }
+
+                $rest = array_values(array_diff($request[$key], [$id]));
+
+                $chips[] = [
+                    'label' => sprintf($exclude ? $is_not : $is, __('Product', 'madebyhype-stockmanagment'), html_entity_decode(get_the_title($post), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+                    'url' => $this->url([$key => $rest ? $rest : null]),
+                    'filter' => true,
+                    'exclude' => $exclude,
+                ];
+            }
+        };
+
+        $category_chips('category_filter');
+        $category_chips('category_exclude');
         $term_chips('tag_filter', 'product_tag', $request['tag_filter'], __('Tag', 'madebyhype-stockmanagment'));
+        $term_chips('tag_exclude', 'product_tag', $request['tag_exclude'], __('Tag', 'madebyhype-stockmanagment'));
 
-        foreach ($request['attribute_filter'] as $taxonomy => $ids) {
-            $term_chips('attribute_filter', $taxonomy, $ids, $this->attribute_label($taxonomy), $taxonomy);
+        foreach (['attribute_filter', 'attribute_exclude'] as $key) {
+            foreach ($request[$key] as $taxonomy => $ids) {
+                $term_chips($key, $taxonomy, $ids, $this->attribute_label($taxonomy), $taxonomy);
+            }
         }
 
         if ($request['tab'] === 'all') {
             $labels = $this->stock_filter_labels();
-            foreach ($request['stock_filter'] as $status) {
-                $rest = array_values(array_diff($request['stock_filter'], [$status]));
-                $chips[] = [
-                    /* translators: %s: stock status */
-                    'label' => sprintf(__('Status: %s', 'madebyhype-stockmanagment'), $labels[$status]),
-                    'url' => $this->url(['stock_filter' => $rest ? $rest : null]),
-                    'filter' => true,
-                ];
+
+            foreach (['stock_filter', 'stock_exclude'] as $key) {
+                foreach ($request[$key] as $status) {
+                    $rest = array_values(array_diff($request[$key], [$status]));
+                    $chips[] = [
+                        'label' => $key === 'stock_exclude'
+                            /* translators: %s: stock status that is left out */
+                            ? sprintf(__('Status is not: %s', 'madebyhype-stockmanagment'), $labels[$status])
+                            /* translators: %s: stock status */
+                            : sprintf(__('Status: %s', 'madebyhype-stockmanagment'), $labels[$status]),
+                        'url' => $this->url([$key => $rest ? $rest : null]),
+                        'filter' => true,
+                        'exclude' => $key === 'stock_exclude',
+                    ];
+                }
             }
         }
+
+        $product_chips('product_include');
+        $product_chips('product_exclude');
 
         $range = function ($min, $max, $between, $from, $up_to, $format) {
             if ($min > 0 && $max > 0) {
@@ -1218,7 +1300,7 @@ class UIManager
     private function clear_filters_url()
     {
         return $this->url(array_fill_keys(
-            ['category_filter', 'tag_filter', 'attribute_filter', 'stock_filter', 'min_price', 'max_price', 'min_sales', 'max_sales', 'include_drafts', 'sold_only', 'attention'],
+            array_merge(self::LIST_FILTERS, ['min_price', 'max_price', 'min_sales', 'max_sales', 'include_drafts', 'sold_only', 'attention']),
             null
         ));
     }
@@ -1503,7 +1585,7 @@ class UIManager
             ],
             'chips' => array_map(function ($chip) {
                 /* translators: %s: the filter, for example "Category: Rings" */
-                return ['label' => $chip['label'], 'url' => $chip['url'], 'removeLabel' => sprintf(__('Remove %s', 'madebyhype-stockmanagment'), $chip['label'])];
+                return ['label' => $chip['label'], 'url' => $chip['url'], 'exclude' => !empty($chip['exclude']), 'removeLabel' => sprintf(__('Remove %s', 'madebyhype-stockmanagment'), $chip['label'])];
             }, $chips),
             'clearAllUrl' => $chips || $sorted_or_switched ? $this->clear_all_url() : null,
             'filterCount' => $filter_count,
@@ -1514,11 +1596,16 @@ class UIManager
                 'drafts' => $tab === 'all' && $request['include_drafts'],
                 'categories' => $this->term_labels($request['category_filter'], 'product_cat'),
                 'tags' => $this->term_labels($request['tag_filter'], 'product_tag'),
-                'attributes' => array_values(array_filter(array_map(function ($taxonomy) use ($request) {
-                    $terms = $this->term_labels($request['attribute_filter'][$taxonomy], $taxonomy);
-
-                    return $terms ? ['taxonomy' => $taxonomy, 'label' => $this->attribute_label($taxonomy), 'terms' => $terms] : null;
-                }, array_keys($request['attribute_filter'])))),
+                'attributes' => $this->attribute_labels($request['attribute_filter']),
+                'products' => $this->product_labels($request['product_include']),
+                // The same, for what is left out
+                'not' => [
+                    'stock' => $tab === 'all' ? $request['stock_exclude'] : [],
+                    'categories' => $this->term_labels($request['category_exclude'], 'product_cat'),
+                    'tags' => $this->term_labels($request['tag_exclude'], 'product_tag'),
+                    'attributes' => $this->attribute_labels($request['attribute_exclude']),
+                    'products' => $this->product_labels($request['product_exclude']),
+                ],
                 'minPrice' => $amount($request['min_price']),
                 'maxPrice' => $amount($request['max_price']),
                 'minSales' => $amount($request['min_sales']),
@@ -1584,6 +1671,43 @@ class UIManager
             $term = get_term($id, $taxonomy);
             if ($term && !is_wp_error($term)) {
                 $labels[] = ['id' => (int) $term->term_id, 'name' => html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8')];
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * @param array $by_taxonomy pa_taxonomy => term ids
+     * @return array List of ['taxonomy', 'label', 'terms' => term_labels()]; a taxonomy with no term left is left out
+     */
+    private function attribute_labels($by_taxonomy)
+    {
+        $labels = [];
+
+        foreach ($by_taxonomy as $taxonomy => $ids) {
+            $terms = $this->term_labels($ids, $taxonomy);
+
+            if ($terms) {
+                $labels[] = ['taxonomy' => $taxonomy, 'label' => $this->attribute_label($taxonomy), 'terms' => $terms];
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * @param int[] $ids Product ids
+     * @return array List of ['id' => int, 'name' => string]; products that no longer exist are left out
+     */
+    private function product_labels($ids)
+    {
+        $labels = [];
+
+        foreach ($ids as $id) {
+            $post = get_post($id);
+            if ($post && $post->post_type === 'product') {
+                $labels[] = ['id' => (int) $post->ID, 'name' => html_entity_decode(get_the_title($post), ENT_QUOTES | ENT_HTML5, 'UTF-8')];
             }
         }
 

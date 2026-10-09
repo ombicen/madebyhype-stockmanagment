@@ -2966,3 +2966,159 @@ body.mbh-dialog-open {
     opacity: 1;
     cursor: default;
 }
+
+/* ---------------------------------------------------------------------
+ * Filters: a value that is included, left out or neither
+ *
+ * Left out is said in more than one way: the words "Not ..." or a struck
+ * name, a cross, and the colour. Never by the colour alone.
+ * ------------------------------------------------------------------- */
+
+.mbh-stock .mbh-drawer-hint {
+    margin: 0 0 4px;
+    padding: 8px 10px;
+    border-radius: var(--mbh-radius);
+    background: var(--mbh-soft);
+    color: var(--mbh-muted);
+    font-size: 12px;
+}
+
+/* A pill that is left out: it says "Not ...", with a cross where the tick would be */
+.mbh-pill[data-state="out"] {
+    border-color: var(--mbh-red);
+    background: var(--mbh-red-bg);
+    color: var(--mbh-red);
+}
+
+.mbh-pill[data-state="out"] small {
+    color: var(--mbh-red);
+}
+
+.mbh-pill[data-state="out"]::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23b32d2e' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M5.5 5.5l9 9M14.5 5.5l-9 9'/%3E%3C/svg%3E");
+}
+
+/* Products found by a search: one to a line, the SKU at the end */
+.mbh-pills--list {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.mbh-pills--list .mbh-pill {
+    justify-content: space-between;
+    min-height: 34px;
+    border-radius: var(--mbh-radius);
+    text-align: left;
+}
+
+.mbh-pills--list .mbh-pill small {
+    flex: none;
+    font-family: ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+}
+
+/* Category tree: the row is one button, its box takes one of three states */
+.mbh-stock button.mbh-opt-label {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--mbh-radius);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+
+.mbh-tri {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid #8c8f94;
+    border-radius: 4px;
+    background: var(--mbh-surface) center / 14px 14px no-repeat;
+}
+
+/* Partly: something below it has another state */
+.mbh-tri.is-mixed {
+    border-color: var(--mbh-black);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23111315' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M5 10h10'/%3E%3C/svg%3E");
+}
+
+.mbh-opt-label[data-state="in"] .mbh-tri {
+    border-color: var(--mbh-black);
+    background-color: var(--mbh-black);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23fff' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 10.5l3.6 3.6 7.4-8.2'/%3E%3C/svg%3E");
+}
+
+/* Included, but not all of it: the tick stays, the box is only outlined */
+.mbh-opt-label[data-state="in"] .mbh-tri.is-mixed {
+    background-color: var(--mbh-surface);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23111315' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 10.5l3.6 3.6 7.4-8.2'/%3E%3C/svg%3E");
+}
+
+.mbh-opt-label[data-state="out"] .mbh-tri {
+    border-color: var(--mbh-red);
+    background-color: var(--mbh-red);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23fff' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M5.5 5.5l9 9M14.5 5.5l-9 9'/%3E%3C/svg%3E");
+}
+
+.mbh-opt.is-out .mbh-opt-name {
+    color: var(--mbh-red);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+}
+
+/* Left out with the category above it: shown, not clickable */
+.mbh-opt.is-locked,
+.mbh-opt.is-locked .mbh-opt-label {
+    cursor: default;
+}
+
+.mbh-opt.is-locked:hover {
+    background: none;
+}
+
+.mbh-opt.is-locked .mbh-tri {
+    opacity: 0.55;
+}
+
+.mbh-opt.is-unavailable .mbh-tri {
+    border-color: var(--mbh-line);
+    background-color: var(--mbh-soft);
+}
+
+/* How many categories are left out of sight, below a closed one */
+.mbh-opt-inside--not {
+    border-color: var(--mbh-red);
+    color: var(--mbh-red);
+    text-decoration: line-through;
+}
+
+/* A chip that leaves something out */
+.mbh-chip--not {
+    border-color: var(--mbh-red);
+    background: var(--mbh-red-bg);
+    color: var(--mbh-red);
+}
+
+.mbh-chip--not .mbh-chip-remove {
+    color: var(--mbh-red);
+}
+
+/* Leave a product out, from its row: a button in the look of the links beside it */
+.mbh-row-links button {
+    display: inline-block;
+    margin: -3px 0;
+    padding: 3px 0;
+    border: 0;
+    background: none;
+    color: var(--mbh-focus);
+    font: inherit;
+    line-height: 18px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.mbh-row-links button:hover {
+    color: #135e96;
+}
