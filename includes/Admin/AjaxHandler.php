@@ -29,6 +29,9 @@ class AjaxHandler
     // Key a page sends with a Heartbeat tick to get fresh nonces back under the same key
     const HEARTBEAT_KEY = 'madebyhype_stock_nonces';
 
+    // Most items one step of an undo handles
+    const MAX_UNDO_STEP = 200;
+
     private $write_service;
     private $change_log;
 
@@ -150,8 +153,10 @@ class AjaxHandler
     }
 
     /**
-     * Undo a save. Request: batch_id, and nothing else: what to change comes
-     * from the change log. Answer: see send_undo().
+     * Undo a save. Request: batch_id; what to change comes from the change
+     * log. Optional, for a save too large for one request: limit (items in
+     * this step, at most MAX_UNDO_STEP), after_item and undo_batch_id, as the
+     * previous step answered them. Answer: see send_undo().
      */
     public function undo()
     {
@@ -174,7 +179,14 @@ class AjaxHandler
 
         $batch_id = isset($_POST['batch_id']) ? absint($_POST['batch_id']) : 0;
 
-        $outcome = $this->write_service->undo($batch_id, $dry_run);
+        // A large save is undone in steps, see WriteService::undo()
+        $step = [
+            'limit' => isset($_POST['limit']) ? min(self::MAX_UNDO_STEP, absint($_POST['limit'])) : 0,
+            'after_item' => isset($_POST['after_item']) ? absint($_POST['after_item']) : 0,
+            'undo_batch_id' => isset($_POST['undo_batch_id']) ? absint($_POST['undo_batch_id']) : 0,
+        ];
+
+        $outcome = $this->write_service->undo($batch_id, $dry_run, $step);
 
         if (is_wp_error($outcome)) {
             wp_send_json_error(['code' => $outcome->get_error_code(), 'message' => $outcome->get_error_message()]);
@@ -191,7 +203,8 @@ class AjaxHandler
      *
      *   view=saves (default)  paged, per_page, user (id), s (name or SKU)
      *                         -> {saves: [...], total, page, per_page, pages}
-     *   view=save             batch_id -> {save: {...}, changes: [...]}
+     *   view=save             batch_id, paged, per_page (default 200)
+     *                         -> {save: {...}, changes: [...] (the requested ones), total, page, per_page, pages}
      *   view=item             item_id (product or variation), paged, per_page
      *                         -> {rows: [...], total, page, per_page, pages}
      *   view=last             -> {save: {...}|null}: the current user's most recent save
@@ -225,9 +238,18 @@ class AjaxHandler
                     return;
                 }
 
+                $found = $this->change_log->get_requested_changes($save['id'], [
+                    'page' => $paging['page'],
+                    'per_page' => $paging['per_page'] ? $paging['per_page'] : 200,
+                ]);
+
                 wp_send_json_success([
                     'save' => $this->present_save($save),
-                    'changes' => array_map([$this, 'present_change'], $this->change_log->get_batch_changes($save['id'])),
+                    'changes' => array_map([$this, 'present_change'], $found['rows']),
+                    'total' => $found['total'],
+                    'page' => $found['page'],
+                    'per_page' => $found['per_page'],
+                    'pages' => $found['pages'],
                 ]);
                 return;
 

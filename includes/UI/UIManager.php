@@ -473,6 +473,17 @@ class UIManager
             'undoFooter' => __('Only the fields this save changed are touched. The undo is recorded in History.', 'madebyhype-stockmanagment'),
             'undoConfirm' => _n_noop('Undo %d change', 'Undo %d changes', 'madebyhype-stockmanagment'),
             'undoing' => __('Undoing…', 'madebyhype-stockmanagment'),
+            /* translators: %s: number of changes checked so far */
+            'undoCheckingProgress' => __('Checking what can be undone… %s changes checked', 'madebyhype-stockmanagment'),
+            /* translators: 1: changes undone so far, 2: changes to undo */
+            'undoingProgress' => __('Undoing… %1$s of %2$s', 'madebyhype-stockmanagment'),
+            'undoDone' => _n_noop('Undid %d change.', 'Undid %d changes.', 'madebyhype-stockmanagment'),
+            /* translators: 1: changes undone, 2: changes in the save, 3: changes skipped */
+            'undoPartly' => __('Undid %1$s of %2$s changes. %3$s skipped.', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of changes not listed */
+            'andMore' => _n_noop('and %d more', 'and %d more', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of changes not shown yet */
+            'showMoreChanges' => _n_noop('Show more (%d left)', 'Show more (%d left)', 'madebyhype-stockmanagment'),
             'undoNothing' => __('Nothing in this save can be undone now.', 'madebyhype-stockmanagment'),
             'undoCheckFailed' => __('Could not check what can be undone. Nothing was changed.', 'madebyhype-stockmanagment'),
             'undoUncertain' => __('The undo could not be completed. Open History to see what was undone before it stopped.', 'madebyhype-stockmanagment'),

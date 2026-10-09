@@ -16,6 +16,10 @@
   var caps = MBH.caps;
   var DASH = "—";
 
+  // Items one request of an undo handles (the server takes at most 200), and changes one list shows
+  var UNDO_STEP = 100;
+  var UNDO_LIST = 100;
+
   /* ------------------------------------------------------------------
    * Shared pieces
    * ---------------------------------------------------------------- */
@@ -119,6 +123,13 @@
     };
   }
 
+  /** A list of at most UNDO_LIST changes, and how many more there are */
+  function cappedList(changes, withResult) {
+    var more = changes.length - UNDO_LIST;
+
+    return [undoList(changes.slice(0, UNDO_LIST), withResult), more > 0 ? el("p", { class: "description", text: tn("andMore", more) }) : null];
+  }
+
   /**
    * @param {number} batchId
    * @param {object} options {onDone(data): called with the answer of an undo that ran}
@@ -148,14 +159,76 @@
       dialog.setButtons(retry && answer.kind === "connection" ? [{ label: t("tryAgain"), action: retry }, closeButton()] : [closeButton()]);
     }
 
-    function runUndo() {
+    /**
+     * The preview or the undo itself, one step of items after another, as one answer
+     *
+     * @param {string}   action
+     * @param {function} onStep Called with what has been answered so far, after every step but the last
+     * @return {Promise} {ok: true, data} with the steps put together: changes, values, summary, save,
+     *                   undo_batch_id. Or {ok: false, answer, data}: the step that failed and what came before it.
+     */
+    function walk(action, onStep) {
+      var result = $.Deferred();
+      var data = { batch_id: batchId, undo_batch_id: null, changes: [], values: {}, summary: { total: 0, undo: 0, skip: 0 }, save: null, steps: 0 };
+
+      function step(after) {
+        if (!dialog.node.isConnected) {
+          return;
+        }
+
+        MBH.request(action, "undo", { batch_id: batchId, limit: UNDO_STEP, after_item: after, undo_batch_id: data.undo_batch_id || 0 }).then(function (answer) {
+          if (!answer.ok) {
+            result.resolve({ ok: false, answer: answer, data: data });
+            return;
+          }
+
+          var part = answer.data;
+
+          data.steps++;
+          data.changes = data.changes.concat(part.changes || []);
+          $.extend(data.values, part.values || {});
+          data.summary.total += part.summary.total;
+          data.summary.undo += part.summary.undo;
+          data.summary.skip += part.summary.skip;
+          data.save = part.save || data.save;
+          data.undo_batch_id = part.undo_batch_id || data.undo_batch_id;
+
+          if (part.done) {
+            result.resolve({ ok: true, data: data });
+            return;
+          }
+
+          onStep(data);
+          step(part.next_after);
+        });
+      }
+
+      step(0);
+
+      return result.promise();
+    }
+
+    function undoMessage(summary) {
+      if (!summary.undo) {
+        return t("undoNothing");
+      }
+
+      return summary.skip ? t("undoPartly", summary.undo, summary.total, summary.skip) : tn("undoDone", summary.undo);
+    }
+
+    function runUndo(expected) {
       dialog.setBusy(true);
       $(dialog.node).find(".mbh-danger").text(t("undoing"));
 
-      MBH.request("madebyhype_stock_undo", "undo", { batch_id: batchId }).then(function (answer) {
+      walk("madebyhype_stock_undo", function (data) {
+        dialog.setBody(el("p", { role: "status", text: t("undoingProgress", data.summary.undo, expected) }));
+      }).then(function (walked) {
+        var data = walked.data;
+        var answer = walked.answer;
+
         dialog.setBusy(false);
 
-        if (!answer.ok) {
+        if (!walked.ok) {
           // Without an answer nobody knows how far it got: say so and send the user to History
           dialog.setBody(
             el("p", {
@@ -164,20 +237,28 @@
             })
           );
           dialog.setButtons([closeButton()]);
+
+          // What the earlier steps undid is known, and the page should show it
+          if (data.steps && options.onDone) {
+            data.message = "";
+            options.onDone(data);
+          }
           return;
         }
 
-        var groups = split(answer.data.changes);
+        var groups = split(data.changes);
 
-        dialog.setBody([
-          el("p", { role: "status", class: "mbh-undo-result", text: answer.data.message }),
-          groups.skip.length ? el("h3", { text: t("skippedHeading", groups.skip.length) }) : null,
-          groups.skip.length ? undoList(groups.skip, false) : null,
-        ]);
+        data.message = undoMessage(data.summary);
+
+        dialog.setBody(
+          [el("p", { role: "status", class: "mbh-undo-result", text: data.message }), groups.skip.length ? el("h3", { text: t("skippedHeading", groups.skip.length) }) : null].concat(
+            groups.skip.length ? cappedList(groups.skip, false) : []
+          )
+        );
         dialog.setButtons([closeButton()]);
 
         if (options.onDone) {
-          options.onDone(answer.data);
+          options.onDone(data);
         }
       });
     }
@@ -186,13 +267,19 @@
       dialog.setBody(el("p", { role: "status", text: t("undoChecking") }));
       dialog.setButtons([{ label: t("cancel"), focus: true, action: close }]);
 
-      MBH.request("madebyhype_stock_undo_preview", "undo", { batch_id: batchId }).then(function (answer) {
-        if (!answer.ok) {
-          failed(answer, preview);
+      walk("madebyhype_stock_undo_preview", function (data) {
+        dialog.setBody(el("p", { role: "status", text: t("undoCheckingProgress", data.summary.total) }));
+      }).then(function (walked) {
+        if (!dialog.node.isConnected) {
           return;
         }
 
-        var data = answer.data;
+        if (!walked.ok) {
+          failed(walked.answer, preview);
+          return;
+        }
+
+        var data = walked.data;
         var groups = split(data.changes);
         var save = data.save;
         var body = [];
@@ -203,13 +290,13 @@
         }
 
         if (!groups.undo.length) {
-          body.push(el("p", { class: "mbh-undo-result", text: data.message || t("undoNothing") }));
+          body.push(el("p", { class: "mbh-undo-result", text: t("undoNothing") }));
         } else {
-          body.push(el("h3", { text: t("willBeUndone", groups.undo.length) }), undoList(groups.undo, true));
+          body = body.concat([el("h3", { text: t("willBeUndone", groups.undo.length) })], cappedList(groups.undo, true));
         }
 
         if (groups.skip.length) {
-          body.push(el("h3", { text: t("willBeSkipped", groups.skip.length) }), undoList(groups.skip, false));
+          body = body.concat([el("h3", { text: t("willBeSkipped", groups.skip.length) })], cappedList(groups.skip, false));
         }
 
         body.push(el("p", { class: "description", text: t("undoFooter") }));
@@ -218,7 +305,13 @@
         dialog.setButtons(
           groups.undo.length
             ? [
-                { label: tn("undoConfirm", groups.undo.length), danger: true, action: runUndo },
+                {
+                  label: tn("undoConfirm", groups.undo.length),
+                  danger: true,
+                  action: function () {
+                    runUndo(groups.undo.length);
+                  },
+                },
                 { label: t("cancel"), focus: true, action: close },
               ]
             : [closeButton()]
@@ -341,10 +434,12 @@
     return dataTable(
       "mbh-changes-table",
       [t("colProduct"), t("colSku"), t("colField"), t("colBefore"), t("colAfter"), t("colNote")],
-      requested.map(function (change) {
-        return el("tr", {}, cells([productName(change), change.sku || DASH, change.label].concat(beforeAfter(change), [changeNote(change)])));
-      })
+      requested.map(changeRow)
     );
+  }
+
+  function changeRow(change) {
+    return el("tr", {}, cells([productName(change), change.sku || DASH, change.label].concat(beforeAfter(change), [changeNote(change)])));
   }
 
   function stateText(save) {
@@ -412,7 +507,40 @@
 
           loaded = true;
           detail.appendChild(saveDetail(answer.data.changes || []));
+          offerMore(answer.data);
         });
+      }
+
+      // A large save is read a page at a time
+      function offerMore(data) {
+        var left = data.total - data.page * data.per_page;
+
+        if (!(left > 0)) {
+          return;
+        }
+
+        var more = el("button", { type: "button", class: "button button-small mbh-more", text: tn("showMoreChanges", left) });
+
+        more.onclick = function () {
+          more.disabled = true;
+          more.textContent = t("historyLoading");
+
+          historyRequest({ view: "save", batch_id: save.id, paged: data.page + 1, per_page: data.per_page }).then(function (answer) {
+            if (!answer.ok) {
+              more.disabled = false;
+              more.textContent = t("tryAgain");
+              return;
+            }
+
+            $(detail)
+              .find("tbody")
+              .append((answer.data.changes || []).map(changeRow));
+            $(more).remove();
+            offerMore(answer.data);
+          });
+        };
+
+        detail.appendChild(more);
       }
 
       loadDetail();

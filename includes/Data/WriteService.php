@@ -173,8 +173,16 @@ class WriteService
      * The request names a batch and nothing else; what to change comes from
      * the log.
      *
-     * @param int  $batch_id
-     * @param bool $dry_run  Decide and report, write nothing
+     * A save too large for one request is undone in steps: each call handles
+     * the next 'limit' items after 'after_item' and says where it stopped.
+     * The steps of one undo share one undo batch: pass the 'undo_batch_id' a
+     * step returned on to the next.
+     *
+     * @param int   $batch_id
+     * @param bool  $dry_run  Decide and report, write nothing
+     * @param array $step     Optional. 'limit' => items in this call (0, the default: all of them),
+     *                        'after_item' => only items with a higher id (default 0),
+     *                        'undo_batch_id' => the undo batch an earlier step opened (default none)
      * @return array|\WP_Error [
      *     'batch_id'      => int, the save,
      *     'undo_batch_id' => int|null, the batch this undo recorded (null in a dry run or when nothing was undone),
@@ -183,11 +191,19 @@ class WriteService
      *     'summary'       => ['total' => int, 'undo' => int, 'skip' => int],
      *     'message'       => string,
      *     'values'        => item id => read_state() after the undo (empty in a dry run),
+     *     'next_after'    => int, the last item this call handled: 'after_item' of the next step,
+     *     'done'          => bool, no item is left after this call,
      * ]
-     * WP_Error codes: forbidden, not_found, not_undoable (an undo batch), already_undone, nothing_to_undo.
+     * With 'limit', changes, summary and message cover this call's items only.
+     * WP_Error codes: forbidden, not_found, not_undoable (an undo batch), already_undone, nothing_to_undo,
+     *                 invalid_step (an 'undo_batch_id' that is not this user's undo of this save).
      */
-    public function undo($batch_id, $dry_run = false)
+    public function undo($batch_id, $dry_run = false, $step = [])
     {
+        $step = array_merge(['limit' => 0, 'after_item' => 0, 'undo_batch_id' => 0], is_array($step) ? $step : []);
+        $limit = max(0, (int) $step['limit']);
+        $after_item = max(0, (int) $step['after_item']);
+
         if (!$this->can('undo')) {
             return new \WP_Error('forbidden', __('You do not have permission to undo saves.', 'madebyhype-stockmanagment'));
         }
@@ -201,22 +217,11 @@ class WriteService
             return new \WP_Error('not_undoable', __('An undo cannot be undone.', 'madebyhype-stockmanagment'));
         }
 
-        $rows_by_item = [];
-        $open = 0;
-        $undone = 0;
+        $counts = $this->log->count_requested($batch['id']);
 
-        foreach ($this->log->get_changes($batch['id']) as $row) {
-            $rows_by_item[(int) $row['item_id']][] = $row;
-
-            if ($row['typed_value'] !== null && $row['status'] === ChangeLog::STATUS_APPLIED) {
-                $open++;
-            } elseif ($row['typed_value'] !== null && $row['status'] === ChangeLog::STATUS_UNDONE) {
-                $undone++;
-            }
-        }
-
-        if ($open === 0) {
-            return $undone > 0
+        // A later step may find nothing left in force: the earlier steps undid it
+        if ($counts['open'] === 0 && $after_item === 0) {
+            return $counts['undone'] > 0
                 ? new \WP_Error('already_undone', __('This save has already been undone.', 'madebyhype-stockmanagment'))
                 : new \WP_Error('nothing_to_undo', __('Nothing in this save can be undone.', 'madebyhype-stockmanagment'));
         }
@@ -229,6 +234,35 @@ class WriteService
             'save_token' => '',
             'batch_id' => 0,
         ];
+
+        if (!$dry_run && (int) $step['undo_batch_id'] > 0) {
+            $earlier = $this->log->get_batch((int) $step['undo_batch_id']);
+
+            if (
+                !$earlier
+                || $earlier['kind'] !== ChangeLog::KIND_UNDO
+                || (int) $earlier['undoes_batch_id'] !== (int) $batch['id']
+                || (int) $earlier['user_id'] !== get_current_user_id()
+            ) {
+                return new \WP_Error('invalid_step', __('This undo could not be continued. Open History to see how far it got.', 'madebyhype-stockmanagment'));
+            }
+
+            $run['batch_id'] = (int) $earlier['id'];
+        }
+
+        if ($limit > 0) {
+            $read = $this->log->get_changes_page($batch['id'], $after_item, $limit);
+        } else {
+            $read = ['rows' => $this->log->get_changes($batch['id']), 'next_after' => $after_item, 'done' => true];
+        }
+
+        $rows_by_item = [];
+
+        foreach ($read['rows'] as $row) {
+            if ((int) $row['item_id'] > $after_item) {
+                $rows_by_item[(int) $row['item_id']][] = $row;
+            }
+        }
 
         $changes = [];
         $values = [];
@@ -271,6 +305,8 @@ class WriteService
             'summary' => ['total' => $total, 'undo' => $undo, 'skip' => $total - $undo],
             'message' => $message,
             'values' => $values,
+            'next_after' => $read['next_after'],
+            'done' => $read['done'],
         ];
     }
 

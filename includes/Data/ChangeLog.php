@@ -25,6 +25,7 @@ class ChangeLog
 
     const SOURCE_STOCK_SCREEN = 'stock_screen';
     const SOURCE_ORDER = 'order';
+    const SOURCE_BULK_PRICE = 'bulk_price';
 
     // Recorded before the product is written; still pending afterwards means the request died mid-write
     const STATUS_PENDING = 'pending';
@@ -143,6 +144,82 @@ class ChangeLog
             $wpdb->prepare("SELECT * FROM {$table} WHERE batch_id = %d ORDER BY id ASC", $batch_id),
             ARRAY_A
         );
+    }
+
+    /**
+     * Change rows of one batch for its next items, in item order: how a save
+     * too large for one request is walked
+     *
+     * @param int $batch_id
+     * @param int $after_item Only items with a higher id; 0 to start
+     * @param int $limit      Number of items (not rows)
+     * @return array ['rows' => change rows as get_changes() gives them, 'next_after' => the last item id read
+     *               ($after_item when there was none), 'done' => bool: no item is left after these]
+     */
+    public function get_changes_page($batch_id, $after_item, $limit)
+    {
+        global $wpdb;
+
+        $table = Schema::changes_table();
+        $limit = max(1, (int) $limit);
+
+        // One more than asked for says whether anything is left
+        $item_ids = array_map('intval', (array) $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT DISTINCT item_id FROM {$table} WHERE batch_id = %d AND item_id > %d ORDER BY item_id ASC LIMIT %d",
+                $batch_id,
+                $after_item,
+                $limit + 1
+            )
+        ));
+
+        $done = count($item_ids) <= $limit;
+        $item_ids = array_slice($item_ids, 0, $limit);
+
+        if (empty($item_ids)) {
+            return ['rows' => [], 'next_after' => (int) $after_item, 'done' => true];
+        }
+
+        $in = implode(',', $item_ids);
+
+        return [
+            'rows' => $wpdb->get_results(
+                $wpdb->prepare("SELECT * FROM {$table} WHERE batch_id = %d AND item_id IN ({$in}) ORDER BY item_id ASC, id ASC", $batch_id),
+                ARRAY_A
+            ),
+            'next_after' => (int) end($item_ids),
+            'done' => $done,
+        ];
+    }
+
+    /**
+     * How many requested changes of a batch are in force and how many were undone
+     *
+     * @param int $batch_id
+     * @return array ['open' => int, 'undone' => int]
+     */
+    public function count_requested($batch_id)
+    {
+        global $wpdb;
+
+        $table = Schema::changes_table();
+        $counts = ['open' => 0, 'undone' => 0];
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT status, COUNT(*) AS n FROM {$table} WHERE batch_id = %d AND typed_value IS NOT NULL AND status IN (%s, %s) GROUP BY status",
+                $batch_id,
+                self::STATUS_APPLIED,
+                self::STATUS_UNDONE
+            ),
+            ARRAY_A
+        );
+
+        foreach ($rows as $row) {
+            $counts[$row['status'] === self::STATUS_UNDONE ? 'undone' : 'open'] = (int) $row['n'];
+        }
+
+        return $counts;
     }
 
     /**
@@ -404,6 +481,45 @@ class ChangeLog
     public function get_batch_changes($batch_id)
     {
         return $this->describe_changes($this->get_changes($batch_id));
+    }
+
+    /**
+     * The requested changes of one batch, a page at a time, ready to show
+     *
+     * @param int   $batch_id
+     * @param array $args 'page' (default 1), 'per_page' (default 200, at most 500)
+     * @return array ['rows' => describe_changes() rows, 'total' => int, 'page' => int, 'per_page' => int, 'pages' => int]
+     */
+    public function get_requested_changes($batch_id, $args = [])
+    {
+        global $wpdb;
+
+        $args = array_merge(['page' => 1, 'per_page' => 200], $args);
+        $per_page = max(1, min(500, (int) $args['per_page']));
+        $page = max(1, (int) $args['page']);
+        $table = Schema::changes_table();
+
+        $total = (int) $wpdb->get_var(
+            $wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE batch_id = %d AND typed_value IS NOT NULL", $batch_id)
+        );
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE batch_id = %d AND typed_value IS NOT NULL ORDER BY id ASC LIMIT %d OFFSET %d",
+                $batch_id,
+                $per_page,
+                ($page - 1) * $per_page
+            ),
+            ARRAY_A
+        );
+
+        return [
+            'rows' => $this->describe_changes($rows),
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $per_page,
+            'pages' => (int) ceil($total / $per_page),
+        ];
     }
 
     /**
