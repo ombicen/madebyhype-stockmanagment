@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- A settings page under WooCommerce → Settings → Products → Stock Management: rows per page and sales period the list opens with, how long History is kept, the largest bulk price change allowed, how many items a bulk change sends per request (50, 100, 250 or 500, each with the memory it needs), and whether History and settings are kept when the plugin is deleted. Linked from the Plugins screen and from the stock screen
+- A settings page under WooCommerce → Settings → Products → Stock Management: rows per page and sales period the list opens with, how long History is kept, the largest bulk price change allowed, how many items a bulk change sends per request (50, 100, 250, 500 or 1000, each with the memory it needs), and whether History and settings are kept when the plugin is deleted. Linked from the Plugins screen and from the stock screen
 
 ## [1.2.1] - 2026-10-09
 

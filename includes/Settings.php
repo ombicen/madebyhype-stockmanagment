@@ -47,7 +47,7 @@ class Settings
     const PERIOD_CHOICES = ['30', '90', '180', '365', 'all'];
 
     // Items one request of a bulk price change handles
-    const BULK_CHUNK_CHOICES = [50, 100, 250, 500];
+    const BULK_CHUNK_CHOICES = [50, 100, 250, 500, 1000];
 
     private $plugin_file;
 
@@ -256,11 +256,12 @@ class Settings
                     '50' => __('50: lightest, the default. About 3 MB and one second per request. PHP memory: 128 MB', 'madebyhype-stockmanagment'),
                     '100' => __('100: about 5 MB and two seconds per request. PHP memory: 256 MB', 'madebyhype-stockmanagment'),
                     '250' => __('250: about 15 MB and four seconds per request. PHP memory: 256 MB', 'madebyhype-stockmanagment'),
-                    '500' => __('500: fewest requests. About 27 MB and nine seconds per request. PHP memory: 512 MB', 'madebyhype-stockmanagment'),
+                    '500' => __('500: about 27 MB and nine seconds per request. PHP memory: 512 MB', 'madebyhype-stockmanagment'),
+                    '1000' => __('1000: fewest requests. About 52 MB and 17 seconds per request. PHP memory: 512 MB', 'madebyhype-stockmanagment'),
                 ],
                 'desc' => '<br>' . sprintf(
                     /* translators: %s: a memory limit, for example "256M" */
-                    __('A bulk change is sent to the server in slices of this many items. Larger slices mean fewer requests; smaller ones are safer on a server that is short of memory or quick to time out, show progress more often, and stop sooner when you press Stop. The time grows with the size, so the largest need a server that lets a request run for 30 seconds. This server allows PHP %s in wp-admin.', 'madebyhype-stockmanagment'),
+                    __('A bulk change is sent to the server in slices of this many items. Larger slices mean fewer requests; smaller ones are safer on a server that is short of memory or quick to time out, show progress more often, and stop sooner when you press Stop. The time grows with the size: 500 needs a server that lets a request run for 30 seconds, 1000 for 60. This server allows PHP %s in wp-admin.', 'madebyhype-stockmanagment'),
                     '<strong>' . esc_html(self::memory_limit()) . '</strong>'
                 ),
             ],
