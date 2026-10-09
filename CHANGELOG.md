@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-09
+
+### Added
+- Search by name, SKU, variation SKU and ID, a by-SKU view, and a Needs attention tab
+- Sorting by name, SKU, price and days of cover; low-stock, untracked and include-drafts filters
+- History tab: every save with user, time and per-field before and after, per-product history, and undo of a single save with a preview
+- Start tracking control for items that do not track stock; untracked items no longer show a fake 0
+- Keyboard movement in the grid (Enter, arrows, Escape, Ctrl+S)
+- Category filter as an expandable tree, with searchable categories, tags and attributes
+- All strings are translatable
+
+### Changed
+- The stock screen is redesigned: filters in a drawer, one toolbar row, a floating save bar, sticky heading and pinned Product column
+- A stock edit is applied as a difference to the current quantity, so units sold while the page was open are kept
+- Each cell shows what the server did: saved, adjusted, conflict, refused or dropped
+- Stock tracking never changes as a side effect of a save
+- Variations load when a row is opened; sorting, paging, search and filter changes update the list without a page reload
+- The product list is much faster on large catalogues
+- Requires WooCommerce to be active (Requires Plugins)
+- The old Version History list is read-only; its Revert is replaced by per-save undo
+
+### Fixed
+- The sales period now includes its last day, in the site's time zone
+- A failed list query is reported as an error instead of an empty list
+- Price and stock-status filters look at a variable product's variations
+- An idle page can still save (nonces are refreshed)
+
 ## [1.0.6] - 2026-10-08
 
 ### Fixed
