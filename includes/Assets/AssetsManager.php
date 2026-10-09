@@ -2,12 +2,26 @@
 
 namespace MadeByHypeStockmanagment\Assets;
 
+use MadeByHypeStockmanagment\Admin\AdminPage;
+use MadeByHypeStockmanagment\Admin\AjaxHandler;
+use MadeByHypeStockmanagment\Admin\ReadAjaxHandler;
+use MadeByHypeStockmanagment\UI\UIManager;
+
 if (! defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Styles and scripts of the stock screen.
+ *
+ * Loaded on that screen only, and versioned by each file's modification time,
+ * so a browser never keeps running an older copy after an update.
+ */
 class AssetsManager
 {
+    // The object the scripts read their settings, permissions and strings from
+    const SCRIPT_DATA = 'madebyhypeStockData';
+
     public function init()
     {
         // Initialize assets manager
@@ -15,194 +29,70 @@ class AssetsManager
 
     /**
      * Enqueue admin scripts and styles
+     *
+     * @param string $hook        Hook suffix of the admin page being loaded
+     * @param string $plugin_file Main plugin file
      */
     public function enqueue_admin_scripts($hook, $plugin_file)
     {
-        // Debug: Log the hook name to help identify the correct one
-        // error_log('MadeByHype Stock Management Hook: ' . $hook); // disabled 2026-09-24: logged on every admin page
+        // The stock screen is recognised by the hook WordPress gave it when the menu was registered
+        $screen = AdminPage::hook_suffix();
 
-        // Check for various possible hook names
-        $valid_hooks = [
-            'toplevel_page_madebyhype-stockmanagment',  // Old main menu hook
-            'product_page_madebyhype-stockmanagment',   // WooCommerce submenu hook
-            'woocommerce_page_madebyhype-stockmanagment' // Alternative WooCommerce hook
-        ];
-
-        if (!in_array($hook, $valid_hooks)) {
+        if ($screen === '' || $hook !== $screen) {
             return;
         }
 
-        $plugin_url = plugin_dir_url($plugin_file);
+        $this->style('madebyhype-stock-screen', 'includes/UI/styles/stock-screen.css', [], $plugin_file);
 
+        // The rules (no DOM), then what every tab shares, then the grid and History
+        $this->script('madebyhype-stock-model', 'includes/UI/scripts/stock-model.js', [], $plugin_file);
+        $this->script('madebyhype-stock-core', 'includes/UI/scripts/stock-core.js', ['jquery', 'heartbeat', 'madebyhype-stock-model'], $plugin_file);
+        $this->script('madebyhype-stock-history', 'includes/UI/scripts/stock-history.js', ['madebyhype-stock-core'], $plugin_file);
+        $this->script('madebyhype-stock-grid', 'includes/UI/scripts/stock-grid.js', ['madebyhype-stock-core', 'madebyhype-stock-history'], $plugin_file);
 
-        wp_enqueue_script('jquery');
+        wp_localize_script('madebyhype-stock-core', self::SCRIPT_DATA, $this->script_data());
+    }
 
-        // Enqueue bundled Flatpickr and Toastify
-        wp_enqueue_style('flatpickr', $plugin_url . 'assets/styles/flatpickr.min.css', [], '1.0.1');
-        wp_enqueue_script('flatpickr', $plugin_url . 'assets/scripts/flatpickr.min.js', [], '1.0.1', true);
-        wp_enqueue_script('toastify', $plugin_url . 'assets/scripts/toastify.min.js', [], '1.12.0', true);
-        wp_enqueue_style('toastify', $plugin_url . 'assets/styles/toastify.min.css', [], '1.12.0');
+    /**
+     * Settings, nonces, permissions and strings for the scripts
+     *
+     * @return array
+     */
+    private function script_data()
+    {
+        // Each nonce only for a user who may use it; refreshed later through Heartbeat
+        $nonces = AjaxHandler::nonces();
+        $nonces['read'] = wp_create_nonce(ReadAjaxHandler::NONCE_ACTION);
 
-        // Enqueue component styles
-        $this->enqueue_component_styles();
-
-        // Enqueue admin JS from file
-        wp_enqueue_script('madebyhype-stockmanagment-js', $plugin_url . 'includes/UI/scripts/admin-ui.js', ['jquery'], '1.0.6', true);
-
-        // Localize script with nonces and data
-        wp_localize_script('madebyhype-stockmanagment-js', 'madebyhypeStockData', [
+        return [
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'updateNonce' => wp_create_nonce('madebyhype_stock_update_nonce'),
-            'revertNonce' => wp_create_nonce('madebyhype_version_revert_nonce'),
-        ]);
-
-        // Enqueue inline styles
-        wp_add_inline_style('wp-admin', $this->get_admin_css());
+            'nonces' => $nonces,
+            'heartbeatKey' => AjaxHandler::HEARTBEAT_KEY,
+            'caps' => AdminPage::permissions(),
+            'format' => UIManager::price_format(),
+            'strings' => UIManager::strings(),
+        ];
     }
 
-    private function enqueue_component_styles()
+    private function style($handle, $path, $deps, $plugin_file)
     {
-        $plugin_url = plugin_dir_url(__DIR__ . '/../../');
-
-        wp_enqueue_style('madebyhype-date-filter', $plugin_url . 'UI/styles/date-filter.css', [], '1.0.1');
-        wp_enqueue_style('madebyhype-top-controls', $plugin_url . 'UI/styles/top-controls.css', [], '1.0.1');
-        wp_enqueue_style('madebyhype-sidebar-filters', $plugin_url . 'UI/styles/sidebar-filters.css', [], '1.0.1');
-        wp_enqueue_style('madebyhype-product-table', $plugin_url . 'UI/styles/product-table.css', [], '1.0.6');
-        wp_enqueue_style('madebyhype-variation-table', $plugin_url . 'UI/styles/variation-table.css', [], '1.0.1');
-        wp_enqueue_style('madebyhype-pagination', $plugin_url . 'UI/styles/pagination.css', [], '1.0.1');
-        wp_enqueue_style('madebyhype-footer-info', $plugin_url . 'UI/styles/footer-info.css', [], '1.0.1');
-        wp_enqueue_style('madebyhype-legend', $plugin_url . 'UI/styles/legend.css', [], '1.0.1');
-        wp_enqueue_style('madebyhype-version-history', $plugin_url . 'UI/styles/version-history.css', [], '1.0.1');
+        wp_enqueue_style($handle, plugins_url($path, $plugin_file), $deps, $this->version($path, $plugin_file));
     }
 
-
-
-    private function get_admin_css()
+    private function script($handle, $path, $deps, $plugin_file)
     {
-        return '
-            /* Flatpickr customization for minimal black/white theme */
-            .flatpickr-calendar {
-                background: white;
-                border: 1px solid #e5e5e5;
-                border-radius: 8px;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            }
-            .flatpickr-day {
-                color: #000;
-                border-radius: 4px;
-            }
-            .flatpickr-day:hover {
-                background: #f5f5f5;
-                color: #000;
-            }
-            .flatpickr-day.selected {
-                background: #000;
-                color: white;
-                border-color: #000;
-            }
-            .flatpickr-day.inRange {
-                background: #f5f5f5;
-                color: #000;
-            }
-            .flatpickr-day.startRange {
-                background: #000;
-                color: white;
-            }
-            .flatpickr-day.endRange {
-                background: #000;
-                color: white;
-            }
-            .flatpickr-current-month {
-                color: #000;
-                font-weight: 600;
-            }
-            .flatpickr-monthDropdown-months {
-                color: #000;
-            }
-            .flatpickr-weekday {
-                color: #666;
-                font-weight: 500;
-            }
-            .flatpickr-prev-month, .flatpickr-next-month {
-                color: #000;
-            }
-            .flatpickr-prev-month:hover, .flatpickr-next-month:hover {
-                color: #000;
-            }
-            .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange, .flatpickr-day.selected.inRange, .flatpickr-day.startRange.inRange, .flatpickr-day.endRange.inRange, .flatpickr-day.selected:focus, .flatpickr-day.startRange:focus, .flatpickr-day.endRange:focus, .flatpickr-day.selected:hover, .flatpickr-day.startRange:hover, .flatpickr-day.endRange:hover, .flatpickr-day.selected.prevMonthDay, .flatpickr-day.startRange.prevMonthDay, .flatpickr-day.endRange.prevMonthDay, .flatpickr-day.selected.nextMonthDay, .flatpickr-day.startRange.nextMonthDay, .flatpickr-day.endRange.nextMonthDay {
-                background: #000 !important;
-                border-color: #000 !important;
-            }
+        wp_enqueue_script($handle, plugins_url($path, $plugin_file), $deps, $this->version($path, $plugin_file), true);
+    }
 
-            /* Toastify customization for Shadcn-like appearance */
-            .toastify {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-                font-size: 14px !important;
-                font-weight: 500 !important;
-                border-radius: 6px !important;
-                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
-                padding: 12px 16px !important;
-                margin: 8px !important;
-                min-width: 300px !important;
-                max-width: 400px !important;
-                line-height: 1.5 !important;
-            }
-            
-            /* Shadcn-style black and white base */
-            .toastify-shadcn {
-                background: white !important;
-                color: #000 !important;
-                border: 1px solid #e5e5e5 !important;
-            }
-            
-            /* Toast content layout */
-            .toast-content {
-                display: flex !important;
-                align-items: center !important;
-                gap: 12px !important;
-            }
-            
-            /* Icon wrapper styling */
-            .toast-icon-wrapper {
-                width: 20px !important;
-                height: 20px !important;
-                border-radius: 50% !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                flex-shrink: 0 !important;
-            }
-            
-            .toast-icon {
-                font-size: 12px !important;
-                font-weight: 600 !important;
-                color: white !important;
-            }
-            
-            /* Icon wrapper colors */
-            .toast-icon-success {
-                background: #22c55e !important;
-            }
-            
-            .toast-icon-error {
-                background: #ef4444 !important;
-            }
-            
-            .toast-icon-info {
-                background: #3b82f6 !important;
-            }
-            
-            /* Message styling */
-            .toast-message {
-                flex: 1 !important;
-                color: #000 !important;
-            }
-            
-            /* Remove old notification styles */
-            .stock-notification {
-                display: none !important;
-            }
-        ';
+    /**
+     * The version every enqueued file carries: when it was last changed
+     *
+     * @return string
+     */
+    private function version($path, $plugin_file)
+    {
+        $modified = @filemtime(plugin_dir_path($plugin_file) . $path);
+
+        return $modified ? (string) $modified : '0';
     }
 }

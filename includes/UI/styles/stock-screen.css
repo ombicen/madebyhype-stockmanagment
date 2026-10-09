@@ -1,0 +1,823 @@
+/**
+ * Stock screen. One stylesheet for the whole page.
+ *
+ * Built on wp-admin's own components (nav tabs, buttons, notices, list
+ * table, tablenav); the rules here cover what wp-admin has no component for.
+ * Colours are wp-admin's palette. No state is shown by colour alone: every
+ * state also has an icon and words.
+ */
+
+/* An element with the hidden attribute stays hidden whatever its display rule says */
+.mbh-stock [hidden],
+.mbh-dialog-backdrop [hidden] {
+    display: none !important;
+}
+
+.mbh-stock .nav-tab-wrapper {
+    margin-bottom: 12px;
+}
+
+/* ---------------------------------------------------------------------
+ * Focus: visible on every control of the screen
+ * ------------------------------------------------------------------- */
+
+.mbh-stock a:focus-visible,
+.mbh-stock button:focus-visible,
+.mbh-stock input:focus-visible,
+.mbh-stock select:focus-visible,
+.mbh-dialog a:focus-visible,
+.mbh-dialog button:focus-visible,
+.mbh-dialog:focus-visible {
+    outline: 2px solid #2271b1;
+    outline-offset: 1px;
+    box-shadow: none;
+}
+
+/* ---------------------------------------------------------------------
+ * Toolbar
+ * ------------------------------------------------------------------- */
+
+.mbh-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin: 12px 0;
+}
+
+.mbh-toolbar-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.mbh-toolbar-group label {
+    margin-left: 6px;
+}
+
+.mbh-toolbar input[type="search"] {
+    width: 260px;
+    max-width: 100%;
+}
+
+.mbh-view-switch {
+    display: inline-flex;
+    margin-left: 6px;
+}
+
+.mbh-view-switch .button:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.mbh-view-switch .button:last-child {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.mbh-view-switch .button.mbh-view-current {
+    position: relative;
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
+.mbh-period-custom {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mbh-permission-note {
+    margin: 0 0 8px;
+    color: #50575e;
+}
+
+/* ---------------------------------------------------------------------
+ * Chips
+ * ------------------------------------------------------------------- */
+
+.mbh-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    margin: 0 0 12px;
+}
+
+.mbh-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+}
+
+.mbh-chip {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 12px;
+    line-height: 22px;
+    padding-left: 10px;
+}
+
+.mbh-chip-remove {
+    display: inline-block;
+    min-width: 24px;
+    height: 24px;
+    line-height: 22px;
+    border-radius: 12px;
+    font-size: 16px;
+    text-align: center;
+    text-decoration: none;
+    color: #50575e;
+}
+
+.mbh-chip-remove:hover {
+    color: #b32d2e;
+}
+
+/* ---------------------------------------------------------------------
+ * Notices and save bar
+ * ------------------------------------------------------------------- */
+
+.mbh-notices .notice {
+    margin: 0 0 12px;
+}
+
+.mbh-notices .notice .button-link {
+    vertical-align: baseline;
+}
+
+.mbh-save-bar {
+    position: sticky;
+    top: 32px;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+@media screen and (max-width: 782px) {
+    .mbh-save-bar {
+        top: 46px;
+    }
+}
+
+.mbh-save-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 16px;
+}
+
+.mbh-save-status.has-changes {
+    font-weight: 600;
+}
+
+.mbh-save-invalid {
+    color: #b32d2e;
+}
+
+.mbh-save-conflicts {
+    color: #996800;
+}
+
+.mbh-last-save,
+.mbh-undo-hint {
+    color: #50575e;
+}
+
+.mbh-save-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+/* ---------------------------------------------------------------------
+ * Layout: filter panel beside the grid
+ * ------------------------------------------------------------------- */
+
+.mbh-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.mbh-main {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.mbh-filters {
+    flex: 0 0 260px;
+    box-sizing: border-box;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+}
+
+.mbh-filters-title {
+    margin: 0 0 8px;
+    font-size: 14px;
+}
+
+.mbh-filter-section {
+    margin: 0 0 14px;
+    padding: 0;
+    border: 0;
+}
+
+.mbh-filter-section legend {
+    padding: 0;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.mbh-filter-option {
+    display: block;
+    padding: 3px 0;
+}
+
+.mbh-filter-scroll {
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px 6px;
+    border: 1px solid #dcdcde;
+}
+
+.mbh-filter-node {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.mbh-filter-node > .mbh-filter-option {
+    flex: 1;
+}
+
+.mbh-fold {
+    flex-basis: 100%;
+    padding-left: 18px;
+}
+
+.mbh-fold-toggle,
+.mbh-expand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 2px;
+    color: #50575e;
+    cursor: pointer;
+}
+
+.mbh-fold-toggle--label {
+    gap: 4px;
+    justify-content: flex-start;
+    width: 100%;
+    font-weight: 500;
+    text-align: left;
+    color: #1d2327;
+}
+
+.mbh-fold-spacer {
+    display: inline-block;
+    width: 24px;
+}
+
+.mbh-chevron {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+}
+
+[aria-expanded="true"] > .mbh-chevron {
+    transform: rotate(45deg);
+}
+
+.mbh-attribute-search {
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.mbh-filter-range {
+    display: flex;
+    gap: 6px;
+}
+
+.mbh-filter-number {
+    flex: 1;
+}
+
+.mbh-filter-number input {
+    width: 100%;
+}
+
+.mbh-filter-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* ---------------------------------------------------------------------
+ * Grid
+ * ------------------------------------------------------------------- */
+
+.mbh-attention-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+}
+
+.mbh-attention-bar .subsubsub {
+    float: none;
+    margin: 0;
+}
+
+.mbh-stock .tablenav {
+    height: auto;
+    margin: 6px 0;
+}
+
+.mbh-stock .tablenav .tablenav-pages {
+    margin: 0;
+}
+
+.mbh-stock .tablenav-paging-text {
+    display: inline-block;
+    padding: 0 6px;
+}
+
+.mbh-grid {
+    table-layout: auto;
+}
+
+.mbh-grid td,
+.mbh-grid th {
+    vertical-align: top;
+}
+
+.mbh-grid td {
+    position: relative;
+    padding: 6px 8px;
+}
+
+.mbh-grid .mbh-num {
+    text-align: right;
+}
+
+.mbh-grid th.mbh-num a {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.mbh-grid .mbh-col-id {
+    width: 64px;
+    color: #50575e;
+}
+
+.mbh-grid .mbh-col-type {
+    width: 70px;
+}
+
+.mbh-grid .mbh-col-name {
+    min-width: 220px;
+}
+
+.mbh-grid .mbh-col-sku {
+    width: 120px;
+    word-break: break-word;
+}
+
+.mbh-grid .mbh-col-stock {
+    width: 110px;
+}
+
+.mbh-grid .mbh-col-status {
+    width: 130px;
+}
+
+.mbh-grid .mbh-col-regular,
+.mbh-grid .mbh-col-sale {
+    width: 124px;
+}
+
+.mbh-grid .mbh-col-sold {
+    width: 96px;
+}
+
+.mbh-grid .mbh-col-cover {
+    width: 80px;
+}
+
+.mbh-grid tbody tr.mbh-row {
+    border-top: 1px solid #dcdcde;
+}
+
+.mbh-grid tbody td {
+    border-top: 1px solid #f0f0f1;
+}
+
+.mbh-name-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+}
+
+.mbh-name {
+    font-weight: 600;
+}
+
+.mbh-tag {
+    display: inline-block;
+    padding: 0 6px;
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    background: #f6f7f7;
+    font-size: 12px;
+    line-height: 18px;
+    white-space: nowrap;
+}
+
+.mbh-tag--edited {
+    border-color: #dba617;
+    background: #fcf9e8;
+}
+
+.mbh-tag--unsaved {
+    border-color: #d63638;
+    background: #fcf0f1;
+}
+
+.mbh-tag--match {
+    border-color: #2271b1;
+    background: #f0f6fc;
+}
+
+/* Row actions appear on hover and when the keyboard is in the row */
+.mbh-row .row-actions {
+    position: relative;
+    left: -9999em;
+}
+
+.mbh-row:hover .row-actions,
+.mbh-row:focus-within .row-actions {
+    position: static;
+    left: 0;
+}
+
+.mbh-row--child > td {
+    background: #f6f7f7;
+}
+
+.mbh-row--child > .mbh-col-name {
+    padding-left: 38px;
+}
+
+.mbh-family-row > td {
+    padding-left: 38px;
+    color: #50575e;
+}
+
+.mbh-load-error {
+    color: #b32d2e;
+}
+
+.mbh-input--qty {
+    width: 72px;
+    text-align: right;
+}
+
+.mbh-input--price {
+    width: 96px;
+    text-align: right;
+}
+
+.mbh-input--status {
+    max-width: 100%;
+}
+
+.mbh-sub,
+.mbh-caption {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.3;
+    color: #646970;
+}
+
+.mbh-none {
+    color: #8c8f94;
+}
+
+.mbh-note {
+    color: #50575e;
+}
+
+.mbh-col-stock .mbh-start {
+    display: block;
+    margin-left: auto;
+}
+
+.mbh-start-cancel {
+    display: block;
+    margin-left: auto;
+    font-size: 12px;
+}
+
+/* Status: the word is the information; the bar is decoration */
+.mbh-status {
+    display: inline-block;
+    padding-left: 8px;
+    border-left: 3px solid #8c8f94;
+}
+
+.mbh-status--instock {
+    border-left-color: #00a32a;
+}
+
+.mbh-status--lowstock,
+.mbh-status--onbackorder {
+    border-left-color: #dba617;
+}
+
+.mbh-status--outofstock {
+    border-left-color: #d63638;
+}
+
+/* Cell states: border, icon and caption together */
+.mbh-grid td[data-field] {
+    padding-right: 28px;
+}
+
+.mbh-state {
+    position: absolute;
+    top: 10px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+}
+
+.is-changed .mbh-input {
+    border-color: #dba617;
+    background: #fcf9e8;
+}
+
+.is-changed .mbh-state {
+    color: #996800;
+}
+
+.is-invalid .mbh-input,
+.is-refused .mbh-input {
+    border-color: #d63638;
+    background: #fcf0f1;
+}
+
+.is-invalid .mbh-state,
+.is-refused .mbh-state,
+.is-invalid .mbh-caption,
+.is-refused .mbh-caption {
+    color: #b32d2e;
+}
+
+.is-conflict .mbh-input {
+    border-color: #dba617;
+    border-style: dashed;
+    background: #fcf9e8;
+}
+
+.is-conflict .mbh-state,
+.is-conflict .mbh-caption {
+    color: #996800;
+}
+
+.is-saved .mbh-state {
+    color: #008a20;
+}
+
+.is-adjusted .mbh-state,
+.is-dropped .mbh-state {
+    color: #2271b1;
+}
+
+/* The line under a row that says what happened to it */
+.mbh-msg-row > td {
+    padding: 6px 8px 8px 38px;
+    background: #fff;
+    border-top: 0;
+}
+
+.mbh-msgs {
+    margin: 0;
+}
+
+.mbh-msg {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    margin: 0 0 4px;
+    padding: 6px 10px;
+    border-left: 4px solid #72aee6;
+    background: #f0f6fc;
+}
+
+.mbh-msg .dashicons {
+    align-self: center;
+}
+
+.mbh-msg--conflict {
+    border-left-color: #dba617;
+    background: #fcf9e8;
+}
+
+.mbh-msg--refused {
+    border-left-color: #d63638;
+    background: #fcf0f1;
+}
+
+.mbh-msg-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Start tracking: the small form in the stock cell */
+.mbh-start-form {
+    width: 230px;
+    margin-left: auto;
+    text-align: left;
+    white-space: normal;
+}
+
+.mbh-start-form label {
+    display: block;
+    font-weight: 600;
+}
+
+.mbh-start-input {
+    width: 90px;
+}
+
+.mbh-start-form p {
+    margin: 4px 0;
+    font-size: 12px;
+    color: #50575e;
+}
+
+.mbh-start-form .mbh-start-error {
+    color: #b32d2e;
+}
+
+.mbh-start-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.mbh-grid.is-saving {
+    opacity: 0.6;
+}
+
+.mbh-empty {
+    padding: 28px 16px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    text-align: center;
+}
+
+.mbh-empty p {
+    margin: 4px 0;
+    font-size: 14px;
+}
+
+/* ---------------------------------------------------------------------
+ * Dialogs
+ * ------------------------------------------------------------------- */
+
+body.mbh-dialog-open {
+    overflow: hidden;
+}
+
+.mbh-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100100;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8vh 16px 16px;
+    background: rgba(0, 0, 0, 0.6);
+    overflow-y: auto;
+}
+
+.mbh-dialog {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 520px;
+    padding: 20px 24px;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.mbh-dialog--wide {
+    max-width: 880px;
+}
+
+.mbh-dialog-title {
+    margin: 0 0 12px;
+    font-size: 18px;
+}
+
+.mbh-dialog-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.mbh-dialog-body h3 {
+    margin: 16px 0 6px;
+    font-size: 14px;
+}
+
+.mbh-dialog-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.mbh-check-list {
+    margin: 0 0 0 18px;
+    list-style: disc;
+}
+
+.mbh-undo-result {
+    font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------
+ * History
+ * ------------------------------------------------------------------- */
+
+.mbh-history-title {
+    margin: 12px 0 4px;
+}
+
+.mbh-history-table td,
+.mbh-history-table th {
+    vertical-align: top;
+}
+
+.mbh-save-detail > td {
+    padding: 8px 12px 12px 28px;
+    background: #f6f7f7;
+}
+
+.mbh-save--legacy td {
+    color: #50575e;
+}
+
+.mbh-change--derived td {
+    color: #50575e;
+}
+
+.mbh-gap td {
+    background: #fcf9e8;
+    color: #50575e;
+    font-style: italic;
+}
+
+.mbh-history-body .mbh-empty {
+    text-align: left;
+}
+
+.mbh-loading {
+    color: #50575e;
+}

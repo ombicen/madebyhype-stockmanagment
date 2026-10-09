@@ -20,6 +20,9 @@ class AdminPage
     private $data_manager;
     private $ui_manager;
 
+    /** @var string Hook suffix WordPress gave the screen; '' until the menu is registered */
+    private static $hook_suffix = '';
+
     public function init()
     {
         // This will be called from the main Plugin class
@@ -36,7 +39,7 @@ class AdminPage
      */
     public function add_admin_menu()
     {
-        add_submenu_page(
+        $hook_suffix = add_submenu_page(
             'edit.php?post_type=product', // Parent slug (WooCommerce Products)
             __('Stock Management', 'madebyhype-stockmanagment'), // Page title
             __('Stock Management', 'madebyhype-stockmanagment'), // Menu title
@@ -44,6 +47,41 @@ class AdminPage
             self::PAGE_SLUG, // Menu slug
             [$this, 'render_admin_page'] // Callback function
         );
+
+        // False when the current user may not see the screen
+        self::$hook_suffix = is_string($hook_suffix) ? $hook_suffix : '';
+    }
+
+    /**
+     * The hook suffix of the screen, as admin_enqueue_scripts reports it.
+     * Assets are loaded for this hook only.
+     *
+     * @return string '' when the screen is not registered for this user
+     */
+    public static function hook_suffix()
+    {
+        return self::$hook_suffix;
+    }
+
+    /**
+     * What the current user may do on the screen, for the templates and the script
+     *
+     * The four permissions are read from Capabilities and nowhere else, so
+     * the screen follows that class when its mapping changes. editProducts is
+     * WordPress's own right to open the product editor and only decides
+     * whether the "Edit product" link is shown.
+     *
+     * @return array view, stock, prices, undo, editProducts => bool
+     */
+    public static function permissions()
+    {
+        return [
+            'view' => Capabilities::can_view(),
+            'stock' => Capabilities::can_edit_stock(),
+            'prices' => Capabilities::can_edit_prices(),
+            'undo' => Capabilities::can_undo(),
+            'editProducts' => current_user_can('edit_products'),
+        ];
     }
 
     /**
@@ -172,7 +210,7 @@ class AdminPage
     }
 
     /**
-     * The arguments of DataManager::get_list() (and get_products()) for a parsed request
+     * The arguments of DataManager::get_list() for a parsed request
      *
      * @param array $request From parse_request()
      * @return array
@@ -221,39 +259,58 @@ class AdminPage
     {
         $request = $this->parse_request($_GET);
 
-        // TRANSITION: the 1.0.6 templates read the old row shape, so the list
-        // comes through DataManager::get_products(). Switch to get_list() with
-        // the same arguments when the templates read its rows.
-        $result = $this->data_manager->get_products($this->list_args($request));
+        // The period every link and the variations call carry, also on History
+        $period = $this->data_manager->resolve_period($request['period'], $request['start_date'], $request['end_date']);
+        $result = null;
+        $history_item = null;
 
-        // A list that could not be read is not an empty list
-        if (!empty($result['error'])) {
-            echo '<div class="notice notice-error"><p>' . esc_html($result['error']) . '</p></div>';
+        if ($request['tab'] === 'history') {
+            // History is read by the script; only the item it is narrowed to is named here
+            if ($request['item']) {
+                $history_item = $this->history_item($request['item']);
+            }
+        } else {
+            $args = $this->list_args($request);
+            // Thumbnails are not shown yet; leave their lookups out
+            $args['with_images'] = false;
+
+            $result = $this->data_manager->get_list($args);
+            $period = $result['period'];
         }
 
-        $filter_applied = $request['start_date'] !== '' && $request['end_date'] !== '';
+        $this->ui_manager->render_admin_page([
+            'request' => $request,
+            'result' => $result,
+            'period' => $period,
+            'caps' => self::permissions(),
+            'history_item' => $history_item,
+        ]);
+    }
 
-        // Render the page using UI manager
-        $this->ui_manager->render_admin_page(
-            $result['products'],
-            $result['total_count'],
-            $result['total_pages'],
-            $result['current_page'],
-            $result['per_page'],
-            $request['start_date'],
-            $request['end_date'],
-            $filter_applied,
-            $request['sort_by'],
-            $request['sort_order'],
-            $request['category_filter'],
-            $request['tag_filter'],
-            $request['attribute_filter'],
-            $request['stock_filter'],
-            $request['min_price'],
-            $request['max_price'],
-            $request['min_sales'],
-            $request['max_sales'],
-            $request['view'] === DataManager::VIEW_SKU
-        );
+    /**
+     * Name and SKU of the product or variation History is narrowed to
+     *
+     * @param int $id
+     * @return array id, name (null when it no longer exists), sku
+     */
+    private function history_item($id)
+    {
+        $product = function_exists('wc_get_product') ? wc_get_product($id) : null;
+
+        if (!$product) {
+            return ['id' => $id, 'name' => null, 'sku' => ''];
+        }
+
+        $sku = (string) $product->get_sku('edit');
+        if ($sku === '' && $product->get_parent_id()) {
+            // A variation without a SKU of its own goes by its product's
+            $sku = (string) get_post_meta($product->get_parent_id(), '_sku', true);
+        }
+
+        return [
+            'id' => $id,
+            'name' => html_entity_decode((string) $product->get_name('edit'), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            'sku' => $sku,
+        ];
     }
 }

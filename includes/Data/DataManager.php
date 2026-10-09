@@ -20,7 +20,6 @@ if (! defined('ABSPATH')) {
  * Public entry points:
  *   get_list()        the list: All stock (by product or by SKU) and Needs attention
  *   get_variations()  the variations of one variable product, on demand
- *   get_products()    TRANSITION: the 1.0.6 call and row shape, for the old templates
  */
 class DataManager
 {
@@ -291,85 +290,6 @@ class DataManager
             'timezone' => wp_timezone_string(),
             'is_default' => $is_default,
         ];
-    }
-
-    /**
-     * TRANSITION: the list as the 1.0.6 templates read it
-     *
-     * Same arguments and row shape as before, variations of the grouped view
-     * loaded inline, now produced by get_list(). The arguments of get_list()
-     * (search, view, tab, drafts, the new sorts and stock filters, period)
-     * are accepted too and passed on. Delete this method, legacy_row() and
-     * legacy_variation() once the templates read get_list() rows.
-     *
-     * @param array $args start_date, end_date, sort_by, sort_order, page, per_page, category_filter,
-     *                    tag_filter, attribute_filter, stock_filter, min_price, max_price, min_sales,
-     *                    max_sales, include_variations, plus anything get_list() takes
-     * @return array products, total_count, total_pages, current_page, per_page, period, counts,
-     *               and 'error' (string) only when the list could not be read
-     */
-    public function get_products($args = [])
-    {
-        $args = is_array($args) ? $args : [];
-        $args['with_images'] = false;
-
-        $list = $this->get_list($args);
-
-        $result = [
-            'products' => [],
-            'total_count' => $list['total_count'],
-            'total_pages' => $list['total_pages'],
-            'current_page' => $list['current_page'],
-            'per_page' => $list['per_page'],
-            'period' => $list['period'],
-            'counts' => $list['counts'],
-        ];
-
-        if ($list['error']) {
-            $result['error'] = $list['error']['message'];
-            return $result;
-        }
-
-        // The old grouped view carries every variation of every variable product on the page
-        $inline = [];
-        if ($list['view'] === self::VIEW_PRODUCT && $list['rows']) {
-            $parent_ids = [];
-            foreach ($list['rows'] as $row) {
-                if (in_array($row['type'], self::VARIABLE_TYPES, true)) {
-                    $parent_ids[] = $row['id'];
-                }
-            }
-
-            try {
-                $children = $this->child_ids($parent_ids);
-                $all = $children ? array_merge(...array_values($children)) : [];
-                $by_id = [];
-                foreach ($this->hydrate_rows($all, $list['period'], ['images' => false, 'search' => '']) as $variation) {
-                    $by_id[$variation['id']] = $variation;
-                }
-                foreach ($children as $parent_id => $child_ids) {
-                    foreach ($child_ids as $child_id) {
-                        if (isset($by_id[$child_id])) {
-                            $inline[$parent_id][] = $this->legacy_variation($by_id[$child_id]);
-                        }
-                    }
-                }
-            } catch (\RuntimeException $e) {
-                $failed = $this->failed($list, $e);
-                $result['error'] = $failed['error']['message'];
-                return $result;
-            }
-        }
-
-        foreach ($list['rows'] as $row) {
-            $legacy = $this->legacy_row($row);
-            if (isset($inline[$row['id']])) {
-                $legacy['variations'] = $inline[$row['id']];
-            }
-            $result['products'][] = $legacy;
-        }
-
-        return $result;
     }
 
     /* ---------------------------------------------------------------------
@@ -1679,55 +1599,6 @@ class DataManager
             }
         }
         unset($row);
-    }
-
-    /* ---------------------------------------------------------------------
-     * TRANSITION: the 1.0.6 row shapes
-     * ------------------------------------------------------------------- */
-
-    private function legacy_row($row)
-    {
-        // The old list printed 0 for a tracked item without a stored quantity
-        $quantity = $row['stock_quantity'];
-        if ($quantity === null && $row['stock_mode'] === 'own') {
-            $quantity = 0;
-        }
-
-        return [
-            'id' => $row['id'],
-            'name' => $row['full_name'],
-            'sku' => $row['sku'],
-            'stock_quantity' => $quantity,
-            'stock_status' => $row['stock_status'],
-            'regular_price' => $row['regular_price'] === '' ? null : number_format((float) $row['regular_price'], 2, '.', ''),
-            'sale_price' => $row['sale_price'] === '' ? null : number_format((float) $row['sale_price'], 2, '.', ''),
-            'type' => $row['type'],
-            'status' => $row['post_status'],
-            'total_sales' => $row['units_sold'],
-            'variations' => [],
-        ];
-    }
-
-    private function legacy_variation($row)
-    {
-        $attributes = [];
-        foreach ($row['attributes'] as $attribute) {
-            $attributes[$attribute['key']] = $attribute['raw'];
-        }
-
-        return [
-            'id' => $row['id'],
-            'name' => $row['full_name'],
-            'sku' => $row['sku'] !== '' ? $row['sku'] : $row['parent_sku'],
-            'stock_quantity' => $row['holder_stock_quantity'],
-            'stock_status' => $row['stock_status'],
-            'regular_price' => $row['regular_price'],
-            'sale_price' => $row['sale_price'],
-            'type' => 'variation',
-            'status' => $row['post_status'],
-            'total_sales' => $row['units_sold'],
-            'attributes' => $attributes,
-        ];
     }
 
     /* ---------------------------------------------------------------------
