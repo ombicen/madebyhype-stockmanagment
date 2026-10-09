@@ -363,6 +363,39 @@ class ChangeLog
     }
 
     /**
+     * Everyone who has a batch (a save or an undo) in the log, for History's
+     * "Saved by" filter
+     *
+     * @return array List of ['id' => int, 'name' => string|null], by name; name is null
+     *               for an account that no longer exists (those come last)
+     */
+    public function get_batch_users()
+    {
+        global $wpdb;
+
+        $batches = Schema::batches_table();
+        $ids = array_map('intval', (array) $wpdb->get_col("SELECT DISTINCT user_id FROM {$batches} WHERE user_id > 0"));
+        $names = $this->user_names($ids);
+        $users = [];
+
+        foreach ($ids as $id) {
+            $users[] = ['id' => $id, 'name' => isset($names[$id]) ? $names[$id] : null];
+        }
+
+        usort($users, function ($a, $b) {
+            if (($a['name'] === null) !== ($b['name'] === null)) {
+                return $a['name'] === null ? 1 : -1;
+            }
+
+            $order = strcasecmp((string) $a['name'], (string) $b['name']);
+
+            return $order !== 0 ? $order : $a['id'] - $b['id'];
+        });
+
+        return $users;
+    }
+
+    /**
      * The changes of one batch, ready to show (see describe_changes())
      *
      * @param int $batch_id

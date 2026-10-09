@@ -1,20 +1,63 @@
 /**
  * Stock screen. One stylesheet for the whole page.
  *
- * Built on wp-admin's own components (nav tabs, buttons, notices, list
- * table, tablenav); the rules here cover what wp-admin has no component for.
- * Colours are wp-admin's palette. No state is shown by colour alone: every
- * state also has an icon and words.
+ * The table owns the page: one toolbar row, a card that holds the grid and
+ * its footer, filters in a drawer, and a save bar that floats at the bottom
+ * while something is unsaved. One light look, as wp-admin is; the system
+ * font stack; no state is shown by colour alone: every state has its words.
+ *
+ * Three lengths come from the script (stock-core.js, layout()), because
+ * they depend on what wp-admin puts around the page:
+ *   --mbh-grid-max   height the grid may take so that it ends at the bottom of the window
+ *   --mbh-bar-left   centre of the content area, for the save bar
+ *   --mbh-bar-width  width of the content area
  */
+
+.mbh-stock,
+.mbh-dialog-backdrop,
+.mbh-filters,
+.mbh-save-bar {
+    --mbh-ground: #f0f0f1;
+    --mbh-surface: #fff;
+    --mbh-soft: #fafafa;
+    --mbh-ink: #15171a;
+    --mbh-muted: #646970;
+    --mbh-faint: #787c82;
+    --mbh-line: #e2e4e7;
+    --mbh-line-strong: #c9ccd1;
+    --mbh-black: #111315;
+    --mbh-amber: #8a4a07;
+    --mbh-amber-bg: #fff6e5;
+    --mbh-amber-line: #f0b849;
+    --mbh-green: #0a7a3e;
+    --mbh-blue: #135e96;
+    --mbh-blue-bg: #eaf3fb;
+    --mbh-red: #b32d2e;
+    --mbh-red-bg: #fcebea;
+    --mbh-red-line: #e8a3a3;
+    --mbh-focus: #2271b1;
+    color: var(--mbh-ink);
+}
 
 /* An element with the hidden attribute stays hidden whatever its display rule says */
 .mbh-stock [hidden],
-.mbh-dialog-backdrop [hidden] {
+.mbh-dialog-backdrop [hidden],
+.mbh-filters[hidden],
+.mbh-filters [hidden],
+.mbh-filters-backdrop[hidden],
+.mbh-save-bar[hidden],
+.mbh-save-bar [hidden] {
     display: none !important;
 }
 
-.mbh-stock .nav-tab-wrapper {
-    margin-bottom: 12px;
+.mbh-stock {
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+/* Room for the floating save bar, so it never lies over the last row or the footer */
+.mbh-stock.has-save-bar {
+    padding-bottom: calc(var(--mbh-bar-height, 56px) + 28px);
 }
 
 /* ---------------------------------------------------------------------
@@ -25,87 +68,308 @@
 .mbh-stock button:focus-visible,
 .mbh-stock input:focus-visible,
 .mbh-stock select:focus-visible,
+.mbh-filters a:focus-visible,
+.mbh-filters button:focus-visible,
+.mbh-filters input:focus-visible,
+.mbh-filters:focus-visible,
+.mbh-save-bar button:focus-visible,
 .mbh-dialog a:focus-visible,
 .mbh-dialog button:focus-visible,
 .mbh-dialog:focus-visible {
-    outline: 2px solid #2271b1;
+    outline: 2px solid var(--mbh-focus);
     outline-offset: 1px;
     box-shadow: none;
 }
 
+.mbh-save-bar button:focus-visible {
+    outline-color: #fff;
+}
+
 /* ---------------------------------------------------------------------
- * Toolbar
+ * Buttons, fields
+ * ------------------------------------------------------------------- */
+
+.mbh-stock .button,
+.mbh-filters .button,
+.mbh-dialog .button,
+.mbh-save-bar .button {
+    min-height: 32px;
+    padding: 0 13px;
+    border: 1px solid var(--mbh-line-strong);
+    border-radius: 6px;
+    background: var(--mbh-surface);
+    color: var(--mbh-ink);
+    font-weight: 500;
+    line-height: 30px;
+    box-shadow: none;
+    white-space: nowrap;
+}
+
+.mbh-stock .button:hover,
+.mbh-filters .button:hover,
+.mbh-dialog .button:hover {
+    background: var(--mbh-soft);
+    border-color: var(--mbh-faint);
+    color: var(--mbh-ink);
+}
+
+.mbh-stock .button.button-small,
+.mbh-dialog .button.button-small {
+    min-height: 26px;
+    padding: 0 10px;
+    font-size: 12px;
+    line-height: 24px;
+}
+
+.mbh-stock .button-primary,
+.mbh-filters .button-primary,
+.mbh-dialog .button-primary,
+.mbh-stock .button-primary:hover,
+.mbh-filters .button-primary:hover,
+.mbh-dialog .button-primary:hover,
+.mbh-stock .button-primary:focus,
+.mbh-filters .button-primary:focus,
+.mbh-dialog .button-primary:focus {
+    background: var(--mbh-black);
+    border-color: var(--mbh-black);
+    color: #fff;
+}
+
+.mbh-stock .button-primary:hover,
+.mbh-filters .button-primary:hover,
+.mbh-dialog .button-primary:hover {
+    background: #2c3338;
+}
+
+.mbh-dialog .button.mbh-danger,
+.mbh-dialog .button.mbh-danger:hover,
+.mbh-dialog .button.mbh-danger:focus {
+    background: var(--mbh-red);
+    border-color: var(--mbh-red);
+    color: #fff;
+}
+
+.mbh-stock .button[disabled],
+.mbh-stock .button:disabled,
+.mbh-dialog .button[disabled],
+.mbh-dialog .button:disabled {
+    background: var(--mbh-soft) !important;
+    border-color: var(--mbh-line) !important;
+    color: #a7aaad !important;
+}
+
+/* Text buttons: at least 24 px to hit */
+.mbh-stock .button-link,
+.mbh-dialog .button-link,
+.mbh-save-bar .button-link {
+    min-height: 24px;
+    line-height: 22px;
+    color: var(--mbh-focus);
+    text-decoration: underline;
+}
+
+.mbh-stock input[type="text"],
+.mbh-stock input[type="search"],
+.mbh-stock input[type="date"],
+.mbh-stock input[type="number"],
+.mbh-stock select,
+.mbh-filters input[type="search"],
+.mbh-filters input[type="number"] {
+    border: 1px solid var(--mbh-line-strong);
+    border-radius: 6px;
+    background-color: var(--mbh-surface);
+    color: var(--mbh-ink);
+    box-shadow: none;
+}
+
+.mbh-stock select {
+    min-height: 32px;
+    line-height: 30px;
+}
+
+/* ---------------------------------------------------------------------
+ * Head: title and tabs on one line
+ * ------------------------------------------------------------------- */
+
+.mbh-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 4px 28px;
+    margin: 4px 0 12px;
+    border-bottom: 1px solid var(--mbh-line-strong);
+}
+
+.mbh-stock .mbh-head h1 {
+    margin: 0;
+    padding: 0 0 9px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+}
+
+.mbh-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: -1px;
+}
+
+.mbh-tab {
+    display: inline-block;
+    padding: 9px 12px;
+    border-bottom: 2px solid transparent;
+    color: var(--mbh-muted);
+    font-size: 13.5px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.mbh-tab:hover {
+    color: var(--mbh-ink);
+}
+
+.mbh-tab.is-current {
+    border-bottom-color: var(--mbh-black);
+    color: var(--mbh-ink);
+}
+
+.mbh-tab-count {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 7px;
+    border-radius: 9px;
+    background: var(--mbh-line);
+    color: var(--mbh-muted);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------
+ * Toolbar: search, view, filters, sales period
  * ------------------------------------------------------------------- */
 
 .mbh-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px 16px;
-    margin: 12px 0;
+    gap: 8px;
+    margin: 0 0 10px;
 }
 
-.mbh-toolbar-group {
+.mbh-search {
+    position: relative;
     display: flex;
+    flex: 1 1 300px;
+    gap: 6px;
+    min-width: 0;
+}
+
+.mbh-search .dashicons {
+    position: absolute;
+    top: 8px;
+    left: 9px;
+    width: 18px;
+    height: 18px;
+    color: var(--mbh-faint);
+    font-size: 18px;
+    pointer-events: none;
+}
+
+.mbh-stock .mbh-search input[type="search"] {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    min-height: 34px;
+    margin: 0;
+    padding: 0 10px 0 32px;
+    font-size: 14px;
+}
+
+.mbh-seg {
+    display: inline-flex;
+    border: 1px solid var(--mbh-line-strong);
+    border-radius: 6px;
+    background: var(--mbh-surface);
+    overflow: hidden;
+}
+
+.mbh-seg a {
+    display: inline-block;
+    padding: 0 12px;
+    color: var(--mbh-muted);
+    line-height: 32px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.mbh-seg a:focus-visible {
+    outline-offset: -2px;
+}
+
+/* The current view: filled, and marked with a tick so it does not rest on colour */
+.mbh-seg a.is-current {
+    background: var(--mbh-black);
+    color: #fff;
+}
+
+.mbh-seg a.is-current::before {
+    content: "\2713\00a0";
+}
+
+.mbh-dot {
+    display: inline-block;
+    min-width: 18px;
+    margin-left: 5px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--mbh-black);
+    color: #fff;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+}
+
+.mbh-period {
+    display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
-}
-
-.mbh-toolbar-group label {
-    margin-left: 6px;
-}
-
-.mbh-toolbar input[type="search"] {
-    width: 260px;
-    max-width: 100%;
-}
-
-.mbh-view-switch {
-    display: inline-flex;
-    margin-left: 6px;
-}
-
-.mbh-view-switch .button:first-child {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-.mbh-view-switch .button:last-child {
-    margin-left: -1px;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
-.mbh-view-switch .button.mbh-view-current {
-    position: relative;
-    background: #2271b1;
-    border-color: #2271b1;
-    color: #fff;
+    color: var(--mbh-muted);
 }
 
 .mbh-period-custom {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 4px;
 }
 
 .mbh-permission-note {
     margin: 0 0 8px;
-    color: #50575e;
+    color: var(--mbh-muted);
 }
 
 /* ---------------------------------------------------------------------
- * Chips
+ * Above the table: chips, kinds of Needs attention, the count
  * ------------------------------------------------------------------- */
+
+.mbh-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    min-height: 26px;
+    margin: 0 0 8px;
+    color: var(--mbh-muted);
+}
 
 .mbh-chips {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px 12px;
-    margin: 0 0 12px;
+    gap: 6px 10px;
 }
 
 .mbh-chip-list {
@@ -119,132 +383,984 @@
     display: inline-flex;
     align-items: center;
     margin: 0;
-    background: #fff;
-    border: 1px solid #c3c4c7;
-    border-radius: 12px;
-    line-height: 22px;
-    padding-left: 10px;
+    padding-left: 11px;
+    border: 1px solid var(--mbh-line-strong);
+    border-radius: 20px;
+    background: var(--mbh-surface);
+    color: var(--mbh-ink);
+    line-height: 24px;
 }
 
 .mbh-chip-remove {
     display: inline-block;
     min-width: 24px;
     height: 24px;
-    line-height: 22px;
     border-radius: 12px;
+    color: var(--mbh-faint);
     font-size: 16px;
+    line-height: 22px;
     text-align: center;
     text-decoration: none;
-    color: #50575e;
 }
 
 .mbh-chip-remove:hover {
-    color: #b32d2e;
+    color: var(--mbh-red);
+}
+
+.mbh-clear-all,
+.mbh-kinds a,
+.mbh-empty a {
+    display: inline-block;
+    min-height: 24px;
+    line-height: 24px;
+}
+
+.mbh-clear-all {
+    color: var(--mbh-muted);
+}
+
+.mbh-meta-end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    margin-left: auto;
+}
+
+.mbh-count {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Needs attention: All | Out of stock | Low stock | On backorder */
+.mbh-kinds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+}
+
+.mbh-kinds li {
+    margin: 0;
+}
+
+.mbh-kinds a {
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    color: var(--mbh-muted);
+    text-decoration: none;
+}
+
+.mbh-kinds a:hover {
+    color: var(--mbh-ink);
+}
+
+.mbh-kinds a.is-current {
+    border-color: var(--mbh-black);
+    color: var(--mbh-ink);
+    font-weight: 600;
+}
+
+.mbh-kinds .count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 400;
+}
+
+.mbh-sold-only {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
 }
 
 /* ---------------------------------------------------------------------
- * Notices and save bar
+ * Notices
  * ------------------------------------------------------------------- */
 
 .mbh-notices .notice {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
+    border-radius: 6px;
+    box-shadow: none;
+    border-top: 1px solid var(--mbh-line);
+    border-right: 1px solid var(--mbh-line);
+    border-bottom: 1px solid var(--mbh-line);
 }
 
 .mbh-notices .notice .button-link {
     vertical-align: baseline;
 }
 
-.mbh-save-bar {
+/* ---------------------------------------------------------------------
+ * The card: grid and footer
+ * ------------------------------------------------------------------- */
+
+.mbh-card {
+    border: 1px solid var(--mbh-line);
+    border-radius: 8px;
+    background: var(--mbh-surface);
+    overflow: hidden;
+}
+
+/*
+ * The grid scrolls inside its own box, in both directions: that is what lets
+ * the heading row stay on top and the Product column stay on the left. The
+ * box ends at the bottom of the window, so the page itself hardly scrolls.
+ */
+.mbh-grid-scroll {
+    max-height: max(300px, var(--mbh-grid-max, 70vh));
+    overflow: auto;
+    overscroll-behavior-x: contain;
+}
+
+.mbh-stock .mbh-grid {
+    width: 100%;
+    min-width: 960px;
+    border: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    box-shadow: none;
+    table-layout: auto;
+}
+
+.mbh-grid thead th {
     position: sticky;
-    top: 32px;
-    z-index: 20;
+    top: 0;
+    z-index: 3;
+    padding: 0;
+    border-bottom: 1px solid var(--mbh-line-strong);
+    background: var(--mbh-soft);
+    color: var(--mbh-muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    text-align: left;
+    text-transform: uppercase;
+    vertical-align: bottom;
+    white-space: nowrap;
+}
+
+.mbh-grid thead th {
+    box-sizing: border-box;
+}
+
+.mbh-grid thead th.mbh-plain,
+.mbh-grid thead th > a {
+    padding: 8px 10px;
+}
+
+.mbh-grid thead th > a {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    color: var(--mbh-muted);
+    text-decoration: none;
+}
+
+/* wp-admin floats every span of a sortable heading */
+.mbh-grid thead th > a span {
+    float: none;
+}
+
+.mbh-grid thead th > a:hover,
+.mbh-grid thead th.sorted > a {
+    color: var(--mbh-ink);
+}
+
+.mbh-grid thead th > a:focus-visible {
+    outline-offset: -2px;
+}
+
+.mbh-grid thead th.mbh-num > a {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.mbh-th-sub {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+/* Direction of the sort: an arrow, only on the sorted column (and on hover, the direction a click gives) */
+.mbh-sort-arrow {
+    flex: none;
+    width: 12px;
+    font-size: 12px;
+    line-height: 1.3;
+    text-align: center;
+    visibility: hidden;
+}
+
+.mbh-grid th.sorted .mbh-sort-arrow,
+.mbh-grid th > a:hover .mbh-sort-arrow,
+.mbh-grid th > a:focus-visible .mbh-sort-arrow {
+    visibility: visible;
+}
+
+.mbh-grid th.asc .mbh-sort-arrow::before {
+    content: "\2191";
+}
+
+.mbh-grid th.desc .mbh-sort-arrow::before {
+    content: "\2193";
+}
+
+.mbh-grid tbody td {
+    box-sizing: border-box;
+    padding: 3px 10px;
+    border: 0;
+    border-bottom: 1px solid var(--mbh-line);
+    background: var(--mbh-surface);
+    color: var(--mbh-ink);
+    font-size: 13px;
+    line-height: 1.45;
+    vertical-align: top;
+}
+
+.mbh-grid tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.mbh-grid .mbh-num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+/* Text that sits beside a 30 px field or a 32 px thumbnail starts on the same line as they do */
+.mbh-grid tbody td.mbh-num,
+.mbh-grid tbody td.mbh-col-status {
+    line-height: 30px;
+}
+
+/* The Product column stays in view when the grid scrolls sideways */
+.mbh-grid .mbh-col-name {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    /* Takes all the width the other columns leave */
+    width: 100%;
+    min-width: 280px;
+    box-shadow: 1px 0 0 var(--mbh-line);
+}
+
+.mbh-grid thead .mbh-col-name {
+    z-index: 4;
+}
+
+.mbh-grid .mbh-col-stock {
+    width: 96px;
+    min-width: 96px;
+}
+
+.mbh-grid .mbh-col-status {
+    width: 164px;
+    min-width: 164px;
+}
+
+/* "threshold 2", "1 of 3 out": beside the status, so the row stays one line high */
+.mbh-col-status .mbh-sub {
+    display: inline;
+    margin: 0 0 0 6px;
+    white-space: nowrap;
+}
+
+.mbh-grid .mbh-col-regular {
+    width: 150px;
+    min-width: 150px;
+}
+
+.mbh-grid .mbh-col-sale {
+    width: 116px;
+    min-width: 116px;
+}
+
+.mbh-grid .mbh-col-sold {
+    width: 92px;
+    min-width: 92px;
+}
+
+.mbh-grid .mbh-col-cover {
+    width: 86px;
+    min-width: 86px;
+}
+
+/* --- the product cell: arrow, thumbnail, name over SKU, id and type --- */
+
+.mbh-prod {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+
+.mbh-expand,
+.mbh-expand-space {
+    flex: none;
+    width: 24px;
+    height: 32px;
+}
+
+.mbh-fold-toggle,
+.mbh-expand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--mbh-muted);
+    cursor: pointer;
+}
+
+.mbh-expand:hover {
+    background: var(--mbh-ground);
+    color: var(--mbh-ink);
+}
+
+.mbh-chevron {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+}
+
+[aria-expanded="true"] > .mbh-chevron {
+    transform: rotate(45deg);
+}
+
+.mbh-thumb {
+    flex: none;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--mbh-line);
+    border-radius: 5px;
+    background: var(--mbh-ground);
+    object-fit: cover;
+}
+
+.mbh-prod-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* At most two lines; the whole name is in the title and is what a screen reader reads */
+.mbh-name {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--mbh-ink);
+    font-weight: 500;
+    line-height: 16px;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+}
+
+.mbh-sub-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 8px;
+    min-height: 16px;
+    color: var(--mbh-faint);
+    font-size: 11.5px;
+    line-height: 16px;
+}
+
+.mbh-sku {
+    color: var(--mbh-muted);
+    font-family: ui-monospace, Consolas, Menlo, monospace;
+    overflow-wrap: anywhere;
+}
+
+.mbh-id {
+    font-variant-numeric: tabular-nums;
+}
+
+.mbh-tag {
+    display: inline-block;
+    padding: 0 4px;
+    border: 1px solid var(--mbh-line-strong);
+    border-radius: 3px;
+    color: var(--mbh-muted);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    line-height: 14px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.mbh-tag--draft {
+    border-style: dashed;
+}
+
+.mbh-tag--edited {
+    border-color: var(--mbh-amber-line);
+    background: var(--mbh-amber-bg);
+    color: var(--mbh-amber);
+}
+
+.mbh-tag--unsaved {
+    border-color: var(--mbh-red-line);
+    background: var(--mbh-red-bg);
+    color: var(--mbh-red);
+}
+
+.mbh-tag--match {
+    border-color: var(--mbh-focus);
+    background: var(--mbh-blue-bg);
+    color: var(--mbh-blue);
+}
+
+/*
+ * Edit product | History: shown when the pointer or the keyboard is in the
+ * row. They keep their place in the line, so nothing moves when they appear.
+ */
+.mbh-row-links {
+    display: inline-flex;
+    gap: 5px;
+    visibility: hidden;
+    white-space: nowrap;
+}
+
+.mbh-row:hover .mbh-row-links,
+.mbh-row:focus-within .mbh-row-links {
+    visibility: visible;
+}
+
+.mbh-row-links a {
+    display: inline-block;
+    line-height: 16px;
+    padding: 4px 0;
+    margin: -4px 0;
+}
+
+.mbh-row--child > td {
+    background: var(--mbh-soft);
+}
+
+.mbh-row--child > .mbh-col-name {
+    padding-left: 44px;
+}
+
+.mbh-family-row > td {
+    padding: 8px 12px 8px 44px;
+    background: var(--mbh-soft);
+    color: var(--mbh-muted);
+    line-height: 1.45;
+}
+
+.mbh-load-error {
+    color: var(--mbh-red);
+}
+
+/* --- cells --- */
+
+.mbh-stock .mbh-grid .mbh-input {
+    box-sizing: border-box;
+    min-height: 30px;
+    margin: 0;
+    padding: 0 8px;
+    border: 1px solid var(--mbh-line-strong);
+    border-radius: 5px;
+    background-color: var(--mbh-surface);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    line-height: 28px;
+    scroll-margin: 44px 12px 12px 300px;
+}
+
+.mbh-stock .mbh-grid .mbh-input--qty {
+    width: 72px;
+    text-align: right;
+}
+
+.mbh-stock .mbh-grid .mbh-input--price {
+    width: 92px;
+    text-align: right;
+}
+
+.mbh-stock .mbh-grid .mbh-input--status {
+    width: 100%;
+    max-width: 150px;
+    padding-right: 24px;
+}
+
+.mbh-value {
+    color: var(--mbh-muted);
+    white-space: nowrap;
+}
+
+.mbh-sub,
+.mbh-caption {
+    display: block;
+    margin-top: 1px;
+    color: var(--mbh-muted);
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.mbh-none {
+    color: var(--mbh-faint);
+}
+
+.mbh-note {
+    color: var(--mbh-muted);
+}
+
+.mbh-col-stock .mbh-start {
+    display: block;
+    margin-left: auto;
+    font-size: 12px;
+}
+
+.mbh-start-cancel {
+    display: block;
+    margin-left: auto;
+    font-size: 12px;
+}
+
+/* Status: a dot and the word; the word is the information */
+.mbh-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
+.mbh-status::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--mbh-faint);
+}
+
+.mbh-status--instock::before {
+    background: var(--mbh-green);
+}
+
+.mbh-status--lowstock::before,
+.mbh-status--onbackorder::before {
+    background: #dba617;
+}
+
+.mbh-status--outofstock::before {
+    background: var(--mbh-red);
+}
+
+/*
+ * Cell states. Each has a line of words under the field; fill and border only repeat it.
+ *   changed   amber fill, "was 5 (+3)"
+ *   invalid   red border, what is wrong
+ *   conflict  dashed red border, "Not saved" (the choices are in the message row)
+ *   refused   red border, "Not saved"
+ *   saved     "✓ Saved" in green
+ *   adjusted  "Adjusted" in blue (the message row says how)
+ *   dropped   "Not applied" in blue
+ */
+.mbh-stock .mbh-grid .is-changed .mbh-input {
+    border-color: var(--mbh-amber-line);
+    background-color: var(--mbh-amber-bg);
+}
+
+.is-changed .mbh-caption {
+    color: var(--mbh-amber);
+}
+
+.mbh-stock .mbh-grid .is-invalid .mbh-input,
+.mbh-stock .mbh-grid .is-refused .mbh-input {
+    border-color: var(--mbh-red);
+    background-color: var(--mbh-red-bg);
+}
+
+.mbh-stock .mbh-grid .is-conflict .mbh-input {
+    border-color: var(--mbh-red);
+    border-style: dashed;
+    background-color: var(--mbh-red-bg);
+}
+
+.is-invalid .mbh-caption,
+.is-refused .mbh-caption,
+.is-conflict .mbh-caption {
+    color: var(--mbh-red);
+    font-weight: 600;
+}
+
+.is-invalid .mbh-caption {
+    min-width: 150px;
+    font-weight: 400;
+    text-align: right;
+    white-space: normal;
+}
+
+.is-saved .mbh-caption {
+    color: var(--mbh-green);
+}
+
+.is-saved .mbh-caption::before {
+    content: "\2713\00a0";
+}
+
+.is-adjusted .mbh-caption,
+.is-dropped .mbh-caption {
+    color: var(--mbh-blue);
+}
+
+/* --- the line under a row that says what happened to it --- */
+
+.mbh-grid tbody .mbh-msg-row > td {
+    padding: 0;
+}
+
+.mbh-msgs {
+    position: sticky;
+    left: 0;
+    box-sizing: border-box;
+    width: var(--mbh-scroll-width, 100%);
+    max-width: 100%;
+    margin: 0;
+}
+
+.mbh-msg {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 8px 12px 8px 74px;
+    background: var(--mbh-blue-bg);
+    color: #0c3c61;
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.mbh-msg + .mbh-msg {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.mbh-msg--conflict,
+.mbh-msg--refused {
+    background: var(--mbh-red-bg);
+    color: #6b1516;
+}
+
+.mbh-msg-text {
+    flex: 1 1 240px;
+}
+
+.mbh-msg-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-left: auto;
+}
+
+/* --- Start tracking: the small form in the stock cell --- */
+
+.mbh-start-form {
+    width: 230px;
+    margin-left: auto;
+    padding: 8px 10px;
+    border: 1px solid var(--mbh-line-strong);
+    border-radius: 6px;
+    background: var(--mbh-surface);
+    line-height: 1.45;
+    text-align: left;
+    white-space: normal;
+}
+
+.mbh-start-form label {
+    display: block;
+    margin-bottom: 2px;
+    font-weight: 600;
+}
+
+.mbh-stock .mbh-start-input {
+    width: 90px;
+    min-height: 30px;
+}
+
+.mbh-start-form p {
+    margin: 4px 0;
+    color: var(--mbh-muted);
+    font-size: 12px;
+}
+
+.mbh-start-form .mbh-start-error {
+    color: var(--mbh-red);
+}
+
+.mbh-start-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.mbh-grid.is-saving {
+    opacity: 0.6;
+}
+
+/* --- footer of the card: rows per page and the pager --- */
+
+.mbh-foot {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 8px 16px;
-    margin: 0 0 12px;
+    gap: 8px 12px;
     padding: 8px 12px;
-    background: #fff;
-    border: 1px solid #c3c4c7;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    border-top: 1px solid var(--mbh-line);
+    background: var(--mbh-soft);
+    color: var(--mbh-muted);
 }
 
-@media screen and (max-width: 782px) {
-    .mbh-save-bar {
-        top: 46px;
-    }
+.mbh-foot label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.mbh-save-info {
+.mbh-pager {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px 16px;
+    gap: 4px 6px;
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
 }
 
-.mbh-save-status.has-changes {
+.mbh-stock .mbh-pager .button {
+    min-width: 32px;
+    padding: 0 8px;
+    text-align: center;
+    text-decoration: none;
+}
+
+.mbh-stock .mbh-pager .mbh-page-field {
+    width: 52px;
+    min-height: 30px;
+    margin: 0 2px;
+    padding: 0 4px;
+    text-align: center;
+}
+
+/* Under a list that has no card of its own (History) */
+.mbh-foot--plain {
+    margin-top: 8px;
+    padding: 0 2px;
+    border: 0;
+    background: none;
+}
+
+.mbh-stock .button.disabled {
+    border-color: var(--mbh-line) !important;
+    background: var(--mbh-soft) !important;
+    color: #a7aaad !important;
+    cursor: default;
+}
+
+.mbh-keys-hint {
+    margin: 8px 2px 0;
+    color: var(--mbh-muted);
+    font-size: 12px;
+}
+
+.mbh-empty {
+    padding: 36px 16px;
+    border: 1px solid var(--mbh-line);
+    border-radius: 8px;
+    background: var(--mbh-surface);
+    text-align: center;
+}
+
+.mbh-empty p {
+    margin: 4px 0;
+    font-size: 14px;
+}
+
+/* ---------------------------------------------------------------------
+ * Save bar: floats at the bottom of the content area while something is
+ * unsaved, being saved, or was just saved
+ * ------------------------------------------------------------------- */
+
+.mbh-save-bar {
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: var(--mbh-bar-left, 50%);
+    z-index: 9990;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    box-sizing: border-box;
+    width: min(1080px, calc(var(--mbh-bar-width, 100vw) - 24px));
+    padding: 10px 12px 10px 18px;
+    border-radius: 10px;
+    background: var(--mbh-black);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.45;
+    transform: translateX(-50%);
+}
+
+.mbh-save-status {
     font-weight: 600;
 }
 
-.mbh-save-invalid {
-    color: #b32d2e;
-}
-
-.mbh-save-conflicts {
-    color: #996800;
-}
-
+.mbh-save-reason,
 .mbh-last-save,
 .mbh-undo-hint {
-    color: #50575e;
+    color: #dcdcde;
+    font-size: 12.5px;
+}
+
+.mbh-save-reason {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mbh-save-reason .dashicons {
+    width: 16px;
+    height: 16px;
+    color: #f0b849;
+    font-size: 16px;
+}
+
+.mbh-last-save {
+    margin-left: auto;
+}
+
+.mbh-save-bar .button-link,
+.mbh-save-bar .button-link:hover,
+.mbh-save-bar .button-link:focus {
+    color: #fff;
+}
+
+.mbh-save-bar .button-link:disabled {
+    color: #a7aaad;
+    text-decoration: none;
 }
 
 .mbh-save-actions {
     display: flex;
     gap: 8px;
-    margin-left: auto;
+}
+
+.mbh-save-bar .button,
+.mbh-save-bar .button:hover,
+.mbh-save-bar .button:focus {
+    border-color: #646970;
+    background: transparent;
+    color: #fff;
+}
+
+.mbh-save-bar .button-primary,
+.mbh-save-bar .button-primary:hover,
+.mbh-save-bar .button-primary:focus {
+    border-color: #fff;
+    background: #fff;
+    color: var(--mbh-black);
+}
+
+.mbh-save-bar .button:disabled,
+.mbh-save-bar .button[disabled] {
+    border-color: #50575e !important;
+    background: transparent !important;
+    color: #a7aaad !important;
 }
 
 /* ---------------------------------------------------------------------
- * Layout: filter panel beside the grid
+ * Filters: a drawer over the page, at every width
  * ------------------------------------------------------------------- */
 
-.mbh-layout {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-}
-
-.mbh-main {
-    flex: 1;
-    min-width: 0;
-    overflow-x: auto;
+.mbh-filters-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100040;
+    background: rgba(0, 0, 0, 0.35);
 }
 
 .mbh-filters {
-    flex: 0 0 260px;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100050;
+    display: flex;
+    flex-direction: column;
     box-sizing: border-box;
-    padding: 12px;
-    background: #fff;
-    border: 1px solid #c3c4c7;
+    width: min(360px, 100vw);
+    background: var(--mbh-surface);
+    box-shadow: -8px 0 28px rgba(0, 0, 0, 0.2);
+    font-size: 13px;
+}
+
+.mbh-filters-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 12px 12px 18px;
+    border-bottom: 1px solid var(--mbh-line);
 }
 
 .mbh-filters-title {
-    margin: 0 0 8px;
-    font-size: 14px;
+    margin: 0;
+    font-size: 16px;
+}
+
+.mbh-filters-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--mbh-muted);
+    cursor: pointer;
+}
+
+.mbh-filters-close:hover {
+    background: var(--mbh-ground);
+    color: var(--mbh-ink);
+}
+
+.mbh-filters-body {
+    flex: 1 1 auto;
+    padding: 14px 18px;
+    overflow-y: auto;
 }
 
 .mbh-filter-section {
-    margin: 0 0 14px;
+    margin: 0 0 16px;
     padding: 0;
     border: 0;
 }
 
 .mbh-filter-section legend {
-    padding: 0;
     margin-bottom: 4px;
+    padding: 0;
+    color: var(--mbh-muted);
+    font-size: 11.5px;
     font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .mbh-filter-option {
@@ -254,9 +1370,10 @@
 
 .mbh-filter-scroll {
     max-height: 220px;
+    padding: 4px 8px;
+    border: 1px solid var(--mbh-line);
+    border-radius: 6px;
     overflow-y: auto;
-    padding: 4px 6px;
-    border: 1px solid #dcdcde;
 }
 
 .mbh-filter-node {
@@ -274,46 +1391,18 @@
     padding-left: 18px;
 }
 
-.mbh-fold-toggle,
-.mbh-expand {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    min-height: 24px;
-    padding: 0;
-    background: none;
-    border: 0;
-    border-radius: 2px;
-    color: #50575e;
-    cursor: pointer;
-}
-
 .mbh-fold-toggle--label {
     gap: 4px;
     justify-content: flex-start;
     width: 100%;
+    color: var(--mbh-ink);
     font-weight: 500;
     text-align: left;
-    color: #1d2327;
 }
 
 .mbh-fold-spacer {
     display: inline-block;
     width: 24px;
-}
-
-.mbh-chevron {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    transform: rotate(-45deg);
-}
-
-[aria-expanded="true"] > .mbh-chevron {
-    transform: rotate(45deg);
 }
 
 .mbh-attribute-search {
@@ -336,384 +1425,12 @@
 
 .mbh-filter-buttons {
     display: flex;
+    flex: none;
     gap: 8px;
-}
-
-/* ---------------------------------------------------------------------
- * Grid
- * ------------------------------------------------------------------- */
-
-.mbh-attention-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px 16px;
-}
-
-.mbh-attention-bar .subsubsub {
-    float: none;
-    margin: 0;
-}
-
-.mbh-stock .tablenav {
-    height: auto;
-    margin: 6px 0;
-}
-
-.mbh-stock .tablenav .tablenav-pages {
-    margin: 0;
-}
-
-.mbh-stock .tablenav-paging-text {
-    display: inline-block;
-    padding: 0 6px;
-}
-
-.mbh-grid {
-    table-layout: auto;
-}
-
-.mbh-grid td,
-.mbh-grid th {
-    vertical-align: top;
-}
-
-.mbh-grid td {
-    position: relative;
-    padding: 6px 8px;
-}
-
-.mbh-grid .mbh-num {
-    text-align: right;
-}
-
-.mbh-grid th.mbh-num a {
-    display: flex;
     justify-content: flex-end;
-}
-
-.mbh-grid .mbh-col-id {
-    width: 64px;
-    color: #50575e;
-}
-
-.mbh-grid .mbh-col-type {
-    width: 70px;
-}
-
-.mbh-grid .mbh-col-name {
-    min-width: 220px;
-}
-
-.mbh-grid .mbh-col-sku {
-    width: 120px;
-    word-break: break-word;
-}
-
-.mbh-grid .mbh-col-stock {
-    width: 110px;
-}
-
-.mbh-grid .mbh-col-status {
-    width: 130px;
-}
-
-.mbh-grid .mbh-col-regular,
-.mbh-grid .mbh-col-sale {
-    width: 124px;
-}
-
-.mbh-grid .mbh-col-sold {
-    width: 96px;
-}
-
-.mbh-grid .mbh-col-cover {
-    width: 80px;
-}
-
-.mbh-grid tbody tr.mbh-row {
-    border-top: 1px solid #dcdcde;
-}
-
-.mbh-grid tbody td {
-    border-top: 1px solid #f0f0f1;
-}
-
-.mbh-name-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 6px;
-}
-
-.mbh-name {
-    font-weight: 600;
-}
-
-.mbh-tag {
-    display: inline-block;
-    padding: 0 6px;
-    border: 1px solid #c3c4c7;
-    border-radius: 3px;
-    background: #f6f7f7;
-    font-size: 12px;
-    line-height: 18px;
-    white-space: nowrap;
-}
-
-.mbh-tag--edited {
-    border-color: #dba617;
-    background: #fcf9e8;
-}
-
-.mbh-tag--unsaved {
-    border-color: #d63638;
-    background: #fcf0f1;
-}
-
-.mbh-tag--match {
-    border-color: #2271b1;
-    background: #f0f6fc;
-}
-
-/* Row actions appear on hover and when the keyboard is in the row */
-.mbh-row .row-actions {
-    position: relative;
-    left: -9999em;
-}
-
-.mbh-row:hover .row-actions,
-.mbh-row:focus-within .row-actions {
-    position: static;
-    left: 0;
-}
-
-.mbh-row--child > td {
-    background: #f6f7f7;
-}
-
-.mbh-row--child > .mbh-col-name {
-    padding-left: 38px;
-}
-
-.mbh-family-row > td {
-    padding-left: 38px;
-    color: #50575e;
-}
-
-.mbh-load-error {
-    color: #b32d2e;
-}
-
-.mbh-input--qty {
-    width: 72px;
-    text-align: right;
-}
-
-.mbh-input--price {
-    width: 96px;
-    text-align: right;
-}
-
-.mbh-input--status {
-    max-width: 100%;
-}
-
-.mbh-sub,
-.mbh-caption {
-    display: block;
-    margin-top: 2px;
-    font-size: 12px;
-    line-height: 1.3;
-    color: #646970;
-}
-
-.mbh-none {
-    color: #8c8f94;
-}
-
-.mbh-note {
-    color: #50575e;
-}
-
-.mbh-col-stock .mbh-start {
-    display: block;
-    margin-left: auto;
-}
-
-.mbh-start-cancel {
-    display: block;
-    margin-left: auto;
-    font-size: 12px;
-}
-
-/* Status: the word is the information; the bar is decoration */
-.mbh-status {
-    display: inline-block;
-    padding-left: 8px;
-    border-left: 3px solid #8c8f94;
-}
-
-.mbh-status--instock {
-    border-left-color: #00a32a;
-}
-
-.mbh-status--lowstock,
-.mbh-status--onbackorder {
-    border-left-color: #dba617;
-}
-
-.mbh-status--outofstock {
-    border-left-color: #d63638;
-}
-
-/* Cell states: border, icon and caption together */
-.mbh-grid td[data-field] {
-    padding-right: 28px;
-}
-
-.mbh-state {
-    position: absolute;
-    top: 10px;
-    right: 6px;
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-}
-
-.is-changed .mbh-input {
-    border-color: #dba617;
-    background: #fcf9e8;
-}
-
-.is-changed .mbh-state {
-    color: #996800;
-}
-
-.is-invalid .mbh-input,
-.is-refused .mbh-input {
-    border-color: #d63638;
-    background: #fcf0f1;
-}
-
-.is-invalid .mbh-state,
-.is-refused .mbh-state,
-.is-invalid .mbh-caption,
-.is-refused .mbh-caption {
-    color: #b32d2e;
-}
-
-.is-conflict .mbh-input {
-    border-color: #dba617;
-    border-style: dashed;
-    background: #fcf9e8;
-}
-
-.is-conflict .mbh-state,
-.is-conflict .mbh-caption {
-    color: #996800;
-}
-
-.is-saved .mbh-state {
-    color: #008a20;
-}
-
-.is-adjusted .mbh-state,
-.is-dropped .mbh-state {
-    color: #2271b1;
-}
-
-/* The line under a row that says what happened to it */
-.mbh-msg-row > td {
-    padding: 6px 8px 8px 38px;
-    background: #fff;
-    border-top: 0;
-}
-
-.mbh-msgs {
-    margin: 0;
-}
-
-.mbh-msg {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px 8px;
-    margin: 0 0 4px;
-    padding: 6px 10px;
-    border-left: 4px solid #72aee6;
-    background: #f0f6fc;
-}
-
-.mbh-msg .dashicons {
-    align-self: center;
-}
-
-.mbh-msg--conflict {
-    border-left-color: #dba617;
-    background: #fcf9e8;
-}
-
-.mbh-msg--refused {
-    border-left-color: #d63638;
-    background: #fcf0f1;
-}
-
-.mbh-msg-actions {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-/* Start tracking: the small form in the stock cell */
-.mbh-start-form {
-    width: 230px;
-    margin-left: auto;
-    text-align: left;
-    white-space: normal;
-}
-
-.mbh-start-form label {
-    display: block;
-    font-weight: 600;
-}
-
-.mbh-start-input {
-    width: 90px;
-}
-
-.mbh-start-form p {
-    margin: 4px 0;
-    font-size: 12px;
-    color: #50575e;
-}
-
-.mbh-start-form .mbh-start-error {
-    color: #b32d2e;
-}
-
-.mbh-start-buttons {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 6px;
-}
-
-.mbh-grid.is-saving {
-    opacity: 0.6;
-}
-
-.mbh-empty {
-    padding: 28px 16px;
-    background: #fff;
-    border: 1px solid #c3c4c7;
-    text-align: center;
-}
-
-.mbh-empty p {
-    margin: 4px 0;
-    font-size: 14px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--mbh-line);
+    background: var(--mbh-soft);
 }
 
 /* ---------------------------------------------------------------------
@@ -732,7 +1449,7 @@ body.mbh-dialog-open {
     align-items: flex-start;
     justify-content: center;
     padding: 8vh 16px 16px;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.45);
     overflow-y: auto;
 }
 
@@ -740,29 +1457,42 @@ body.mbh-dialog-open {
     box-sizing: border-box;
     width: 100%;
     max-width: 520px;
-    padding: 20px 24px;
-    background: #fff;
-    border-radius: 4px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    background: var(--mbh-surface);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    font-size: 13px;
+    line-height: 1.45;
+    overflow: hidden;
 }
 
 .mbh-dialog--wide {
-    max-width: 880px;
+    max-width: 640px;
 }
 
 .mbh-dialog-title {
-    margin: 0 0 12px;
-    font-size: 18px;
+    margin: 0;
+    padding: 18px 20px 6px;
+    font-size: 17px;
+    line-height: 1.3;
 }
 
 .mbh-dialog-body {
     max-height: 60vh;
+    padding: 0 20px 16px;
     overflow-y: auto;
 }
 
+.mbh-dialog-body p {
+    margin: 0 0 8px;
+    color: var(--mbh-muted);
+}
+
 .mbh-dialog-body h3 {
-    margin: 16px 0 6px;
-    font-size: 14px;
+    margin: 14px 0 6px;
+    color: var(--mbh-muted);
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .mbh-dialog-buttons {
@@ -770,48 +1500,183 @@ body.mbh-dialog-open {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
-    margin-top: 16px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--mbh-line);
+    background: var(--mbh-soft);
 }
 
-.mbh-check-list {
-    margin: 0 0 0 18px;
-    list-style: disc;
+/* A list of changes: what it is on the left, what happens on the right, why beneath */
+.mbh-list {
+    margin: 0;
+    border: 1px solid var(--mbh-line);
+    border-radius: 7px;
+    overflow: hidden;
 }
 
-.mbh-undo-result {
+.mbh-list-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 12px;
+    margin: 0;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--mbh-line);
+}
+
+.mbh-list-item:last-child {
+    border-bottom: 0;
+}
+
+.mbh-list-what {
+    min-width: 0;
+    color: var(--mbh-ink);
+    overflow-wrap: anywhere;
+}
+
+.mbh-list-what .mbh-sku {
+    margin-left: 6px;
+    font-size: 11.5px;
+}
+
+.mbh-list-result {
+    color: var(--mbh-ink);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: right;
+}
+
+.mbh-list-why {
+    grid-column: 1 / -1;
+    color: var(--mbh-muted);
+    font-size: 12px;
+}
+
+.mbh-list--skip .mbh-list-item {
+    background: var(--mbh-soft);
+}
+
+.mbh-list--skip .mbh-list-result {
+    color: var(--mbh-muted);
+    font-weight: 400;
+}
+
+.mbh-dialog-body .mbh-undo-result {
+    color: var(--mbh-ink);
     font-weight: 600;
 }
 
 /* ---------------------------------------------------------------------
- * History
+ * History: one row per save, its changes folded underneath
  * ------------------------------------------------------------------- */
 
 .mbh-history-title {
-    margin: 12px 0 4px;
+    margin: 0 0 4px;
+    font-size: 16px;
 }
 
-.mbh-history-table td,
+.mbh-history-body h3 {
+    margin: 14px 0 6px;
+    color: var(--mbh-muted);
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.mbh-history-scroll {
+    border: 1px solid var(--mbh-line);
+    border-radius: 8px;
+    background: var(--mbh-surface);
+    overflow-x: auto;
+}
+
+.mbh-stock .mbh-history-table {
+    width: 100%;
+    border: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    box-shadow: none;
+}
+
 .mbh-history-table th {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--mbh-line-strong);
+    background: var(--mbh-soft);
+    color: var(--mbh-muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.mbh-history-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--mbh-line);
+    color: var(--mbh-ink);
+    font-size: 13px;
+    line-height: 1.45;
     vertical-align: top;
 }
 
-.mbh-save-detail > td {
-    padding: 8px 12px 12px 28px;
-    background: #f6f7f7;
+.mbh-history-table tbody tr:last-child > td {
+    border-bottom: 0;
 }
 
+.mbh-history-table .mbh-when {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.mbh-history-table .mbh-who,
+.mbh-history-table .mbh-state-text {
+    color: var(--mbh-muted);
+}
+
+.mbh-history-table .mbh-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.mbh-history-table a {
+    display: inline-block;
+    min-height: 24px;
+}
+
+.mbh-save-number {
+    color: var(--mbh-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+.mbh-history-table .mbh-save-detail > td {
+    padding: 0 12px 12px;
+}
+
+.mbh-save-detail .mbh-history-scroll {
+    border-radius: 6px;
+    background: var(--mbh-soft);
+}
+
+.mbh-save-detail .mbh-history-table th,
+.mbh-save-detail .mbh-history-table td {
+    padding: 7px 12px;
+    background: none;
+}
+
+/* Saves from before the change log: listed, dimmed, nothing to open */
 .mbh-save--legacy td {
-    color: #50575e;
+    color: var(--mbh-muted);
+    opacity: 0.75;
 }
 
 .mbh-change--derived td {
-    color: #50575e;
+    color: var(--mbh-muted);
 }
 
-.mbh-gap td {
-    background: #fcf9e8;
-    color: #50575e;
-    font-style: italic;
+.mbh-history-table .mbh-gap td {
+    background: var(--mbh-amber-bg);
+    color: var(--mbh-amber);
+    font-size: 12px;
 }
 
 .mbh-history-body .mbh-empty {
@@ -819,5 +1684,92 @@ body.mbh-dialog-open {
 }
 
 .mbh-loading {
-    color: #50575e;
+    color: var(--mbh-muted);
+}
+
+/* ---------------------------------------------------------------------
+ * Narrow windows. wp-admin folds its menu at 960 px, hides it and enlarges
+ * every control at 782 px, and lets its toolbar scroll away at 600 px.
+ * ------------------------------------------------------------------- */
+
+@media screen and (max-width: 960px) {
+    .mbh-grid .mbh-col-name {
+        min-width: 240px;
+    }
+}
+
+@media screen and (max-width: 782px) {
+    /* wp-admin's larger controls would make every row 50 px tall: the grid keeps its own sizes */
+    .mbh-stock .mbh-grid .mbh-input {
+        min-height: 32px;
+        font-size: 14px;
+        line-height: 30px;
+    }
+
+    .mbh-stock .button,
+    .mbh-save-bar .button {
+        min-height: 36px;
+        line-height: 34px;
+    }
+
+    .mbh-stock .mbh-search input[type="search"] {
+        min-height: 36px;
+    }
+
+    .mbh-seg a {
+        line-height: 36px;
+    }
+
+    .mbh-stock .mbh-grid {
+        min-width: 960px;
+    }
+
+    .mbh-grid .mbh-col-name {
+        min-width: 250px;
+    }
+
+    .mbh-msg {
+        padding-left: 12px;
+    }
+
+    .mbh-row--child > .mbh-col-name,
+    .mbh-family-row > td {
+        padding-left: 24px;
+    }
+
+    .mbh-last-save {
+        margin-left: 0;
+    }
+
+    /* While changes are unsaved the last save cannot be undone anyway: leave it out, the bar stays low */
+    .mbh-save-bar.has-changes .mbh-last-save {
+        display: none;
+    }
+
+    .mbh-save-actions {
+        margin-left: auto;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .mbh-stock .mbh-grid {
+        min-width: 900px;
+    }
+
+    .mbh-grid .mbh-col-name {
+        min-width: 190px;
+    }
+
+    .mbh-thumb,
+    .mbh-expand-space {
+        display: none;
+    }
+
+    .mbh-save-bar {
+        padding: 8px 10px;
+    }
+
+    .mbh-keys-hint {
+        display: none;
+    }
 }

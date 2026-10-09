@@ -4,7 +4,8 @@
  * Active search and filters, each removable, and Clear all
  *
  * Clear all is also offered when only the sort or the view differs from the
- * default, because it resets those too.
+ * default, because it resets those too. Prints nothing when there is
+ * nothing to clear.
  *
  * @var \MadeByHypeStockmanagment\UI\UIManager $this
  * @var array  $request

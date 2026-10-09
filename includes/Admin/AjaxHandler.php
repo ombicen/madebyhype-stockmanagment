@@ -63,7 +63,7 @@ class AjaxHandler
      * The nonces the current user can use, for the page to start with and to
      * refresh later
      *
-     * @return array Any of 'save', 'undo', 'history' => nonce
+     * @return array Any of 'save', 'undo', 'history', 'read' => nonce
      */
     public static function nonces()
     {
@@ -79,6 +79,10 @@ class AjaxHandler
 
         if (Capabilities::can_view()) {
             $nonces['history'] = wp_create_nonce(self::NONCE_HISTORY);
+
+            // The reads of the list (variations, rows) have their own handler and nonce
+            require_once __DIR__ . '/ReadAjaxHandler.php';
+            $nonces['read'] = wp_create_nonce(ReadAjaxHandler::NONCE_ACTION);
         }
 
         return $nonces;
@@ -192,6 +196,8 @@ class AjaxHandler
      *                         -> {rows: [...], total, page, per_page, pages}
      *   view=last             -> {save: {...}|null}: the current user's most recent save
      *   view=legacy           -> {versions: [...]}: saves made before the change log, list only
+     *   view=users            -> {users: [{id, name}, ...]}: everyone who has a save or an undo in
+     *                         History, by name; name is null for an account that no longer exists
      *
      * Refused: {success: false, data: {code, message}}
      */
@@ -243,6 +249,10 @@ class AjaxHandler
 
             case 'legacy':
                 wp_send_json_success(['versions' => $this->legacy_versions()]);
+                return;
+
+            case 'users':
+                wp_send_json_success(['users' => $this->change_log->get_batch_users()]);
                 return;
         }
 

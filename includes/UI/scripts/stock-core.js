@@ -1,8 +1,9 @@
 /**
  * Stock screen: what every part of the page shares.
  *
- * Strings, DOM building, requests, notices, dialogs, the nonce refresh, the
- * guard against leaving with unsaved edits, and the toolbar and filter panel.
+ * Strings, DOM building, requests, notices, announcements for screen readers,
+ * dialogs, the nonce refresh, the guard against leaving with unsaved edits,
+ * the toolbar, the filter drawer, the page-number field and the page's layout lengths.
  * The grid (stock-grid.js) and History (stock-history.js) build on this.
  *
  * Every user-visible string comes from madebyhypeStockData.strings; nothing
@@ -14,6 +15,7 @@
   var MBH = (window.MBHStock = window.MBHStock || {});
   var config = window.madebyhypeStockData || {};
   var strings = config.strings || {};
+  var plural = config.plural || [];
 
   MBH.config = config;
   MBH.nonces = config.nonces || {};
@@ -38,7 +40,11 @@
   function fill(text, args) {
     var next = 0;
 
-    return String(text).replace(/%(?:(\d+)\$)?[sd]/g, function (match, position) {
+    return String(text).replace(/%(?:%|(?:(\d+)\$)?[sd])/g, function (match, position) {
+      if (match === "%%") {
+        return "%";
+      }
+
       var index = position ? parseInt(position, 10) - 1 : next++;
 
       return args[index] === undefined || args[index] === null ? "" : String(args[index]);
@@ -53,10 +59,13 @@
       return key;
     }
 
-    return fill($.isArray(text) ? text[1] : text, Array.prototype.slice.call(arguments, 1));
+    return fill($.isArray(text) ? text[MBH.model.pluralIndex(2, plural, text.length)] : text, Array.prototype.slice.call(arguments, 1));
   };
 
-  /** A string with a singular and a plural form, chosen by the first argument */
+  /**
+   * A counted string, in the plural form its count takes in the language of
+   * the page. The count is the first argument and the first placeholder.
+   */
   MBH.tn = function (key, count) {
     var text = strings[key];
 
@@ -65,10 +74,33 @@
     }
 
     if ($.isArray(text)) {
-      text = count === 1 ? text[0] : text[1];
+      text = text[MBH.model.pluralIndex(count, plural, text.length)];
     }
 
     return fill(text, Array.prototype.slice.call(arguments, 1));
+  };
+
+  /**
+   * Say something to a screen reader without moving the focus: one line in
+   * the page's live region. Used for what happens inside the table (a cell
+   * found invalid or put back, messages under rows, variations shown).
+   */
+  MBH.announce = function (text) {
+    var region = document.getElementById("mbh-live");
+
+    if (!region || !text) {
+      return;
+    }
+
+    var line = MBH.el("p", { text: text });
+
+    // A moment later, so a line added right after the page changed is still read
+    window.setTimeout(function () {
+      region.appendChild(line);
+    }, 60);
+    window.setTimeout(function () {
+      $(line).remove();
+    }, 12000);
   };
 
   /* ------------------------------------------------------------------
@@ -291,7 +323,7 @@
    *
    * @param {object} options {
    *   title, body (text or nodes), wide (bool),
-   *   buttons: [{label, primary, action(dialog), focus (bool), disabled}],
+   *   buttons: [{label, primary, danger (bool: it destroys or reverses something), action(dialog), focus (bool), disabled}],
    *   onCancel(): Escape, the backdrop or dialog.cancel(),
    *   returnFocus: element to focus on close (default: what had focus)
    * }
@@ -375,7 +407,7 @@
         (list || []).forEach(function (button) {
           var node = MBH.el("button", {
             type: "button",
-            class: "button" + (button.primary ? " button-primary" : ""),
+            class: "button" + (button.primary ? " button-primary" : "") + (button.danger ? " mbh-danger" : ""),
             disabled: button.disabled ? true : false,
             text: button.label,
             onclick: function () {
@@ -454,6 +486,11 @@
     return dialog;
   };
 
+  /** Whether a dialog is open: the page's own shortcuts stay out of its way */
+  MBH.dialogOpen = function () {
+    return openDialogs.length > 0;
+  };
+
   // Focus that lands outside the top dialog is put back into it
   document.addEventListener("focusin", function (event) {
     var top = openDialogs[openDialogs.length - 1];
@@ -524,6 +561,7 @@
         },
         {
           label: MBH.t("discard"),
+          danger: true,
           action: function (dialog) {
             dialog.close();
             leave();
@@ -662,39 +700,89 @@
     });
   }
 
+  /* ------------------------------------------------------------------
+   * Filters: a drawer over the page. Focus goes in and stays in, Escape
+   * and the backdrop close it, focus goes back to the Filters button.
+   * ---------------------------------------------------------------- */
+
   function initFilterPanel() {
     var panel = document.getElementById("mbh-filters");
     var toggle = document.getElementById("mbh-filters-toggle");
-    var storageKey = "madebyhype_stock_sidebar_state";
+    var close = document.getElementById("mbh-filters-close");
 
     if (!panel || !toggle) {
       return;
     }
 
-    function remembered() {
-      try {
-        return window.localStorage.getItem(storageKey) === "open";
-      } catch (e) {
-        return false;
-      }
+    var backdrop = MBH.el("div", { class: "mbh-filters-backdrop", hidden: true });
+
+    panel.parentNode.insertBefore(backdrop, panel);
+
+    function focusable() {
+      return $(panel)
+        .find("a[href], button, input, select")
+        .filter(function () {
+          return !this.disabled && this.tabIndex !== -1 && this.offsetParent !== null;
+        })
+        .get();
     }
 
     function show(open) {
       panel.hidden = !open;
+      backdrop.hidden = !open;
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
+
+      if (open) {
+        panel.focus();
+      } else {
+        toggle.focus();
+      }
     }
 
-    show(remembered());
+    MBH.filtersOpen = function () {
+      return !panel.hidden;
+    };
 
     toggle.addEventListener("click", function () {
-      var open = panel.hidden;
+      show(panel.hidden);
+    });
+    backdrop.addEventListener("mousedown", function () {
+      show(false);
+    });
+    if (close) {
+      close.addEventListener("click", function () {
+        show(false);
+      });
+    }
 
-      show(open);
+    panel.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        show(false);
+        return;
+      }
 
-      try {
-        window.localStorage.setItem(storageKey, open ? "open" : "closed");
-      } catch (e) {
-        // Private mode: the panel still opens, it is just not remembered
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      var items = focusable();
+      var first = items[0];
+      var last = items[items.length - 1];
+
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+
+    // Focus that leaves the open drawer (a click on the page's edge) is put back; a dialog on top keeps its own
+    document.addEventListener("focusin", function (event) {
+      if (!panel.hidden && !MBH.dialogOpen() && !panel.contains(event.target)) {
+        panel.focus();
       }
     });
 
@@ -735,8 +823,120 @@
     });
   }
 
+  /* ------------------------------------------------------------------
+   * The page-number field: Enter goes to that page
+   * ---------------------------------------------------------------- */
+
+  function initPageField() {
+    $(".mbh-stock").on("keydown", ".mbh-page-field", function (event) {
+      if (event.key !== "Enter") {
+        return;
+      }
+
+      event.preventDefault();
+
+      var field = this;
+      var current = parseInt(field.getAttribute("data-page"), 10);
+      var pages = parseInt(field.getAttribute("data-pages"), 10);
+      var typed = /^\s*\d+\s*$/.test(field.value) ? parseInt(field.value, 10) : NaN;
+
+      if (isNaN(typed)) {
+        field.value = current;
+        field.select();
+        return;
+      }
+
+      // A page beyond the last is the last, as the server reads it
+      var target = Math.max(1, Math.min(pages, typed));
+
+      field.value = target;
+
+      if (target === current) {
+        field.select();
+        return;
+      }
+
+      MBH.navigate(
+        function () {
+          window.location.href = field.getAttribute("data-url").replace("%d", String(target));
+        },
+        function () {
+          field.value = current;
+        }
+      );
+    });
+  }
+
+  /* ------------------------------------------------------------------
+   * Lengths the stylesheet cannot know: how much of the window the grid
+   * may take, and where the content area is (for the floating save bar).
+   * wp-admin's menu can be open, folded or hidden.
+   * ---------------------------------------------------------------- */
+
+  var layoutQueued = false;
+
+  function layout() {
+    var wrap = document.querySelector(".mbh-stock");
+    var scroll = document.getElementById("mbh-grid-scroll");
+    var bar = document.getElementById("mbh-save-bar");
+
+    layoutQueued = false;
+
+    if (!wrap) {
+      return;
+    }
+
+    var area = wrap.getBoundingClientRect();
+    var barHeight = bar && !bar.hidden ? bar.offsetHeight : 0;
+
+    wrap.classList.toggle("has-save-bar", barHeight > 0);
+    wrap.style.setProperty("--mbh-bar-height", barHeight + "px");
+
+    if (bar) {
+      bar.style.setProperty("--mbh-bar-left", Math.round(area.left + area.width / 2) + "px");
+      bar.style.setProperty("--mbh-bar-width", Math.round(area.width) + "px");
+    }
+
+    if (scroll) {
+      var card = scroll.parentNode;
+      // From the top of the grid, as the page lies when it is scrolled to its top, to the bottom of the window
+      var top = scroll.getBoundingClientRect().top + window.pageYOffset;
+      var below = card.offsetHeight - scroll.offsetHeight + (barHeight ? barHeight + 28 : 12);
+
+      wrap.style.setProperty("--mbh-grid-max", Math.round(window.innerHeight - top - below) + "px");
+      wrap.style.setProperty("--mbh-scroll-width", scroll.clientWidth + "px");
+    }
+  }
+
+  /** Measure again, once, before the next paint */
+  MBH.layout = function () {
+    if (layoutQueued) {
+      return;
+    }
+
+    layoutQueued = true;
+    (window.requestAnimationFrame || window.setTimeout)(layout);
+  };
+
   $(function () {
     initNavigation();
     initFilterPanel();
+    initPageField();
+
+    layout();
+    window.addEventListener("resize", MBH.layout);
+
+    if (window.ResizeObserver) {
+      // The menu folding, a notice appearing, the save bar wrapping onto two lines
+      var observer = new window.ResizeObserver(MBH.layout);
+
+      ["wpbody-content", "mbh-save-bar", "mbh-notices"].forEach(function (id) {
+        var node = document.getElementById(id);
+
+        if (node) {
+          observer.observe(node);
+        }
+      });
+    }
   });
 })(jQuery, window, document);

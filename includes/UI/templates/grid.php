@@ -1,7 +1,8 @@
 <?php
 
 /**
- * The grid of All stock and Needs attention: kind links, count and paging, table, empty states
+ * The grid of All stock and Needs attention: kind links, chips and count, the table in its card with
+ * rows per page and paging in the footer, empty states
  *
  * @var \MadeByHypeStockmanagment\UI\UIManager $this
  * @var array  $request
@@ -49,9 +50,9 @@ if ($view === 'sku') {
 }
 ?>
 
-<?php if ($tab === 'attention'): ?>
-    <div class="mbh-attention-bar">
-        <ul class="subsubsub">
+<div class="mbh-meta">
+    <?php if ($tab === 'attention'): ?>
+        <ul class="mbh-kinds" aria-label="<?php esc_attr_e('Kinds of items that need attention', 'madebyhype-stockmanagment'); ?>">
             <?php
             $attention_kinds = [
                 'all' => __('All', 'madebyhype-stockmanagment'),
@@ -59,12 +60,11 @@ if ($view === 'sku') {
                 'low' => __('Low stock', 'madebyhype-stockmanagment'),
                 'backorder' => __('On backorder', 'madebyhype-stockmanagment'),
             ];
-            $last = 'backorder';
             foreach ($attention_kinds as $kind => $kind_label):
                 $current = $request['attention'] === $kind;
             ?>
                 <li>
-                    <a href="<?php echo esc_url($this->url(['attention' => $kind === 'all' ? null : $kind])); ?>"<?php echo $current ? ' class="current" aria-current="page"' : ''; ?>><?php echo esc_html($kind_label); ?> <span class="count">(<?php echo esc_html(number_format_i18n(isset($result['counts'][$kind]) ? $result['counts'][$kind] : 0)); ?>)</span></a><?php echo $kind === $last ? '' : ' |'; ?>
+                    <a href="<?php echo esc_url($this->url(['attention' => $kind === 'all' ? null : $kind])); ?>"<?php echo $current ? ' class="is-current" aria-current="page"' : ''; ?>><?php echo esc_html($kind_label); ?> <span class="count">(<?php echo esc_html(number_format_i18n(isset($result['counts'][$kind]) ? $result['counts'][$kind] : 0)); ?>)</span></a>
                 </li>
             <?php endforeach; ?>
         </ul>
@@ -72,8 +72,17 @@ if ($view === 'sku') {
             <input type="checkbox" form="mbh-list-form" name="sold_only" value="1" data-mbh-submit<?php checked($request['sold_only']); ?>>
             <?php esc_html_e('Only items sold in this period', 'madebyhype-stockmanagment'); ?>
         </label>
+    <?php endif; ?>
+
+    <?php include __DIR__ . '/chips.php'; ?>
+
+    <div class="mbh-meta-end">
+        <?php if ($total > 0 && $tab === 'all' && $view === 'product'): ?>
+            <button type="button" class="button-link" id="mbh-collapse-all" hidden><?php esc_html_e('Collapse all', 'madebyhype-stockmanagment'); ?></button>
+        <?php endif; ?>
+        <span class="mbh-count displaying-num"><?php echo esc_html($count_label); ?></span>
     </div>
-<?php endif; ?>
+</div>
 
 <?php if ($total === 0): ?>
     <div class="mbh-empty">
@@ -118,59 +127,57 @@ if ($view === 'sku') {
     <?php return; ?>
 <?php endif; ?>
 
-<?php
-$position = 'top';
-include __DIR__ . '/pagination.php';
-?>
+<div class="mbh-card">
+    <div id="mbh-grid-scroll" class="mbh-grid-scroll">
+        <table id="mbh-grid" class="mbh-grid">
+            <caption class="screen-reader-text">
+                <?php
+                if ($tab === 'attention') {
+                    esc_html_e('Items that are out of stock or low', 'madebyhype-stockmanagment');
+                } elseif ($view === 'sku') {
+                    esc_html_e('Stock and prices, one row per SKU', 'madebyhype-stockmanagment');
+                } else {
+                    esc_html_e('Stock and prices, one row per product', 'madebyhype-stockmanagment');
+                }
+                ?>
+            </caption>
+            <thead>
+                <tr>
+                    <?php $this->sort_heading('name', esc_html__('Product', 'madebyhype-stockmanagment'), 'mbh-col-name'); ?>
+                    <?php $this->sort_heading('stock_quantity', esc_html__('Stock', 'madebyhype-stockmanagment'), 'mbh-col-stock mbh-num'); ?>
+                    <th scope="col" class="mbh-col-status mbh-plain"><?php esc_html_e('Status', 'madebyhype-stockmanagment'); ?></th>
+                    <?php $this->sort_heading('price', esc_html__('Regular price', 'madebyhype-stockmanagment'), 'mbh-col-regular mbh-num', true, __('Sorts by the price customers pay now (the sale price when there is one).', 'madebyhype-stockmanagment')); ?>
+                    <th scope="col" class="mbh-col-sale mbh-num mbh-plain"><?php esc_html_e('Sale price', 'madebyhype-stockmanagment'); ?></th>
+                    <?php
+                    // The period is the heading's second line, so the column stays narrow
+                    $this->sort_heading(
+                        'total_sales',
+                        esc_html__('Sold', 'madebyhype-stockmanagment') . ' <span class="mbh-th-sub">' . esc_html($this->period_label()) . '</span>',
+                        'mbh-col-sold mbh-num',
+                        true,
+                        __('Units in paid orders (processing or completed) placed in this period.', 'madebyhype-stockmanagment')
+                    );
+                    $this->sort_heading(
+                        'cover',
+                        esc_html__('Cover', 'madebyhype-stockmanagment'),
+                        'mbh-col-cover mbh-num',
+                        false,
+                        __('Days the stock lasts at the rate it sold in this period.', 'madebyhype-stockmanagment')
+                    );
+                    ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $row): ?>
+                    <?php include __DIR__ . '/row.php'; ?>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 
-<table id="mbh-grid" class="wp-list-table widefat mbh-grid">
-    <caption class="screen-reader-text">
-        <?php
-        if ($tab === 'attention') {
-            esc_html_e('Items that are out of stock or low', 'madebyhype-stockmanagment');
-        } elseif ($view === 'sku') {
-            esc_html_e('Stock and prices, one row per SKU', 'madebyhype-stockmanagment');
-        } else {
-            esc_html_e('Stock and prices, one row per product', 'madebyhype-stockmanagment');
-        }
-        ?>
-    </caption>
-    <thead>
-        <tr>
-            <th scope="col" class="mbh-col-id"><?php esc_html_e('ID', 'madebyhype-stockmanagment'); ?></th>
-            <?php $this->sort_heading('name', esc_html__('Product', 'madebyhype-stockmanagment'), 'mbh-col-name'); ?>
-            <th scope="col" class="mbh-col-type"><?php esc_html_e('Type', 'madebyhype-stockmanagment'); ?></th>
-            <?php $this->sort_heading('sku', esc_html__('SKU', 'madebyhype-stockmanagment'), 'mbh-col-sku'); ?>
-            <?php $this->sort_heading('stock_quantity', esc_html__('Stock', 'madebyhype-stockmanagment'), 'mbh-col-stock mbh-num'); ?>
-            <th scope="col" class="mbh-col-status"><?php esc_html_e('Status', 'madebyhype-stockmanagment'); ?></th>
-            <?php $this->sort_heading('price', esc_html__('Regular price', 'madebyhype-stockmanagment'), 'mbh-col-regular mbh-num', true, __('Sorts by the price customers pay now (the sale price when there is one).', 'madebyhype-stockmanagment')); ?>
-            <th scope="col" class="mbh-col-sale mbh-num"><?php esc_html_e('Sale price', 'madebyhype-stockmanagment'); ?></th>
-            <?php
-            $this->sort_heading(
-                'total_sales',
-                /* translators: %s: the sales period, for example "last 30 days" */
-                esc_html(sprintf(__('Sold · %s', 'madebyhype-stockmanagment'), $this->period_label())),
-                'mbh-col-sold mbh-num',
-                true,
-                __('Units in paid orders (processing or completed) placed in this period.', 'madebyhype-stockmanagment')
-            );
-            $this->sort_heading(
-                'cover',
-                esc_html__('Cover', 'madebyhype-stockmanagment'),
-                'mbh-col-cover mbh-num',
-                false,
-                __('Days the stock lasts at the rate it sold in this period.', 'madebyhype-stockmanagment')
-            );
-            ?>
-        </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($rows as $row): ?>
-            <?php include __DIR__ . '/row.php'; ?>
-        <?php endforeach; ?>
-    </tbody>
-</table>
+    <?php include __DIR__ . '/pagination.php'; ?>
+</div>
 
-<?php
-$position = 'bottom';
-include __DIR__ . '/pagination.php';
+<?php if (!empty($caps['stock']) || !empty($caps['prices'])): ?>
+    <p class="description mbh-keys-hint"><?php esc_html_e('Keys: Enter or the Down arrow moves down a column, Shift+Enter or the Up arrow moves up, Escape puts a cell back to its stored value, and Ctrl+S (Cmd+S on a Mac) saves.', 'madebyhype-stockmanagment'); ?></p>
+<?php endif; ?>

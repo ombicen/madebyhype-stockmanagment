@@ -103,6 +103,28 @@
     return (number < 0 ? "−" : "+") + Math.abs(number);
   }
 
+  /**
+   * Which plural form a count takes
+   *
+   * @param {number} count
+   * @param {Array}  table Form index for the counts 0 to 99, then for 100 + (count mod 100):
+   *                       plural formulas look at the count itself when it is small and at its
+   *                       last two digits beyond that. Empty: one and many.
+   * @param {number} forms How many forms the string has
+   */
+  function pluralIndex(count, table, forms) {
+    var n = Math.abs(Math.floor(Number(count) || 0));
+    var index;
+
+    if (table && table.length >= 200) {
+      index = table[n < 100 ? n : 100 + (n % 100)];
+    } else {
+      index = n === 1 ? 0 : 1;
+    }
+
+    return Math.max(0, Math.min((forms || 1) - 1, index));
+  }
+
   /* ------------------------------------------------------------------
    * What each cell of a row is
    * ---------------------------------------------------------------- */
@@ -519,6 +541,7 @@
     formatPrice: formatPrice,
     samePrice: samePrice,
     signed: signed,
+    pluralIndex: pluralIndex,
     cellKinds: cellKinds,
     fieldIsEditable: fieldIsEditable,
     seenValue: seenValue,

@@ -4,7 +4,6 @@ namespace MadeByHypeStockmanagment\Assets;
 
 use MadeByHypeStockmanagment\Admin\AdminPage;
 use MadeByHypeStockmanagment\Admin\AjaxHandler;
-use MadeByHypeStockmanagment\Admin\ReadAjaxHandler;
 use MadeByHypeStockmanagment\UI\UIManager;
 
 if (! defined('ABSPATH')) {
@@ -61,16 +60,15 @@ class AssetsManager
     private function script_data()
     {
         // Each nonce only for a user who may use it; refreshed later through Heartbeat
-        $nonces = AjaxHandler::nonces();
-        $nonces['read'] = wp_create_nonce(ReadAjaxHandler::NONCE_ACTION);
-
         return [
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonces' => $nonces,
+            'nonces' => AjaxHandler::nonces(),
             'heartbeatKey' => AjaxHandler::HEARTBEAT_KEY,
             'caps' => AdminPage::permissions(),
             'format' => UIManager::price_format(),
-            'strings' => UIManager::strings(),
+            // Counted strings in every plural form of the page's language, and which form a count takes
+            'strings' => UIManager::script_strings(),
+            'plural' => UIManager::plural_rule()['table'],
         ];
     }
 

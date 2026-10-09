@@ -70,6 +70,11 @@ class Plugin
 
     public function init_plugin()
     {
+        // Translations, where this plugin shows words: wp-admin (with admin-ajax) and cron
+        if ($this->core_runs_here()) {
+            load_plugin_textdomain('madebyhype-stockmanagment', false, dirname(plugin_basename($this->plugin_file)) . '/languages');
+        }
+
         // Check if WooCommerce is active
         if (!class_exists('WooCommerce')) {
             if (is_admin()) {

@@ -20,6 +20,7 @@ if (! defined('ABSPATH')) {
  * Public entry points:
  *   get_list()        the list: All stock (by product or by SKU) and Needs attention
  *   get_variations()  the variations of one variable product, on demand
+ *   get_rows()        given products and variations again, after a save or an undo
  */
 class DataManager
 {
@@ -30,6 +31,8 @@ class DataManager
     const TAB_ATTENTION = 'attention';
 
     const MAX_PER_PAGE = 500;
+    // Rows read in one get_rows() call
+    const MAX_ROW_IDS = 100;
     const DEFAULT_PERIOD = '30';
 
     const SORT_FIELDS = ['name', 'sku', 'price', 'stock_quantity', 'total_sales', 'cover'];
@@ -210,6 +213,58 @@ class DataManager
             if (!empty($children[$parent_id])) {
                 $result['variations'] = $this->hydrate_rows($children[$parent_id], $result['period'], $opts);
             }
+        } catch (\RuntimeException $e) {
+            return $this->failed($result, $e);
+        }
+
+        return $result;
+    }
+
+    /**
+     * The rows of given products and variations, as the list shows them
+     *
+     * For redrawing rows after a save or an undo: low stock, the threshold in
+     * force and cover come from the same code as the list. Rows have the shape
+     * of get_list() rows (a variation as By SKU lists it) and come back in the
+     * order asked for. An id that is not a product or variation, or is in the
+     * bin, is left out.
+     *
+     * @param int[] $ids  Product and variation ids; at most MAX_ROW_IDS are read
+     * @param array $args period, start_date, end_date, with_images: as in get_list()
+     * @return array {
+     *     rows, period,
+     *     error (null, or ['code' => 'db_error', 'message' => string])
+     * }
+     */
+    public function get_rows($ids, $args = [])
+    {
+        global $wpdb;
+
+        $args = wp_parse_args($args, ['period' => '', 'start_date' => '', 'end_date' => '', 'with_images' => true]);
+        $ids = array_slice($this->clean_ids($ids), 0, self::MAX_ROW_IDS);
+
+        $result = [
+            'rows' => [],
+            'period' => $this->resolve_period($args['period'], $args['start_date'], $args['end_date']),
+            'error' => null,
+        ];
+
+        if (!$ids || !class_exists('WooCommerce')) {
+            return $result;
+        }
+
+        try {
+            // One query decides which ids are products or variations that still exist
+            $in = implode(',', array_map('intval', $ids));
+            $found = array_map('intval', $this->run(
+                'get_col',
+                "SELECT ID FROM {$wpdb->posts} WHERE ID IN ({$in}) AND post_type IN ('product','product_variation') AND post_status NOT IN ('trash','auto-draft')"
+            ));
+
+            $result['rows'] = $this->hydrate_rows(array_values(array_intersect($ids, $found)), $result['period'], [
+                'images' => !empty($args['with_images']),
+                'search' => '',
+            ]);
         } catch (\RuntimeException $e) {
             return $this->failed($result, $e);
         }

@@ -3,7 +3,6 @@
 namespace MadeByHypeStockmanagment\UI;
 
 use MadeByHypeStockmanagment\Admin\AdminPage;
-use MadeByHypeStockmanagment\Capabilities;
 use MadeByHypeStockmanagment\Data\DataManager;
 
 if (! defined('ABSPATH')) {
@@ -22,7 +21,7 @@ if (! defined('ABSPATH')) {
  */
 class UIManager
 {
-    const COLUMNS = 10;
+    const COLUMNS = 7;
 
     /** @var array Parsed request, see AdminPage::parse_request() */
     private $request = [];
@@ -50,7 +49,8 @@ class UIManager
      * @param array $context {
      *     request: AdminPage::parse_request(), result: DataManager::get_list() or null (History),
      *     period: DataManager::resolve_period(), caps: AdminPage::permissions(),
-     *     history_item: null | ['id', 'name', 'sku'] (History narrowed to one item)
+     *     history_item: null | ['id', 'name', 'sku'] (History narrowed to one item),
+     *     attention_count: null | int (the number on the Needs attention tab)
      * }
      */
     public function render_admin_page($context)
@@ -65,6 +65,7 @@ class UIManager
         $period = $this->period;
         $caps = $this->caps;
         $history_item = isset($context['history_item']) ? $context['history_item'] : null;
+        $attention_count = isset($context['attention_count']) ? $context['attention_count'] : null;
         $tab = $request['tab'];
         $view = $result ? $result['view'] : $request['view'];
 
@@ -77,9 +78,10 @@ class UIManager
 
     /**
      * Every string the scripts show, and the ones the row template shares
-     * with them. A value that is a list holds the singular and plural form.
+     * with them. A counted string is an _n_noop() entry: t() and tn() pick
+     * its form here, script_strings() hands the scripts every form.
      *
-     * @return array key => string | [singular, plural] | map
+     * @return array key => string | _n_noop() entry | map of strings
      */
     public static function strings()
     {
@@ -125,8 +127,8 @@ class UIManager
             /* translators: 1: product name, 2: attribute values of a variation */
             'nameWithAttributes' => __('%1$s — %2$s', 'madebyhype-stockmanagment'),
             'usesProductStock' => __('Uses product stock', 'madebyhype-stockmanagment'),
-            'inVariations' => [__('in %d variation', 'madebyhype-stockmanagment'), __('in %d variations', 'madebyhype-stockmanagment')],
-            'notTrackedCount' => [__('%d not tracked', 'madebyhype-stockmanagment'), __('%d not tracked', 'madebyhype-stockmanagment')],
+            'inVariations' => _n_noop('in %d variation', 'in %d variations', 'madebyhype-stockmanagment'),
+            'notTrackedCount' => _n_noop('%d not tracked', '%d not tracked', 'madebyhype-stockmanagment'),
             'notTracked' => __('Not tracked', 'madebyhype-stockmanagment'),
             'startTracking' => __('Start tracking', 'madebyhype-stockmanagment'),
             /* translators: %s: low-stock threshold */
@@ -145,7 +147,11 @@ class UIManager
             /* translators: %s: last day */
             'scheduledUntil' => __('Scheduled until %s', 'madebyhype-stockmanagment'),
             'variationDisabled' => __('Disabled', 'madebyhype-stockmanagment'),
-            'variationCount' => [__('%d variation', 'madebyhype-stockmanagment'), __('%d variations', 'madebyhype-stockmanagment')],
+            /* translators: %s: product or variation id */
+            'idNumber' => __('#%s', 'madebyhype-stockmanagment'),
+            /* translators: 1: product type, for example "Variable", 2: number of variations */
+            'typeWithCount' => __('%1$s · %2$s', 'madebyhype-stockmanagment'),
+            'variationCount' => _n_noop('%d variation', '%d variations', 'madebyhype-stockmanagment'),
             'editProduct' => __('Edit product', 'madebyhype-stockmanagment'),
             /* translators: %s: product name */
             'editProductOf' => __('Edit product: %s (opens in a new tab)', 'madebyhype-stockmanagment'),
@@ -154,11 +160,11 @@ class UIManager
             'historyOf' => __('History of %s', 'madebyhype-stockmanagment'),
             /* translators: %s: product name */
             'variationsOf' => __('Variations of %s', 'madebyhype-stockmanagment'),
-            'coverDays' => [__('%d day', 'madebyhype-stockmanagment'), __('%d days', 'madebyhype-stockmanagment')],
+            'coverDays' => _n_noop('%d day', '%d days', 'madebyhype-stockmanagment'),
             'staleFigure' => __('Recalculated when the page is reloaded', 'madebyhype-stockmanagment'),
             'match' => __('Match', 'madebyhype-stockmanagment'),
-            'editedCount' => [__('%d edited', 'madebyhype-stockmanagment'), __('%d edited', 'madebyhype-stockmanagment')],
-            'notSavedCount' => [__('%d not saved', 'madebyhype-stockmanagment'), __('%d not saved', 'madebyhype-stockmanagment')],
+            'editedCount' => _n_noop('%d edited', '%d edited', 'madebyhype-stockmanagment'),
+            'notSavedCount' => _n_noop('%d not saved', '%d not saved', 'madebyhype-stockmanagment'),
 
             // Cell states
             /* translators: %s: the value before the edit */
@@ -173,8 +179,9 @@ class UIManager
             'cancelTracking' => __('Cancel tracking', 'madebyhype-stockmanagment'),
             'statusFromQuantity' => __('Set from quantity on save', 'madebyhype-stockmanagment'),
             'notSavedShort' => __('Not saved', 'madebyhype-stockmanagment'),
-            'seeMessage' => __('See the message below', 'madebyhype-stockmanagment'),
             'savedMark' => __('Saved', 'madebyhype-stockmanagment'),
+            'adjustedMark' => __('Adjusted', 'madebyhype-stockmanagment'),
+            'droppedMark' => __('Not applied', 'madebyhype-stockmanagment'),
             'errQuantity' => __('Enter a whole number, 0 or more.', 'madebyhype-stockmanagment'),
             'errPrice' => __('Enter a price of 0 or more.', 'madebyhype-stockmanagment'),
             'errRegularRequired' => __('Enter a regular price.', 'madebyhype-stockmanagment'),
@@ -187,6 +194,16 @@ class UIManager
             'leaveAt' => __('Leave at %s', 'madebyhype-stockmanagment'),
             'empty' => __('empty', 'madebyhype-stockmanagment'),
             'dismiss' => __('Dismiss', 'madebyhype-stockmanagment'),
+            /* translators: %s: field name, before the message about that field */
+            'fieldPrefix' => __('%s:', 'madebyhype-stockmanagment'),
+            /* translators: 1: what a message is about, for example "Stock, Gold ring, SKU R-52", 2: the message */
+            'announceAbout' => __('%1$s: %2$s', 'madebyhype-stockmanagment'),
+            /* translators: 1: field and product, for example "Stock, Gold ring, SKU R-52", 2: the stored value */
+            'cellRestored' => __('%1$s: restored to %2$s.', 'madebyhype-stockmanagment'),
+            /* translators: %s: field and product, for example "Stock, Gold ring, SKU R-52" */
+            'trackingCancelled' => __('%s: tracking will not start.', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of messages that are not read out */
+            'moreMessages' => _n_noop('%d more message is shown under its row.', '%d more messages are shown under their rows.', 'madebyhype-stockmanagment'),
             'dismissNotice' => __('Dismiss this notice.', 'madebyhype-stockmanagment'),
 
             // Start tracking
@@ -196,49 +213,44 @@ class UIManager
             'addToChanges' => __('Add to changes', 'madebyhype-stockmanagment'),
 
             // Variations
-            'loadingVariations' => [__('Loading %d variation…', 'madebyhype-stockmanagment'), __('Loading %d variations…', 'madebyhype-stockmanagment')],
+            'loadingVariations' => _n_noop('Loading %d variation…', 'Loading %d variations…', 'madebyhype-stockmanagment'),
             'variationsFailed' => __('The variations could not be loaded.', 'madebyhype-stockmanagment'),
             'variationsSession' => __('The variations could not be loaded because your session has expired. Log in again in another browser tab, then try again.', 'madebyhype-stockmanagment'),
             'tryAgain' => __('Try again', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of variations */
+            'variationsShown' => _n_noop('%d variation shown.', '%d variations shown.', 'madebyhype-stockmanagment'),
+            'allCollapsed' => __('All products collapsed.', 'madebyhype-stockmanagment'),
 
             // Save bar
             'noUnsaved' => __('No unsaved changes', 'madebyhype-stockmanagment'),
-            /* translators: 1: "3 unsaved changes", 2: "in 2 rows" */
-            'unsavedSummary' => __('%1$s %2$s', 'madebyhype-stockmanagment'),
-            'unsavedChanges' => [__('%d unsaved change', 'madebyhype-stockmanagment'), __('%d unsaved changes', 'madebyhype-stockmanagment')],
-            'inRows' => [__('in %d row', 'madebyhype-stockmanagment'), __('in %d rows', 'madebyhype-stockmanagment')],
-            'invalidCount' => [__('%d invalid; fix to save', 'madebyhype-stockmanagment'), __('%d invalid; fix to save', 'madebyhype-stockmanagment')],
-            'conflictCount' => [__('%d waiting for your choice', 'madebyhype-stockmanagment'), __('%d waiting for your choice', 'madebyhype-stockmanagment')],
+            /* translators: %d: number of unsaved changes, all in one row of the table */
+            'unsavedInOneRow' => _n_noop('%d unsaved change in 1 row', '%d unsaved changes in 1 row', 'madebyhype-stockmanagment'),
+            /* translators: 1: number of unsaved changes, 2: number of rows they are in (2 or more) */
+            'unsavedInRows' => _n_noop('%1$d unsaved change in %2$d rows', '%1$d unsaved changes in %2$d rows', 'madebyhype-stockmanagment'),
+            'invalidCount' => _n_noop('%d invalid; fix to save', '%d invalid; fix to save', 'madebyhype-stockmanagment'),
+            'conflictCount' => _n_noop('%d waiting for your choice', '%d waiting for your choice', 'madebyhype-stockmanagment'),
             'save' => __('Save', 'madebyhype-stockmanagment'),
-            'saveChanges' => [__('Save %d change', 'madebyhype-stockmanagment'), __('Save %d changes', 'madebyhype-stockmanagment')],
+            'saveChanges' => _n_noop('Save %d change', 'Save %d changes', 'madebyhype-stockmanagment'),
             'saving' => __('Saving…', 'madebyhype-stockmanagment'),
             /* translators: 1: changes sent so far, 2: changes in this save */
             'savingProgress' => __('Saving… %1$s of %2$s', 'madebyhype-stockmanagment'),
             'discard' => __('Discard changes', 'madebyhype-stockmanagment'),
-            'discardTitle' => [__('Discard %d unsaved change?', 'madebyhype-stockmanagment'), __('Discard %d unsaved changes?', 'madebyhype-stockmanagment')],
+            'discardTitle' => _n_noop('Discard %d unsaved change?', 'Discard %d unsaved changes?', 'madebyhype-stockmanagment'),
             'discardBody' => __('The cells go back to the values that are stored now.', 'madebyhype-stockmanagment'),
             'keepEditing' => __('Keep editing', 'madebyhype-stockmanagment'),
             'discarded' => __('Changes discarded.', 'madebyhype-stockmanagment'),
-            /* translators: 1: date and time, 2: "3 changes" */
-            'lastSave' => __('Your last save: %1$s, %2$s', 'madebyhype-stockmanagment'),
-            'lastSaveUndone' => __('(undone)', 'madebyhype-stockmanagment'),
-            'changeCount' => [__('%d change', 'madebyhype-stockmanagment'), __('%d changes', 'madebyhype-stockmanagment')],
+            /* translators: 1: number of changes, 2: date and time */
+            'lastSave' => _n_noop('Your last save: %2$s, %1$d change', 'Your last save: %2$s, %1$d changes', 'madebyhype-stockmanagment'),
             'undo' => __('Undo…', 'madebyhype-stockmanagment'),
             'undoRest' => __('Undo the rest…', 'madebyhype-stockmanagment'),
 
             // Save results
-            'noticeSaved' => [__('Saved %d change.', 'madebyhype-stockmanagment'), __('Saved %d changes.', 'madebyhype-stockmanagment')],
-            'noticeAdjusted' => [
-                __('%d adjusted for stock that changed while you were editing.', 'madebyhype-stockmanagment'),
-                __('%d adjusted for stock that changed while you were editing.', 'madebyhype-stockmanagment'),
-            ],
+            'noticeSaved' => _n_noop('Saved %d change.', 'Saved %d changes.', 'madebyhype-stockmanagment'),
+            'noticeAdjusted' => _n_noop('%d adjusted for stock that changed while you were editing.', '%d adjusted for stock that changed while you were editing.', 'madebyhype-stockmanagment'),
             /* translators: 1: changes saved, 2: changes in the save, 3: changes not saved */
             'noticePartial' => __('Saved %1$s of %2$s changes. %3$s not saved; they are still marked in the table.', 'madebyhype-stockmanagment'),
             'showFirst' => __('Show the first one', 'madebyhype-stockmanagment'),
-            'noticeNothing' => [
-                __('Nothing was saved. %d change is still marked in the table.', 'madebyhype-stockmanagment'),
-                __('Nothing was saved. %d changes are still marked in the table.', 'madebyhype-stockmanagment'),
-            ],
+            'noticeNothing' => _n_noop('Nothing was saved. %d change is still marked in the table.', 'Nothing was saved. %d changes are still marked in the table.', 'madebyhype-stockmanagment'),
             'noticeLogFailed' => __('Nothing was saved. The change history could not be written, so no product was changed.', 'madebyhype-stockmanagment'),
             /* translators: 1: changes saved, 2: changes in the save, 3: changes not sent */
             'noticeConnection' => __('Saved %1$s of %2$s changes. The connection was lost; the other %3$s are still marked in the table. Press Save to try again.', 'madebyhype-stockmanagment'),
@@ -253,14 +265,14 @@ class UIManager
             'checkIntro' => __('This save contains changes that are easy to make by mistake:', 'madebyhype-stockmanagment'),
             /* translators: 1: product name, 2: SKU, 3: field name */
             'checkZero' => __('Price set to 0 (the product becomes free): %1$s (%2$s), %3$s', 'madebyhype-stockmanagment'),
-            /* translators: 1: product name, 2: SKU, 3: field name, 4: old price, 5: new price, 6: change in percent */
-            'checkLarge' => __('Large price change: %1$s (%2$s), %3$s %4$s → %5$s (%6$s)', 'madebyhype-stockmanagment'),
+            /* translators: 1: product name, 2: SKU, 3: field name, 4: old price, 5: new price, 6: change in percent with its sign, for example +150; %% prints a percent sign */
+            'checkLarge' => __('Large price change: %1$s (%2$s), %3$s %4$s → %5$s (%6$s%%)', 'madebyhype-stockmanagment'),
             /* translators: 1: product name, 2: SKU, 3: starting quantity */
             'checkTracking' => __('Start tracking stock: %1$s (%2$s) at %3$s', 'madebyhype-stockmanagment'),
             'goBack' => __('Go back', 'madebyhype-stockmanagment'),
 
             // Leaving
-            'leaveTitle' => [__('You have %d unsaved change', 'madebyhype-stockmanagment'), __('You have %d unsaved changes', 'madebyhype-stockmanagment')],
+            'leaveTitle' => _n_noop('You have %d unsaved change', 'You have %d unsaved changes', 'madebyhype-stockmanagment'),
             'leaveBody' => __('They are lost if you continue without saving.', 'madebyhype-stockmanagment'),
             'leaveSave' => __('Save and continue', 'madebyhype-stockmanagment'),
             'cancel' => __('Cancel', 'madebyhype-stockmanagment'),
@@ -281,7 +293,7 @@ class UIManager
             /* translators: 1: value now, 2: value after the undo */
             'nowAfter' => __('%1$s → %2$s', 'madebyhype-stockmanagment'),
             'undoFooter' => __('Only the fields this save changed are touched. The undo is recorded in History.', 'madebyhype-stockmanagment'),
-            'undoConfirm' => [__('Undo %d change', 'madebyhype-stockmanagment'), __('Undo %d changes', 'madebyhype-stockmanagment')],
+            'undoConfirm' => _n_noop('Undo %d change', 'Undo %d changes', 'madebyhype-stockmanagment'),
             'undoing' => __('Undoing…', 'madebyhype-stockmanagment'),
             'undoNothing' => __('Nothing in this save can be undone now.', 'madebyhype-stockmanagment'),
             'undoCheckFailed' => __('Could not check what can be undone. Nothing was changed.', 'madebyhype-stockmanagment'),
@@ -310,20 +322,27 @@ class UIManager
             'colNote' => __('Note', 'madebyhype-stockmanagment'),
             'colReason' => __('Reason', 'madebyhype-stockmanagment'),
             'colNowAfter' => __('Now → After undo', 'madebyhype-stockmanagment'),
-            /* translators: 1: "3 changes", 2: "on 2 SKUs" */
-            'changesOnSkus' => __('%1$s %2$s', 'madebyhype-stockmanagment'),
-            'skuCount' => [__('on %d SKU', 'madebyhype-stockmanagment'), __('on %d SKUs', 'madebyhype-stockmanagment')],
-            /* translators: %s: number of stock changes */
-            'countStock' => __('%s stock', 'madebyhype-stockmanagment'),
-            /* translators: %s: number of price changes */
-            'countPrice' => __('%s price', 'madebyhype-stockmanagment'),
-            /* translators: %s: number of other changes */
-            'countOther' => __('%s other', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of changes, all to one SKU */
+            'changesOnOneSku' => _n_noop('%d change on 1 SKU', '%d changes on 1 SKU', 'madebyhype-stockmanagment'),
+            /* translators: 1: number of changes, 2: number of SKUs they were made to (2 or more) */
+            'changesOnSkus' => _n_noop('%1$d change on %2$d SKUs', '%1$d changes on %2$d SKUs', 'madebyhype-stockmanagment'),
+            /* translators: 1: a count of changes, for example "3 changes on 2 SKUs", 2: what kinds they were, for example "2 stock, 1 price" */
+            'summaryWithKinds' => __('%1$s: %2$s', 'madebyhype-stockmanagment'),
+            /* translators: between the items of a list, for example "2 stock, 1 price" */
+            'listSeparator' => __(', ', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of stock changes, in a list such as "2 stock, 1 price" */
+            'countStock' => _n_noop('%d stock', '%d stock', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of price changes, in a list such as "2 stock, 1 price" */
+            'countPrice' => _n_noop('%d price', '%d price', 'madebyhype-stockmanagment'),
+            /* translators: %d: number of other changes, in a list such as "2 stock, 1 other" */
+            'countOther' => _n_noop('%d other', '%d other', 'madebyhype-stockmanagment'),
             'noChangesStored' => __('No changes were stored', 'madebyhype-stockmanagment'),
-            /* translators: %s: save number */
-            'undoOf' => __('Undo of #%s', 'madebyhype-stockmanagment'),
-            /* translators: %s: save number */
-            'undoOfParen' => __('(undo of #%s)', 'madebyhype-stockmanagment'),
+            /* translators: 1: save number, 2: a count of changes, for example "3 changes on 2 SKUs: 2 stock, 1 price" */
+            'undoOfSummary' => __('Undo of #%1$s · %2$s', 'madebyhype-stockmanagment'),
+            /* translators: 1: user, 2: save number */
+            'whoUndo' => __('%1$s (undo of #%2$s)', 'madebyhype-stockmanagment'),
+            /* translators: %d: user id of an account that no longer exists */
+            'userNumber' => __('User #%d', 'madebyhype-stockmanagment'),
             /* translators: 1: user, 2: date and time */
             'undoneBy' => __('Undone by %1$s, %2$s', 'madebyhype-stockmanagment'),
             'undone' => __('Undone', 'madebyhype-stockmanagment'),
@@ -338,7 +357,7 @@ class UIManager
             'changeFailed' => __('Could not be written.', 'madebyhype-stockmanagment'),
             'changeSkipped' => __('Had no effect.', 'madebyhype-stockmanagment'),
             'didNotFinish' => __('Did not finish', 'madebyhype-stockmanagment'),
-            'failedCount' => [__('%d failed', 'madebyhype-stockmanagment'), __('%d failed', 'madebyhype-stockmanagment')],
+            'failedCount' => _n_noop('%d failed', '%d failed', 'madebyhype-stockmanagment'),
             'productGone' => __('(deleted product)', 'madebyhype-stockmanagment'),
             /* translators: 1: "on" 2: starting quantity */
             'trackingQuantity' => __('%1$s, quantity %2$s', 'madebyhype-stockmanagment'),
@@ -353,13 +372,15 @@ class UIManager
             /* translators: %s: save number */
             'saveHeading' => __('Save #%s', 'madebyhype-stockmanagment'),
             'allSavesHeading' => __('All saves', 'madebyhype-stockmanagment'),
-            'itemCount' => [__('%d item', 'madebyhype-stockmanagment'), __('%d items', 'madebyhype-stockmanagment')],
+            'itemCount' => _n_noop('%d item', '%d items', 'madebyhype-stockmanagment'),
             /* translators: 1: current page, 2: number of pages */
             'pageOf' => __('%1$s of %2$s', 'madebyhype-stockmanagment'),
             'firstPage' => __('First page', 'madebyhype-stockmanagment'),
             'previousPage' => __('Previous page', 'madebyhype-stockmanagment'),
             'nextPage' => __('Next page', 'madebyhype-stockmanagment'),
             'lastPage' => __('Last page', 'madebyhype-stockmanagment'),
+            /* translators: 1: field name, 2: value now, 3: value after the undo */
+            'undoResult' => __('%1$s %2$s → %3$s', 'madebyhype-stockmanagment'),
         ];
 
         return self::$strings;
@@ -378,10 +399,12 @@ class UIManager
         $text = isset($strings[$key]) ? $strings[$key] : $key;
 
         if (is_array($text)) {
-            $text = $text[1];
+            // A counted string asked for without a count: its form for "many"
+            $text = translate_nooped_plural($text, 2, 'madebyhype-stockmanagment');
         }
 
-        return $args ? vsprintf($text, $args) : $text;
+        // Always through vsprintf, as the scripts always fill: "%%" is a percent sign either way
+        return vsprintf($text, $args);
     }
 
     /**
@@ -395,10 +418,91 @@ class UIManager
         $text = isset($strings[$key]) ? $strings[$key] : $key;
 
         if (is_array($text)) {
-            $text = (int) $count === 1 ? $text[0] : $text[1];
+            $text = translate_nooped_plural($text, (int) $count, 'madebyhype-stockmanagment');
         }
 
         return vsprintf($text, array_merge([$count], $args));
+    }
+
+    /**
+     * Which plural form a count takes in the language of the page, as a
+     * table the scripts can read without running the language's formula.
+     *
+     * Plural formulas look at the count itself for small numbers and at its
+     * last two digits beyond that, so 200 entries cover every count: 0 to 99
+     * as they are, larger ones as 100 + (count mod 100).
+     *
+     * @return array forms: number of plural forms, table: form index for each of the 200 entries
+     */
+    public static function plural_rule()
+    {
+        $forms = 2;
+        $formula = 'n != 1';
+
+        $translations = get_translations_for_domain('madebyhype-stockmanagment');
+        $headers = is_object($translations) ? $translations->headers : [];
+        $header = is_array($headers) && isset($headers['Plural-Forms']) ? (string) $headers['Plural-Forms'] : '';
+
+        if (preg_match('/nplurals\s*=\s*(\d+)\s*;\s*plural\s*=\s*([^;]+)/', $header, $match)) {
+            $forms = max(1, (int) $match[1]);
+            $formula = trim($match[2]);
+        }
+
+        $table = [];
+
+        try {
+            $rule = new \Plural_Forms($formula);
+
+            for ($n = 0; $n < 200; $n++) {
+                $table[] = max(0, min($forms - 1, (int) $rule->get($n)));
+            }
+        } catch (\Exception $e) {
+            // A formula that cannot be read: one and many
+            $forms = 2;
+            $table = [];
+
+            for ($n = 0; $n < 200; $n++) {
+                $table[] = $n === 1 ? 0 : 1;
+            }
+        }
+
+        return ['forms' => $forms, 'table' => $table];
+    }
+
+    /**
+     * strings() for the scripts: a counted string becomes the list of its
+     * plural forms in the language of the page, in the order plural_rule() counts them
+     *
+     * @return array key => string | list of forms | map of strings
+     */
+    public static function script_strings()
+    {
+        $rule = self::plural_rule();
+        $strings = [];
+
+        // A count that takes each form, to ask the translation for that form
+        $sample = [];
+        foreach ($rule['table'] as $n => $form) {
+            if (!isset($sample[$form])) {
+                $sample[$form] = $n;
+            }
+        }
+
+        foreach (self::strings() as $key => $text) {
+            if (is_array($text) && isset($text['singular'])) {
+                $forms = [];
+
+                for ($form = 0; $form < $rule['forms']; $form++) {
+                    $forms[] = translate_nooped_plural($text, isset($sample[$form]) ? $sample[$form] : 2, 'madebyhype-stockmanagment');
+                }
+
+                $text = $forms;
+            }
+
+            $strings[$key] = $text;
+        }
+
+        return $strings;
     }
 
     /* ---------------------------------------------------------------------
@@ -706,7 +810,8 @@ class UIManager
                 }
 
                 $chips[] = [
-                    'label' => $label . ': ' . html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                    /* translators: 1: what is filtered on, for example "Category" or "Size", 2: the value */
+                    'label' => sprintf(__('%1$s: %2$s', 'madebyhype-stockmanagment'), $label, html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
                     'url' => $this->url([$key => $value ? $value : null]),
                     'filter' => true,
                 ];
@@ -854,7 +959,7 @@ class UIManager
     }
 
     /**
-     * The sales period in words, for the column that shows it
+     * The sales period in words: the second line of the Sold column's heading
      *
      * @return string Not escaped
      */
@@ -878,11 +983,16 @@ class UIManager
             return sprintf(__('last %s days', 'madebyhype-stockmanagment'), $period['key']);
         }
 
-        return date_i18n('j M Y', strtotime($period['start_date'])) . ' – ' . date_i18n('j M Y', strtotime($period['end_date']));
+        return sprintf(
+            /* translators: 1: first day of a period, 2: its last day */
+            __('%1$s – %2$s', 'madebyhype-stockmanagment'),
+            date_i18n('j M Y', strtotime($period['start_date'])),
+            date_i18n('j M Y', strtotime($period['end_date']))
+        );
     }
 
     /**
-     * A column heading that sorts the list, in wp-admin's list-table markup
+     * A column heading that sorts the list
      *
      * @param string $field      One of DataManager::SORT_FIELDS
      * @param string $label      Already escaped
@@ -895,16 +1005,17 @@ class UIManager
         $sorted = $this->request['sort_by'] === $field;
         $current = strtolower($this->request['sort_order']);
 
+        // The class says which way the arrow points: the direction in force, or the one a click gives
         if ($sorted) {
             $next = $current === 'asc' ? 'desc' : 'asc';
             $classes = 'sorted ' . $current;
         } else {
             $next = $desc_first ? 'desc' : 'asc';
-            $classes = 'sortable ' . ($next === 'desc' ? 'asc' : 'desc');
+            $classes = 'sortable ' . $next;
         }
 
         printf(
-            '<th scope="col" class="manage-column %1$s %2$s"%3$s%4$s><a href="%5$s"><span>%6$s</span><span class="sorting-indicators"><span class="sorting-indicator asc" aria-hidden="true"></span><span class="sorting-indicator desc" aria-hidden="true"></span></span> <span class="screen-reader-text">%7$s</span></a></th>',
+            '<th scope="col" class="%1$s %2$s"%3$s%4$s><a href="%5$s"><span>%6$s</span><span class="mbh-sort-arrow" aria-hidden="true"></span> <span class="screen-reader-text">%7$s</span></a></th>',
             esc_attr($class),
             esc_attr($classes),
             $sorted ? ' aria-sort="' . ($current === 'asc' ? 'ascending' : 'descending') . '"' : '',
@@ -916,33 +1027,18 @@ class UIManager
     }
 
     /**
-     * Users offered in History's "Saved by" filter: everyone who may save now
+     * The name of the user History's "Saved by" filter is set to. The other
+     * choices are everyone who has a save in History; the script reads them
+     * through the history action (view=users).
      *
-     * @return array user id => display name
+     * @param int $user_id
+     * @return string Not escaped
      */
-    private function history_users()
+    private function history_user_name($user_id)
     {
-        $users = [];
-        $found = get_users([
-            'capability__in' => array_values(array_unique([Capabilities::EDIT_STOCK, Capabilities::EDIT_PRICES])),
-            'fields' => ['ID', 'display_name'],
-            'orderby' => 'display_name',
-            'number' => 200,
-        ]);
+        $user = get_userdata($user_id);
 
-        foreach ($found as $user) {
-            $users[(int) $user->ID] = $user->display_name;
-        }
-
-        // A filter in the URL stays selectable even when its user can no longer save
-        $selected = $this->request['user'];
-        if ($selected && !isset($users[$selected])) {
-            $user = get_userdata($selected);
-            /* translators: %d: user id */
-            $users[$selected] = $user ? $user->display_name : sprintf(__('User #%d', 'madebyhype-stockmanagment'), $selected);
-        }
-
-        return $users;
+        return $user ? $user->display_name : $this->t('userNumber', $user_id);
     }
 
     /**
@@ -958,7 +1054,7 @@ class UIManager
 
         // The rows as the server gave them, minus what no script reads
         foreach ($result ? $result['rows'] : [] as $row) {
-            unset($row['image_id'], $row['thumbnail_url'], $row['attributes'], $row['price'], $row['is_stock_holder']);
+            unset($row['image_id'], $row['attributes'], $row['price'], $row['is_stock_holder']);
             $rows[] = $row;
         }
 

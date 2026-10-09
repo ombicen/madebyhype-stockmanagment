@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Filter panel of the grid tabs
+ * Filters of the grid tabs: a drawer the Filters button opens over the page
  *
  * Its inputs belong to the list form in the toolbar (form attribute), so
  * Apply submits them together with the search, view, sort and period.
@@ -98,9 +98,16 @@ $number = function ($name, $value, $label, $step) use ($form) {
 $tags = $terms_of('product_tag');
 $attributes = function_exists('wc_get_attribute_taxonomies') ? wc_get_attribute_taxonomies() : [];
 ?>
-<aside id="mbh-filters" class="mbh-filters" aria-label="<?php esc_attr_e('Filters', 'madebyhype-stockmanagment'); ?>" hidden>
-    <h2 class="mbh-filters-title"><?php esc_html_e('Filters', 'madebyhype-stockmanagment'); ?></h2>
+<aside id="mbh-filters" class="mbh-filters" role="dialog" aria-modal="true" aria-labelledby="mbh-filters-title" tabindex="-1" hidden>
+    <div class="mbh-filters-head">
+        <h2 class="mbh-filters-title" id="mbh-filters-title"><?php esc_html_e('Filters', 'madebyhype-stockmanagment'); ?></h2>
+        <button type="button" class="mbh-filters-close" id="mbh-filters-close">
+            <span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
+            <span class="screen-reader-text"><?php esc_html_e('Close filters', 'madebyhype-stockmanagment'); ?></span>
+        </button>
+    </div>
 
+    <div class="mbh-filters-body">
     <?php if ($tab === 'all'): ?>
         <fieldset class="mbh-filter-section">
             <legend><?php esc_html_e('Stock status', 'madebyhype-stockmanagment'); ?></legend>
@@ -186,8 +193,10 @@ $attributes = function_exists('wc_get_attribute_taxonomies') ? wc_get_attribute_
         </div>
     </fieldset>
 
+    </div>
+
     <div class="mbh-filter-buttons">
-        <button type="submit" form="<?php echo esc_attr($form); ?>" class="button button-primary"><?php esc_html_e('Apply filters', 'madebyhype-stockmanagment'); ?></button>
         <a href="<?php echo esc_url($this->clear_all_url()); ?>" class="button"><?php esc_html_e('Clear all', 'madebyhype-stockmanagment'); ?></a>
+        <button type="submit" form="<?php echo esc_attr($form); ?>" class="button button-primary"><?php esc_html_e('Apply filters', 'madebyhype-stockmanagment'); ?></button>
     </div>
 </aside>

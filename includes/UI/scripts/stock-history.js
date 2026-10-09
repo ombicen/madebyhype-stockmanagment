@@ -20,26 +20,35 @@
    * Shared pieces
    * ---------------------------------------------------------------- */
 
+  /** A table in the look of the grid, in a box that scrolls sideways when the window is narrow */
   function dataTable(className, headings, rows) {
-    return el("table", { class: "widefat mbh-history-table " + className }, [
-      el(
-        "thead",
-        {},
+    return el(
+      "div",
+      { class: "mbh-history-scroll" },
+      el("table", { class: "mbh-history-table " + className }, [
         el(
-          "tr",
+          "thead",
           {},
-          headings.map(function (heading) {
-            return el("th", { scope: "col" }, heading);
-          })
-        )
-      ),
-      el("tbody", {}, rows),
-    ]);
+          el(
+            "tr",
+            {},
+            headings.map(function (heading) {
+              return el("th", { scope: "col" }, heading);
+            })
+          )
+        ),
+        el("tbody", {}, rows),
+      ])
+    );
   }
 
-  function cells(values) {
-    return values.map(function (content) {
-      return el("td", {}, content);
+  /**
+   * @param {Array} values  The content of each cell
+   * @param {Array} classes A class for each cell, where it has one
+   */
+  function cells(values, classes) {
+    return values.map(function (content, index) {
+      return el("td", { class: (classes || [])[index] || false }, content);
     });
   }
 
@@ -53,40 +62,48 @@
     var parts = [];
 
     if (counts.stock) {
-      parts.push(t("countStock", counts.stock));
+      parts.push(tn("countStock", counts.stock));
     }
     if (counts.price) {
-      parts.push(t("countPrice", counts.price));
+      parts.push(tn("countPrice", counts.price));
     }
     if (counts.other) {
-      parts.push(t("countOther", counts.other));
+      parts.push(tn("countOther", counts.other));
     }
 
     if (!save.changes) {
       return t("noChangesStored");
     }
 
-    return t("changesOnSkus", tn("changeCount", save.changes), tn("skuCount", save.items)) + (parts.length ? ": " + parts.join(", ") : "");
+    var summary = save.items === 1 ? tn("changesOnOneSku", save.changes) : tn("changesOnSkus", save.changes, save.items);
+
+    return parts.length ? t("summaryWithKinds", summary, parts.join(t("listSeparator"))) : summary;
   }
 
   /* ------------------------------------------------------------------
    * Undo dialog: the server's preview first, then the confirmation
    * ---------------------------------------------------------------- */
 
-  function undoTable(changes, withResult) {
-    var headings = [t("colProduct"), t("colSku"), t("colField")].concat(withResult ? [t("colNowAfter"), t("colNote")] : [t("colReason")]);
-
-    return dataTable(
-      "mbh-undo-table",
-      headings,
+  /**
+   * The changes of an undo as a list: the item on the left, what happens to
+   * it on the right, the reason beneath
+   *
+   * @param {Array}   changes
+   * @param {boolean} withResult Changes that are undone show "Stock 7 → 4"; skipped ones only name the field
+   */
+  function undoList(changes, withResult) {
+    return el(
+      "ul",
+      { class: "mbh-list" + (withResult ? "" : " mbh-list--skip") },
       changes.map(function (change) {
-        var base = [productName(change), change.sku || DASH, change.label];
-
-        return el(
-          "tr",
-          {},
-          cells(base.concat(withResult ? [t("nowAfter", change.current_display, change.result_display), change.message] : [change.message]))
-        );
+        return el("li", { class: "mbh-list-item" }, [
+          el("span", { class: "mbh-list-what" }, [productName(change), change.sku ? el("span", { class: "mbh-sku", text: change.sku }) : null]),
+          el("span", {
+            class: "mbh-list-result",
+            text: withResult ? t("undoResult", change.label, change.current_display, change.result_display) : change.label,
+          }),
+          change.message ? el("span", { class: "mbh-list-why", text: change.message }) : null,
+        ]);
       })
     );
   }
@@ -133,7 +150,7 @@
 
     function runUndo() {
       dialog.setBusy(true);
-      $(dialog.node).find(".button-primary").text(t("undoing"));
+      $(dialog.node).find(".mbh-danger").text(t("undoing"));
 
       MBH.request("madebyhype_stock_undo", "undo", { batch_id: batchId }).then(function (answer) {
         dialog.setBusy(false);
@@ -155,7 +172,7 @@
         dialog.setBody([
           el("p", { role: "status", class: "mbh-undo-result", text: answer.data.message }),
           groups.skip.length ? el("h3", { text: t("skippedHeading", groups.skip.length) }) : null,
-          groups.skip.length ? undoTable(groups.skip, false) : null,
+          groups.skip.length ? undoList(groups.skip, false) : null,
         ]);
         dialog.setButtons([closeButton()]);
 
@@ -181,17 +198,18 @@
         var body = [];
 
         if (save) {
-          body.push(el("p", { text: t("undoSavedBy", save.user_name || t("unknownUser"), save.when) + " " + changeSummary(save) + "." }));
+          // Two statements, each whole: who and when, then how much
+          body.push(el("p", {}, [el("span", { text: t("undoSavedBy", save.user_name || t("unknownUser"), save.when) }), " ", el("span", { text: changeSummary(save) })]));
         }
 
         if (!groups.undo.length) {
           body.push(el("p", { class: "mbh-undo-result", text: data.message || t("undoNothing") }));
         } else {
-          body.push(el("h3", { text: t("willBeUndone", groups.undo.length) }), undoTable(groups.undo, true));
+          body.push(el("h3", { text: t("willBeUndone", groups.undo.length) }), undoList(groups.undo, true));
         }
 
         if (groups.skip.length) {
-          body.push(el("h3", { text: t("willBeSkipped", groups.skip.length) }), undoTable(groups.skip, false));
+          body.push(el("h3", { text: t("willBeSkipped", groups.skip.length) }), undoList(groups.skip, false));
         }
 
         body.push(el("p", { class: "description", text: t("undoFooter") }));
@@ -200,7 +218,7 @@
         dialog.setButtons(
           groups.undo.length
             ? [
-                { label: tn("undoConfirm", groups.undo.length), primary: true, action: runUndo },
+                { label: tn("undoConfirm", groups.undo.length), danger: true, action: runUndo },
                 { label: t("cancel"), focus: true, action: close },
               ]
             : [closeButton()]
@@ -250,14 +268,17 @@
       );
   }
 
+  /** Count and paging under a list, in the look of the grid's footer */
   function pager(current, pages, total) {
+    var count = el("span", { class: "mbh-count", text: tn("itemCount", total) });
+
     if (pages <= 1) {
-      return el("div", { class: "tablenav" }, el("div", { class: "tablenav-pages one-page" }, el("span", { class: "displaying-num", text: tn("itemCount", total) })));
+      return el("div", { class: "mbh-foot mbh-foot--plain" }, count);
     }
 
     function link(target, label, symbol) {
       if (target < 1 || target > pages || target === current) {
-        return el("span", { class: "tablenav-pages-navspan button disabled", "aria-hidden": "true", text: symbol });
+        return el("span", { class: "button disabled", "aria-hidden": "true", text: symbol });
       }
 
       return el("a", { class: "button", href: view.pageUrl.replace("%d", String(target)) }, [
@@ -266,24 +287,16 @@
       ]);
     }
 
-    return el(
-      "div",
-      { class: "tablenav" },
-      el("div", { class: "tablenav-pages" }, [
-        el("span", { class: "displaying-num", text: tn("itemCount", total) }),
-        el("span", { class: "pagination-links" }, [
-          link(1, t("firstPage"), "«"),
-          " ",
-          link(current - 1, t("previousPage"), "‹"),
-          " ",
-          el("span", { class: "tablenav-paging-text", text: t("pageOf", current, pages) }),
-          " ",
-          link(current + 1, t("nextPage"), "›"),
-          " ",
-          link(pages, t("lastPage"), "»"),
-        ]),
-      ])
-    );
+    return el("div", { class: "mbh-foot mbh-foot--plain" }, [
+      count,
+      el("nav", { class: "mbh-pager" }, [
+        link(1, t("firstPage"), "«"),
+        link(current - 1, t("previousPage"), "‹"),
+        el("span", { class: "mbh-paging-text", text: t("pageOf", current, pages) }),
+        link(current + 1, t("nextPage"), "›"),
+        link(pages, t("lastPage"), "»"),
+      ]),
+    ]);
   }
 
   /* --- one save and its changes --- */
@@ -358,7 +371,7 @@
     var detail = el("td", { colspan: 6 });
     var detailRow = el("tr", { class: "mbh-save-detail", id: detailId, hidden: true }, detail);
     var loaded = false;
-    var summary = save.kind === "undo" ? t("undoOf", save.undoes_batch_id) + " · " + changeSummary(save) : changeSummary(save);
+    var summary = save.kind === "undo" ? t("undoOfSummary", save.undoes_batch_id, changeSummary(save)) : changeSummary(save);
     var flags = [];
 
     if (save.interrupted) {
@@ -437,14 +450,17 @@
     var row = el(
       "tr",
       { class: "mbh-save mbh-save--" + save.kind, id: "mbh-save-" + save.id + (suffix || "") },
-      cells([
-        "#" + save.id,
-        save.when,
-        save.user_name || t("unknownUser"),
-        [summary, flags.length ? el("span", { class: "mbh-sub", text: flags.join(" · ") }) : null],
-        stateText(save),
-        actions,
-      ])
+      cells(
+        [
+          el("span", { class: "mbh-save-number", text: t("idNumber", save.id) }),
+          save.when,
+          save.user_name || t("unknownUser"),
+          [summary, flags.length ? el("span", { class: "mbh-sub", text: flags.join(t("listSeparator")) }) : null],
+          stateText(save),
+          actions,
+        ],
+        ["", "mbh-when", "mbh-who", "", "mbh-state-text", "mbh-actions"]
+      )
     );
 
     if (open) {
@@ -459,14 +475,17 @@
       return el(
         "tr",
         { class: "mbh-save mbh-save--legacy" },
-        cells([
-          t("legacyVersion", version.version_number),
-          version.created_at,
-          DASH,
-          [t("legacySummary"), version.summary ? el("span", { class: "mbh-sub", text: version.summary }) : null],
-          "",
-          "",
-        ])
+        cells(
+          [
+            t("legacyVersion", version.version_number),
+            version.created_at,
+            DASH,
+            [t("legacySummary"), version.summary ? el("span", { class: "mbh-sub", text: version.summary }) : null],
+            "",
+            "",
+          ],
+          ["", "mbh-when", "mbh-who"]
+        )
       );
     });
   }
@@ -550,7 +569,8 @@
 
       data.rows.forEach(function (change) {
         var values = beforeAfter(change);
-        var who = (change.user_name || t("unknownUser")) + (change.kind === "undo" ? " " + t("undoOfParen", change.undoes_batch_id) : "");
+        var user = change.user_name || t("unknownUser");
+        var who = change.kind === "undo" ? t("whoUndo", user, change.undoes_batch_id) : user;
 
         rows.push(
           el(
@@ -564,7 +584,7 @@
               [change.label, change.requested ? null : el("span", { class: "mbh-sub", text: t("automatic") })],
               values[0],
               [values[1], change.status === "undone" ? el("span", { class: "mbh-sub", text: t("undoneSince") }) : null],
-              el("a", { href: view.listUrl + "#save-" + change.batch_id, text: "#" + change.batch_id }),
+              el("a", { href: view.listUrl + "#save-" + change.batch_id, text: t("idNumber", change.batch_id) }),
             ])
           )
         );
@@ -596,6 +616,38 @@
     });
   }
 
+  /** "Saved by" offers everyone who has a save or an undo in History */
+  function loadUsers() {
+    var select = document.getElementById("mbh-history-user");
+
+    if (!select) {
+      return;
+    }
+
+    historyRequest({ view: "users" }).then(function (answer) {
+      if (!answer.ok) {
+        return; // The filter keeps "Everyone" and the user it is set to
+      }
+
+      var chosen = select.value;
+
+      (answer.data.users || []).forEach(function (user) {
+        var name = user.name === null || user.name === undefined ? t("userNumber", user.id) : user.name;
+        var existing = Array.prototype.filter.call(select.options, function (option) {
+          return option.value === String(user.id);
+        })[0];
+
+        if (existing) {
+          existing.textContent = name;
+        } else {
+          select.appendChild(el("option", { value: user.id, text: name }));
+        }
+      });
+
+      select.value = chosen;
+    });
+  }
+
   function load() {
     if (view.item) {
       loadItem();
@@ -605,6 +657,7 @@
   }
 
   $(load);
+  $(loadUsers);
   window.addEventListener("hashchange", function () {
     if (!view.item) {
       loadSaves();

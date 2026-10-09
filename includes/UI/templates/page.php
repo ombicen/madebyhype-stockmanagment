@@ -1,16 +1,17 @@
 <?php
 
 /**
- * The stock screen: heading, tabs, then the grid tabs or History
+ * The stock screen: heading and tabs, then the grid tabs or History
  *
  * @var \MadeByHypeStockmanagment\UI\UIManager $this
- * @var array      $request      AdminPage::parse_request()
- * @var array|null $result       DataManager::get_list(), null on History
- * @var array      $period       DataManager::resolve_period()
- * @var array      $caps         AdminPage::permissions()
- * @var array|null $history_item ['id', 'name', 'sku'] when History is narrowed to one item
- * @var string     $tab          all, attention or history
- * @var string     $view         product or sku
+ * @var array      $request         AdminPage::parse_request()
+ * @var array|null $result          DataManager::get_list(), null on History
+ * @var array      $period          DataManager::resolve_period()
+ * @var array      $caps            AdminPage::permissions()
+ * @var array|null $history_item    ['id', 'name', 'sku'] when History is narrowed to one item
+ * @var int|null   $attention_count Items in Needs attention with no search or filter; null when not known
+ * @var string     $tab             all, attention or history
+ * @var string     $view            product or sku
  */
 
 if (! defined('ABSPATH')) {
@@ -25,7 +26,30 @@ $tabs = [
 $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
 ?>
 <div class="wrap mbh-stock mbh-stock--<?php echo esc_attr($tab); ?>">
-    <h1 class="wp-heading-inline"><?php echo esc_html(get_admin_page_title()); ?></h1>
+    <div class="mbh-head">
+        <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+
+        <?php if (class_exists('WooCommerce')): ?>
+            <nav class="mbh-tabs" aria-label="<?php esc_attr_e('Stock Management sections', 'madebyhype-stockmanagment'); ?>">
+                <?php foreach ($tabs as $key => $label): ?>
+                    <a href="<?php echo esc_url($this->tab_url($key)); ?>" class="mbh-tab<?php echo $key === $tab ? ' is-current' : ''; ?>"<?php echo $key === $tab ? ' aria-current="page"' : ''; ?>>
+                        <?php echo esc_html($label); ?>
+                        <?php if ($key === 'attention' && $attention_count !== null): ?>
+                            <span class="mbh-tab-count">
+                                <span aria-hidden="true"><?php echo esc_html(number_format_i18n($attention_count)); ?></span>
+                                <span class="screen-reader-text">
+                                    <?php
+                                    /* translators: %s: number of items */
+                                    echo esc_html(sprintf(_n('%s item', '%s items', $attention_count, 'madebyhype-stockmanagment'), number_format_i18n($attention_count)));
+                                    ?>
+                                </span>
+                            </span>
+                        <?php endif; ?>
+                    </a>
+                <?php endforeach; ?>
+            </nav>
+        <?php endif; ?>
+    </div>
     <hr class="wp-header-end">
 
     <?php if (!class_exists('WooCommerce')): ?>
@@ -33,23 +57,19 @@ $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
             <p><strong><?php esc_html_e('WooCommerce is not active!', 'madebyhype-stockmanagment'); ?></strong> <?php esc_html_e('This plugin requires WooCommerce to be installed and activated to display products.', 'madebyhype-stockmanagment'); ?></p>
         </div>
     <?php else: ?>
-        <nav class="nav-tab-wrapper wp-clearfix" aria-label="<?php esc_attr_e('Stock Management sections', 'madebyhype-stockmanagment'); ?>">
-            <?php foreach ($tabs as $key => $label): ?>
-                <a href="<?php echo esc_url($this->tab_url($key)); ?>" class="nav-tab<?php echo $key === $tab ? ' nav-tab-active' : ''; ?>"<?php echo $key === $tab ? ' aria-current="page"' : ''; ?>><?php echo esc_html($label); ?></a>
-            <?php endforeach; ?>
-        </nav>
-
         <script type="application/json" id="mbh-stock-page"><?php echo wp_json_encode($this->page_data($history_item), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
 
         <noscript>
             <div class="notice notice-warning inline"><p><?php esc_html_e('This screen needs JavaScript to save changes, open variations and show History.', 'madebyhype-stockmanagment'); ?></p></div>
         </noscript>
 
+        <?php // What happens in the table is said here for screen readers: one line per event, put in by the script ?>
+        <div id="mbh-live" class="screen-reader-text" role="status" aria-live="polite" aria-atomic="false"></div>
+
         <?php if ($tab === 'history'): ?>
             <?php include __DIR__ . '/history.php'; ?>
         <?php else: ?>
             <?php include __DIR__ . '/toolbar.php'; ?>
-            <?php include __DIR__ . '/chips.php'; ?>
 
             <?php if (!$can_edit): ?>
                 <p class="mbh-permission-note"><?php esc_html_e('You can view stock here but not change it.', 'madebyhype-stockmanagment'); ?></p>
@@ -65,16 +85,15 @@ $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
                 <?php endif; ?>
             </div>
 
+            <div class="mbh-main">
+                <?php include __DIR__ . '/grid.php'; ?>
+            </div>
+
             <?php if ($can_edit && empty($result['error'])): ?>
                 <?php include __DIR__ . '/save-bar.php'; ?>
             <?php endif; ?>
 
-            <div class="mbh-layout">
-                <?php include __DIR__ . '/filters.php'; ?>
-                <div class="mbh-main">
-                    <?php include __DIR__ . '/grid.php'; ?>
-                </div>
-            </div>
+            <?php include __DIR__ . '/filters.php'; ?>
         <?php endif; ?>
     <?php endif; ?>
 </div>

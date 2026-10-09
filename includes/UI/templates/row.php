@@ -10,6 +10,10 @@
  *
  * Which cells are inputs comes from UIManager::cell_kinds() only.
  *
+ * The row-action links are printed out of the tab order (tabindex -1), so Tab
+ * goes from cell to cell. The script puts the links of the row that holds
+ * the focus back into it; they are one Shift+Tab before that row's first cell.
+ *
  * @var \MadeByHypeStockmanagment\UI\UIManager $this
  * @var array    $row      A DataManager::get_list() row
  * @var array    $caps
@@ -39,6 +43,7 @@ if ($row['parent_id'] && $row['attribute_summary'] !== '') {
 }
 
 $product_status = $row['parent_id'] ? $row['parent_status'] : $row['post_status'];
+$type_label = isset($strings['types'][$row['type']]) ? $strings['types'][$row['type']] : $row['type'];
 
 $input = function ($field, $kind, $shown, $placeholder = '') use ($label, $strings) {
     printf(
@@ -61,32 +66,43 @@ $badge = function ($key) use ($strings) {
 };
 ?>
 <tr id="mbh-row-<?php echo esc_attr($row['id']); ?>" class="mbh-row<?php echo $expandable ? ' mbh-row--parent' : ''; ?>" data-id="<?php echo esc_attr($row['id']); ?>">
-    <td class="mbh-col-id"><?php echo esc_html($row['id']); ?></td>
     <td class="mbh-col-name">
-        <div class="mbh-name-line">
+        <div class="mbh-prod">
             <?php if ($expandable): ?>
                 <button type="button" class="mbh-expand" aria-expanded="false" aria-label="<?php echo esc_attr($this->t('variationsOf', $row['full_name'])); ?>"><span class="mbh-chevron" aria-hidden="true"></span></button>
+            <?php else: ?>
+                <span class="mbh-expand-space" aria-hidden="true"></span>
             <?php endif; ?>
-            <strong class="mbh-name"><?php echo esc_html($name); ?></strong>
-            <?php if ($product_status && $product_status !== 'publish'): ?>
-                <span class="mbh-tag mbh-tag--draft"><?php echo esc_html(isset($strings['postStatuses'][$product_status]) ? $strings['postStatuses'][$product_status] : $product_status); ?></span>
+            <?php if ($row['thumbnail_url'] !== ''): ?>
+                <img class="mbh-thumb" src="<?php echo esc_url($row['thumbnail_url']); ?>" alt="" width="32" height="32" loading="lazy" decoding="async">
+            <?php else: ?>
+                <span class="mbh-thumb mbh-thumb--none" aria-hidden="true"></span>
             <?php endif; ?>
-            <?php if ($row['parent_id'] && $row['post_status'] === 'private'): ?>
-                <span class="mbh-tag mbh-tag--draft"><?php echo esc_html($this->t('variationDisabled')); ?></span>
-            <?php endif; ?>
-            <?php if ($row['variation_count'] > 0): ?>
-                <span class="mbh-tag mbh-tag--count"><?php echo esc_html($this->tn('variationCount', $row['variation_count'])); ?></span>
-            <?php endif; ?>
-        </div>
-        <div class="row-actions">
-            <?php if (!empty($caps['editProducts'])): ?>
-                <span class="edit"><a href="<?php echo esc_url(str_replace('%d', (string) ($row['parent_id'] ? $row['parent_id'] : $row['id']), $edit_url)); ?>" target="_blank" rel="noopener" aria-label="<?php echo esc_attr($this->t('editProductOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('editProduct')); ?></a> | </span>
-            <?php endif; ?>
-            <span class="history"><a href="<?php echo esc_url(str_replace('%d', (string) $row['id'], $history_url)); ?>" aria-label="<?php echo esc_attr($this->t('historyOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('history')); ?></a></span>
+            <div class="mbh-prod-text">
+                <strong class="mbh-name" title="<?php echo esc_attr($name); ?>"><?php echo esc_html($name); ?></strong>
+                <div class="mbh-sub-line">
+                    <?php if ($sku !== ''): ?>
+                        <span class="mbh-sku"><?php echo esc_html($sku); ?></span>
+                    <?php endif; ?>
+                    <span class="mbh-id"><?php echo esc_html($this->t('idNumber', $row['id'])); ?></span>
+                    <span class="mbh-tag mbh-tag--type"<?php echo $row['variation_count'] > 0 ? ' title="' . esc_attr($this->tn('variationCount', $row['variation_count'])) . '"' : ''; ?>><?php echo esc_html($row['variation_count'] > 0 ? $this->t('typeWithCount', $type_label, $row['variation_count']) : $type_label); ?></span>
+                    <?php if ($product_status && $product_status !== 'publish'): ?>
+                        <span class="mbh-tag mbh-tag--draft"><?php echo esc_html(isset($strings['postStatuses'][$product_status]) ? $strings['postStatuses'][$product_status] : $product_status); ?></span>
+                    <?php endif; ?>
+                    <?php if ($row['parent_id'] && $row['post_status'] === 'private'): ?>
+                        <span class="mbh-tag mbh-tag--draft"><?php echo esc_html($this->t('variationDisabled')); ?></span>
+                    <?php endif; ?>
+                    <span class="mbh-row-links">
+                        <?php if (!empty($caps['editProducts'])): ?>
+                            <a class="mbh-link-edit" href="<?php echo esc_url(str_replace('%d', (string) ($row['parent_id'] ? $row['parent_id'] : $row['id']), $edit_url)); ?>" target="_blank" rel="noopener" tabindex="-1" aria-label="<?php echo esc_attr($this->t('editProductOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('editProduct')); ?></a>
+                            <span aria-hidden="true">|</span>
+                        <?php endif; ?>
+                        <a class="mbh-link-history" href="<?php echo esc_url(str_replace('%d', (string) $row['id'], $history_url)); ?>" tabindex="-1" aria-label="<?php echo esc_attr($this->t('historyOf', $row['full_name'])); ?>"><?php echo esc_html($this->t('history')); ?></a>
+                    </span>
+                </div>
+            </div>
         </div>
     </td>
-    <td class="mbh-col-type"><?php echo esc_html(isset($strings['types'][$row['type']]) ? $strings['types'][$row['type']] : $row['type']); ?></td>
-    <td class="mbh-col-sku"><?php echo esc_html($sku); ?></td>
     <td class="mbh-col-stock mbh-num" data-field="stock_quantity">
         <?php
         switch ($kinds['stock']) {

@@ -40,23 +40,27 @@ $filtered = $request['search'] !== '' || $request['user'];
             <input type="hidden" name="page" value="<?php echo esc_attr(AdminPage::PAGE_SLUG); ?>">
             <input type="hidden" name="tab" value="history">
 
-            <div class="mbh-toolbar-group">
+            <div class="mbh-search">
+                <span class="dashicons dashicons-search" aria-hidden="true"></span>
                 <label class="screen-reader-text" for="mbh-history-search"><?php esc_html_e('Search name or SKU', 'madebyhype-stockmanagment'); ?></label>
                 <input type="search" id="mbh-history-search" name="s" value="<?php echo esc_attr($request['search']); ?>" placeholder="<?php esc_attr_e('Search name or SKU', 'madebyhype-stockmanagment'); ?>">
+            </div>
 
+            <span class="mbh-period">
                 <label for="mbh-history-user"><?php esc_html_e('Saved by', 'madebyhype-stockmanagment'); ?></label>
+                <?php // The script adds everyone who has a save in History (the history action, view=users) ?>
                 <select id="mbh-history-user" name="user">
                     <option value=""><?php esc_html_e('Everyone', 'madebyhype-stockmanagment'); ?></option>
-                    <?php foreach ($this->history_users() as $user_id => $display_name): ?>
-                        <option value="<?php echo esc_attr($user_id); ?>"<?php selected($request['user'], $user_id); ?>><?php echo esc_html($display_name); ?></option>
-                    <?php endforeach; ?>
+                    <?php if ($request['user']): ?>
+                        <option value="<?php echo esc_attr($request['user']); ?>" selected><?php echo esc_html($this->history_user_name($request['user'])); ?></option>
+                    <?php endif; ?>
                 </select>
+            </span>
 
-                <button type="submit" class="button"><?php esc_html_e('Filter', 'madebyhype-stockmanagment'); ?></button>
-                <?php if ($filtered): ?>
-                    <a href="<?php echo esc_url($this->tab_url('history')); ?>"><?php esc_html_e('Clear', 'madebyhype-stockmanagment'); ?></a>
-                <?php endif; ?>
-            </div>
+            <button type="submit" class="button"><?php esc_html_e('Filter', 'madebyhype-stockmanagment'); ?></button>
+            <?php if ($filtered): ?>
+                <a href="<?php echo esc_url($this->tab_url('history')); ?>" class="mbh-clear-all"><?php esc_html_e('Clear', 'madebyhype-stockmanagment'); ?></a>
+            <?php endif; ?>
         </form>
     <?php endif; ?>
 

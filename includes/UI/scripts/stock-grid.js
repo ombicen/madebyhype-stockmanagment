@@ -13,6 +13,9 @@
  * The server prints the rows of the list; buildRow() here builds the same
  * markup for rows that arrive later (variations) and for every redraw.
  * MBHStock.grid.checkRender() compares the two.
+ *
+ * Keys in the grid: Enter and the arrows move down and up a column, Escape
+ * puts a cell back, Ctrl+S saves (see onCellKey()).
  */
 (function ($, window, document) {
   "use strict";
@@ -31,8 +34,9 @@
     return;
   }
 
-  var COLUMNS = 10;
+  var COLUMNS = 7;
   var SAVE_CHUNK = 50; // items per request; the server takes at most 100
+  var ROWS_CHUNK = 100; // rows read again per request; the server's limit
   var AUTO_OPEN_LIMIT = 5; // parents opened on load because a search matched one of their variations
   var DASH = "—";
 
@@ -46,6 +50,7 @@
     saving: false,
     retryToken: null, // kept while a save may have reached the server without an answer
     lastSave: null,
+    savedHere: false, // a save was made in this page view: the save bar stays, with its Undo
   };
 
   (page.rows || []).forEach(function (row) {
@@ -305,10 +310,22 @@
     return row.parent_id ? row.full_name : row.name;
   }
 
+  /** The small tags after SKU and id: type (with the number of variations), Draft, Disabled */
   function tags(row, isChild) {
     var list = [];
     var productStatus = row.parent_id ? row.parent_status : row.post_status;
     var statuses = MBH.config.strings.postStatuses || {};
+    var type = (MBH.config.strings.types || {})[row.type] || row.type;
+
+    if (!isChild) {
+      list.push(
+        el("span", {
+          class: "mbh-tag mbh-tag--type",
+          title: row.variation_count > 0 ? tn("variationCount", row.variation_count) : false,
+          text: row.variation_count > 0 ? t("typeWithCount", type, row.variation_count) : type,
+        })
+      );
+    }
 
     if (!isChild && productStatus && productStatus !== "publish") {
       list.push(el("span", { class: "mbh-tag mbh-tag--draft", text: statuses[productStatus] || productStatus }));
@@ -318,44 +335,43 @@
       list.push(el("span", { class: "mbh-tag mbh-tag--draft", text: t("variationDisabled") }));
     }
 
-    if (row.variation_count > 0) {
-      list.push(el("span", { class: "mbh-tag mbh-tag--count", text: tn("variationCount", row.variation_count) }));
-    }
-
     return list;
   }
 
+  /**
+   * Edit product | History. Out of the tab order as built (as the server
+   * prints them); settleRowLinks() puts the links of the row that holds the
+   * focus back into it.
+   */
   function rowActions(row) {
     var actions = [];
 
     if (caps.editProducts && page.urls && page.urls.edit) {
       actions.push(
-        el("span", { class: "edit" }, [
-          el("a", {
-            href: page.urls.edit.replace("%d", String(row.parent_id || row.id)),
-            target: "_blank",
-            rel: "noopener",
-            "aria-label": t("editProductOf", row.full_name),
-            text: t("editProduct"),
-          }),
-          " | ",
-        ])
+        el("a", {
+          class: "mbh-link-edit",
+          href: page.urls.edit.replace("%d", String(row.parent_id || row.id)),
+          target: "_blank",
+          rel: "noopener",
+          tabindex: "-1",
+          "aria-label": t("editProductOf", row.full_name),
+          text: t("editProduct"),
+        }),
+        el("span", { "aria-hidden": "true", text: "|" })
       );
     }
 
     actions.push(
-      el(
-        "span",
-        { class: "history" },
-        el("a", {
-          href: page.urls.history.replace("%d", String(row.id)),
-          "aria-label": t("historyOf", row.full_name),
-          text: t("history"),
-        })
-      )
+      el("a", {
+        class: "mbh-link-history",
+        href: page.urls.history.replace("%d", String(row.id)),
+        tabindex: "-1",
+        "aria-label": t("historyOf", row.full_name),
+        text: t("history"),
+      })
     );
 
-    return el("div", { class: "row-actions" }, actions);
+    return el("span", { class: "mbh-row-links" }, actions);
   }
 
   /**
@@ -368,6 +384,7 @@
     var kinds = model.cellKinds(row, caps);
     var label = itemLabel(row);
     var expandable = !isChild && page.view === "product" && row.variation_count > 0;
+    var name = nameText(row, isChild);
 
     return el(
       "tr",
@@ -377,9 +394,10 @@
         "data-id": row.id,
       },
       [
-        el("td", { class: "mbh-col-id", text: String(row.id) }),
-        el("td", { class: "mbh-col-name" }, [
-          el("div", { class: "mbh-name-line" }, [
+        el(
+          "td",
+          { class: "mbh-col-name" },
+          el("div", { class: "mbh-prod" }, [
             expandable
               ? el(
                   "button",
@@ -391,14 +409,21 @@
                   },
                   el("span", { class: "mbh-chevron", "aria-hidden": "true" })
                 )
-              : null,
-            el("strong", { class: "mbh-name", text: nameText(row, isChild) }),
-            tags(row, isChild),
-          ]),
-          rowActions(row),
-        ]),
-        el("td", { class: "mbh-col-type", text: (MBH.config.strings.types || {})[row.type] || row.type }),
-        el("td", { class: "mbh-col-sku", text: skuOf(row) }),
+              : el("span", { class: "mbh-expand-space", "aria-hidden": "true" }),
+            row.thumbnail_url
+              ? el("img", { class: "mbh-thumb", src: row.thumbnail_url, alt: "", width: "32", height: "32", loading: "lazy", decoding: "async" })
+              : el("span", { class: "mbh-thumb mbh-thumb--none", "aria-hidden": "true" }),
+            el("div", { class: "mbh-prod-text" }, [
+              el("strong", { class: "mbh-name", title: name, text: name }),
+              el("div", { class: "mbh-sub-line" }, [
+                skuOf(row) !== "" ? el("span", { class: "mbh-sku", text: skuOf(row) }) : null,
+                el("span", { class: "mbh-id", text: t("idNumber", row.id) }),
+                tags(row, isChild),
+                rowActions(row),
+              ]),
+            ]),
+          ])
+        ),
         el("td", { class: "mbh-col-stock mbh-num", "data-field": "stock_quantity" }, stockCell(row, kinds, label)),
         el("td", { class: "mbh-col-status", "data-field": "stock_status" }, statusCell(row, kinds, label)),
         el("td", { class: "mbh-col-regular mbh-num", "data-field": "regular_price" }, priceCell(row, "regular_price", kinds.regular, label)),
@@ -421,15 +446,8 @@
    * Laying edits and save results over a row
    * ---------------------------------------------------------------- */
 
-  var ICONS = {
-    changed: "dashicons-edit",
-    invalid: "dashicons-warning",
-    conflict: "dashicons-warning",
-    refused: "dashicons-dismiss",
-    saved: "dashicons-yes",
-    adjusted: "dashicons-info",
-    dropped: "dashicons-info",
-  };
+  // What a mark left by the last save or undo says under its cell
+  var MARK_WORDS = { saved: "savedMark", adjusted: "adjustedMark", dropped: "droppedMark" };
 
   function captionFor(row, field, entry) {
     var seen = model.seenValue(row, field === "start_tracking" ? "stock_quantity" : field);
@@ -475,7 +493,7 @@
     var captionId = "mbh-caption-" + id + "-" + field;
     var describedBy = [];
 
-    $(cell).children(".mbh-caption, .mbh-state").remove();
+    $(cell).children(".mbh-caption").remove();
     cell.className = cell.className.replace(/\s*\bis-[a-z]+\b/g, "");
 
     if (control) {
@@ -493,20 +511,11 @@
 
     cell.classList.add("is-" + status);
 
-    var caption = entry ? captionFor(row, key, entry) : status === "saved" ? "" : t("seeMessage");
-
-    cell.appendChild(
-      el("span", { class: "mbh-state dashicons " + ICONS[status], "aria-hidden": "true" })
-    );
-
-    if (status === "saved") {
-      caption = t("savedMark");
-    }
+    // The words under the cell are the state; fill and border only repeat it
+    var caption = entry ? captionFor(row, key, entry) : t(MARK_WORDS[status]);
 
     if (caption) {
-      // A mark has its icon to see and, for adjusted and dropped, its message under the row;
-      // the words here are for a screen reader. An edit's caption is for everyone.
-      var captionNode = el("span", { class: "mbh-caption" + (entry ? "" : " screen-reader-text"), id: captionId, text: caption });
+      var captionNode = el("span", { class: "mbh-caption", id: captionId, text: caption });
 
       // In the stock cell of a pending start of tracking the caption goes above "Cancel tracking"
       cell.insertBefore(captionNode, cell.querySelector(".mbh-start-cancel"));
@@ -573,7 +582,8 @@
 
   /** "{n} edited" and "{n} not saved" on a product whose variations hold edits, also when it is closed */
   function decorateParent(tr, id) {
-    var line = tr.querySelector(".mbh-name-line");
+    var line = tr.querySelector(".mbh-sub-line");
+    var links = line.querySelector(".mbh-row-links");
     var edited = 0;
     var unsaved = 0;
 
@@ -592,10 +602,10 @@
     });
 
     if (edited) {
-      line.appendChild(el("span", { class: "mbh-tag mbh-tag--edited", text: tn("editedCount", edited) }));
+      line.insertBefore(el("span", { class: "mbh-tag mbh-tag--edited", text: tn("editedCount", edited) }), links);
     }
     if (unsaved) {
-      line.appendChild(el("span", { class: "mbh-tag mbh-tag--unsaved", text: tn("notSavedCount", unsaved) }));
+      line.insertBefore(el("span", { class: "mbh-tag mbh-tag--unsaved", text: tn("notSavedCount", unsaved) }), links);
     }
   }
 
@@ -688,9 +698,7 @@
 
   function messageItem(id, field, kind, message, buttons) {
     return el("li", { class: "mbh-msg mbh-msg--" + kind, id: "mbh-msg-" + id + "-" + field }, [
-      el("span", { class: "dashicons " + ICONS[kind], "aria-hidden": "true" }),
-      el("strong", { text: fieldLabel(field) + ": " }),
-      el("span", { class: "mbh-msg-text", text: message }),
+      el("span", { class: "mbh-msg-text" }, [el("strong", { text: t("fieldPrefix", fieldLabel(field)) }), " ", message]),
       buttons && buttons.length ? el("span", { class: "mbh-msg-actions" }, buttons) : null,
     ]);
   }
@@ -724,7 +732,7 @@
     }
 
     if (isChild && isMatch(id)) {
-      tr.querySelector(".mbh-name-line").appendChild(el("span", { class: "mbh-tag mbh-tag--match", text: t("match") }));
+      markMatch(tr);
     }
 
     old.parentNode.replaceChild(tr, old);
@@ -737,13 +745,22 @@
     }
   }
 
+  function markMatch(tr) {
+    var line = tr.querySelector(".mbh-sub-line");
+
+    line.insertBefore(el("span", { class: "mbh-tag mbh-tag--match", text: t("match") }), line.querySelector(".mbh-row-links"));
+  }
+
   function isMatch(id) {
     var parent = state.rows[state.childOf[id]];
 
     return !!(parent && (parent.matched_variation_ids || []).indexOf(Number(id)) !== -1);
   }
 
-  function focusCell(id, field) {
+  /**
+   * @param {boolean} quiet Do not scroll the cell to the middle of the grid
+   */
+  function focusCell(id, field, quiet) {
     var tr = rowNode(id);
 
     if (!tr) {
@@ -759,7 +776,7 @@
 
     if (target) {
       target.focus();
-      if (target.scrollIntoView) {
+      if (!quiet && target.scrollIntoView) {
         target.scrollIntoView({ block: "center" });
       }
     }
@@ -976,7 +993,7 @@
       decorateRow(tr, id);
 
       if (isMatch(id)) {
-        tr.querySelector(".mbh-name-line").appendChild(el("span", { class: "mbh-tag mbh-tag--match", text: t("match") }));
+        markMatch(tr);
       }
 
       fragment.appendChild(tr);
@@ -1056,7 +1073,8 @@
     }
 
     family.loading = true;
-    statusRow(parentId, el("span", { class: "mbh-loading", role: "status", text: tn("loadingVariations", count) }));
+    statusRow(parentId, el("span", { class: "mbh-loading", text: tn("loadingVariations", count) }));
+    MBH.announce(tn("loadingVariations", count));
 
     variationRequest(parentId).then(function (answer) {
       family.loading = false;
@@ -1092,6 +1110,7 @@
       renderRow(parentId);
       insertChildRows(parentId);
       updateSaveBar();
+      MBH.announce(tn("variationsShown", (state.children[parentId] || []).length));
     });
   }
 
@@ -1109,6 +1128,8 @@
     } else {
       loadFamily(parentId);
     }
+
+    updateCollapseAll();
   }
 
   function closeFamily(parentId) {
@@ -1121,6 +1142,67 @@
 
     // Rows and their edits stay; they are only hidden
     familyNodes(parentId).prop("hidden", true);
+    updateCollapseAll();
+  }
+
+  var collapseAll = document.getElementById("mbh-collapse-all");
+
+  /** "Collapse all" is offered while a product is open */
+  function updateCollapseAll() {
+    if (!collapseAll) {
+      return;
+    }
+
+    var open = Object.keys(state.family).some(function (id) {
+      return state.family[id].open;
+    });
+
+    // Hiding the button under the focus would drop the focus on the page
+    if (!open && document.activeElement === collapseAll) {
+      var first = table.querySelector(".mbh-expand");
+
+      (first || document.getElementById("mbh-search")).focus();
+    }
+
+    collapseAll.hidden = !open;
+  }
+
+  /**
+   * Read rows again that the variations call does not cover: simple
+   * products, and every row of By SKU and Needs attention. Low stock, its
+   * threshold and cover are then the server's again.
+   *
+   * @param {Array} ids
+   */
+  function refreshRows(ids) {
+    var chunks = model.chunkIds(ids, ROWS_CHUNK);
+
+    return chunks.reduce(function (chain, chunk) {
+      return chain.then(function () {
+        return MBH.request("madebyhype_get_rows", "read", $.extend({ ids: chunk }, page.periodArgs || {})).then(function (answer) {
+          if (!answer.ok) {
+            return; // The rows keep their dash for the figures nobody confirmed
+          }
+
+          (answer.data.rows || []).forEach(function (row) {
+            var previous = state.rows[row.id];
+
+            if (!previous || !rowNode(row.id)) {
+              return;
+            }
+
+            // Why the search listed this row is known from the list only
+            row.matched_self = previous.matched_self;
+            row.matched_variation_ids = previous.matched_variation_ids;
+            state.rows[row.id] = row;
+            prunePending(row.id);
+            renderRow(row.id);
+          });
+
+          updateSaveBar();
+        });
+      });
+    }, $.Deferred().resolve().promise());
   }
 
   /**
@@ -1158,12 +1240,15 @@
    * ---------------------------------------------------------------- */
 
   var bar = {
+    node: document.getElementById("mbh-save-bar"),
     status: document.getElementById("mbh-save-status"),
     invalid: document.getElementById("mbh-save-invalid"),
     invalidText: document.getElementById("mbh-save-invalid-text"),
     conflicts: document.getElementById("mbh-save-conflicts"),
+    conflictsText: document.getElementById("mbh-save-conflicts-text"),
     last: document.getElementById("mbh-last-save"),
     lastText: document.getElementById("mbh-last-save-text"),
+    lastState: document.getElementById("mbh-last-save-state"),
     undo: document.getElementById("mbh-undo-last"),
     undoHint: document.getElementById("mbh-undo-hint"),
     discard: document.getElementById("mbh-discard-button"),
@@ -1184,31 +1269,50 @@
     });
     var sendable = countPending(model.isSendable);
     var rows = Object.keys(state.pending).length;
+    var canSave = !state.saving && sendable > 0 && invalid === 0;
 
-    bar.status.textContent = total ? t("unsavedSummary", tn("unsavedChanges", total), tn("inRows", rows)) : t("noUnsaved");
-    bar.status.classList.toggle("has-changes", total > 0);
+    bar.status.textContent = !total ? t("noUnsaved") : rows === 1 ? tn("unsavedInOneRow", total) : tn("unsavedInRows", total, rows);
 
+    // Why Save is off, in words beside it
     bar.invalid.hidden = invalid === 0;
-    bar.invalidText.textContent = tn("invalidCount", invalid);
+    bar.invalidText.textContent = invalid ? tn("invalidCount", invalid) : "";
     bar.conflicts.hidden = conflicts === 0;
-    bar.conflicts.textContent = tn("conflictCount", conflicts);
+    bar.conflictsText.textContent = conflicts ? tn("conflictCount", conflicts) : "";
 
+    // The button names a number only when pressing it would save that number
     if (state.saving) {
       bar.save.textContent = progress ? t("savingProgress", progress.done, progress.total) : t("saving");
     } else {
-      bar.save.textContent = sendable ? tn("saveChanges", sendable) : t("save");
+      bar.save.textContent = canSave ? tn("saveChanges", sendable) : t("save");
     }
 
-    bar.save.disabled = state.saving || sendable === 0 || invalid > 0;
+    bar.save.disabled = !canSave;
+    bar.save.title = state.saving || canSave ? "" : invalid ? tn("invalidCount", invalid) : conflicts ? tn("conflictCount", conflicts) : "";
     bar.discard.disabled = state.saving || total === 0;
 
-    if (bar.undo) {
-      var offered = !!(state.lastSave && state.lastSave.undoable);
+    var offered = !!(state.lastSave && state.lastSave.undoable);
 
+    if (bar.undo) {
       bar.undo.hidden = !offered;
       bar.undo.disabled = state.saving || total > 0;
       bar.undoHint.hidden = !offered || total === 0;
     }
+
+    bar.node.classList.toggle("has-changes", total > 0);
+
+    // The bar is there while something is unsaved or being saved, and after a save made here (for its Undo)
+    var show = total > 0 || state.saving || (state.savedHere && !!state.lastSave);
+
+    if (bar.node.hidden === show) {
+      // Hiding the bar under the focus would drop the focus on the page
+      if (!show && bar.node.contains(document.activeElement)) {
+        (document.getElementById("mbh-search") || table).focus();
+      }
+
+      bar.node.hidden = !show;
+    }
+
+    MBH.layout();
   }
 
   function setLastSave(save) {
@@ -1221,15 +1325,8 @@
     bar.last.hidden = !save;
 
     if (save) {
-      var text = t("lastSave", save.when, tn("changeCount", save.changes));
-
-      if (save.state === "undone") {
-        text += " " + t("lastSaveUndone");
-      } else if (save.state === "partly_undone") {
-        text += " " + t("partlyUndone", save.undone, save.changes);
-      }
-
-      bar.lastText.textContent = text;
+      bar.lastText.textContent = tn("lastSave", save.changes, save.when);
+      bar.lastState.textContent = save.state === "undone" ? " " + t("undone") : save.state === "partly_undone" ? " " + t("partlyUndone", save.undone, save.changes) : "";
 
       if (bar.undo) {
         bar.undo.textContent = save.state === "partly_undone" ? t("undoRest") : t("undo");
@@ -1283,7 +1380,7 @@
       buttons: [
         {
           label: t("discard"),
-          primary: true,
+          danger: true,
           action: function (dialog) {
             var ids = Object.keys(state.pending);
 
@@ -1382,11 +1479,56 @@
     });
   }
 
+  /**
+   * Note the product whose variations call reads this row again
+   *
+   * @return {boolean} False when no variations call covers the row
+   */
   function familyToRefresh(id, into) {
     if (state.childOf[id] !== undefined) {
       into[state.childOf[id]] = true;
-    } else if (state.rows[id] && state.rows[id].variation_summary) {
+      return true;
+    }
+
+    if (state.rows[id] && state.rows[id].variation_summary) {
       into[id] = true;
+      return true;
+    }
+
+    return false;
+  }
+
+  /** The cell the keyboard is in, if it is in one */
+  function activeCell() {
+    var active = document.activeElement;
+    var tr = active && table.contains(active) ? $(active).closest("tr.mbh-row")[0] : null;
+    var cell = tr ? $(active).closest("td[data-field]")[0] : null;
+
+    return cell ? { id: tr.getAttribute("data-id"), field: cell.getAttribute("data-field") } : null;
+  }
+
+  /**
+   * Read out the messages a save left under the given rows: the first few
+   * in full, then how many more there are
+   */
+  function announceMessages(ids) {
+    var lines = [];
+
+    ids.forEach(function (id) {
+      var node = messageNode(id);
+      var row = state.rows[id];
+
+      $(node)
+        .find(".mbh-msg-text")
+        .each(function () {
+          lines.push(t("announceAbout", row ? itemLabel(row) : id, this.textContent));
+        });
+    });
+
+    lines.slice(0, 3).forEach(MBH.announce);
+
+    if (lines.length > 3) {
+      MBH.announce(tn("moreMessages", lines.length - 3));
     }
   }
 
@@ -1446,7 +1588,9 @@
       });
 
       prunePending(id);
-      familyToRefresh(id, tally.families);
+      if (!familyToRefresh(id, tally.families) && result && result.values) {
+        tally.single.push(id);
+      }
       renderRow(id);
       refreshParentOf(id);
     });
@@ -1501,6 +1645,7 @@
     var tally = {
       counts: { saved: 0, adjusted: 0, conflict: 0, refused: 0, dropped: 0 },
       families: {},
+      single: [], // touched rows that no variations call reads again
       allLogFailed: true,
       lost: "",
       message: "",
@@ -1509,6 +1654,9 @@
     // One token per press of Save. It is kept for the next press only while
     // this save may have reached the server without its answer reaching us.
     var token = state.retryToken || newToken();
+
+    // The table is switched off while saving, which takes the focus out of it: remember the cell
+    var cellBefore = activeCell();
 
     state.retryToken = token;
     state.saving = true;
@@ -1532,9 +1680,11 @@
       MBH.notice(notice.type, noticeContent(notice, tally), "save");
 
       if (newest) {
+        state.savedHere = true;
         setLastSave(newest);
       }
       updateSaveBar();
+      announceMessages(Object.keys(items));
 
       var allStored = tally.lost === "" && notice.notStored === 0;
       var search = document.getElementById("mbh-search");
@@ -1543,15 +1693,22 @@
         // Ready for the next scan
         search.focus();
         search.select();
+      } else if (cellBefore && !MBH.dialogOpen() && (document.activeElement === document.body || !document.activeElement)) {
+        // Back to where the keyboard was (Ctrl+S from a cell)
+        focusCell(cellBefore.id, cellBefore.field, true);
       }
 
-      // Products whose own row or variations changed are read again, one after the other
+      // Products whose own row or variations changed are read again, one after the other;
+      // then the other touched rows, so low stock and cover are the server's
       Object.keys(tally.families)
         .reduce(function (chain, parentId) {
           return chain.then(function () {
             return refreshFamily(parentId);
           });
         }, $.Deferred().resolve().promise())
+        .then(function () {
+          return refreshRows(tally.single);
+        })
         .always(function () {
           done.resolve(allStored);
         });
@@ -1687,6 +1844,7 @@
   /** Redraw the rows an undo changed, from the values it reports */
   function applyUndo(data) {
     var families = {};
+    var single = {};
 
     // The result of the undo takes the place of the notice of the save it undid
     if (data.message) {
@@ -1701,7 +1859,9 @@
       mergeValues(id, data.values[id]);
       delete state.marks[id];
       prunePending(id);
-      familyToRefresh(id, families);
+      if (!familyToRefresh(id, families)) {
+        single[id] = true;
+      }
       renderRow(id);
     });
 
@@ -1734,7 +1894,9 @@
         recordEdit(change.item_id, change.field, entry.text, false);
       }
 
-      familyToRefresh(change.item_id, families);
+      if (!familyToRefresh(change.item_id, families)) {
+        single[change.item_id] = true;
+      }
       renderRow(change.item_id);
     });
 
@@ -1743,6 +1905,7 @@
     }
 
     Object.keys(families).forEach(refreshFamily);
+    refreshRows(Object.keys(single));
     updateSaveBar();
   }
 
@@ -1766,7 +1929,16 @@
       if (entry && entry.typing) {
         entry.typing = false;
         decorateCell(this.parentNode, id, field === "start_tracking" ? "stock_quantity" : field);
+
+        if (entry.state === "invalid") {
+          // The words appear after the focus has gone: say them
+          MBH.announce(t("announceAbout", this.getAttribute("aria-label"), t(entry.error, entry.errorArg)));
+        }
       }
+    })
+    .on("keydown", ".mbh-input", onCellKey)
+    .on("focusin", "tr.mbh-row", function () {
+      settleRowLinks(this);
     })
     .on("focusin", "input.mbh-input", function () {
       this.select();
@@ -1813,6 +1985,168 @@
       updateSaveBar();
       focusCell(id, field);
     });
+
+  /* --- keys in the grid (journey 3.7) --- */
+
+  /** The control in the same column of the next or previous row that has one; hidden rows are passed over */
+  function cellBelow(control, step) {
+    var column = $(control).closest("td[data-field]").attr("data-field");
+    var tr = $(control).closest("tr.mbh-row")[0];
+
+    while (tr) {
+      tr = step > 0 ? tr.nextElementSibling : tr.previousElementSibling;
+
+      if (!tr || tr.hidden || !tr.classList.contains("mbh-row")) {
+        continue;
+      }
+
+      var target = tr.querySelector('td[data-field="' + column + '"] .mbh-input');
+
+      if (target) {
+        return target;
+      }
+    }
+
+    return null;
+  }
+
+  /** Escape: the cell goes back to the value the server last gave, and keeps the focus */
+  function restoreCell(control) {
+    var tr = $(control).closest("tr.mbh-row")[0];
+    var id = tr.getAttribute("data-id");
+    var field = control.getAttribute("data-field");
+    var label = control.getAttribute("aria-label");
+
+    if (!entryOf(id, field)) {
+      return false;
+    }
+
+    if (field === "start_tracking") {
+      // The value before a queued start of tracking is "Not tracked"
+      label = t("cellLabel", fieldLabel("start_tracking"), itemLabel(state.rows[id]));
+      cancelTracking(control);
+      MBH.announce(t("trackingCancelled", label));
+      return true;
+    }
+
+    dropPending(id, field);
+    renderRow(id);
+    refreshParentOf(id);
+    updateSaveBar();
+
+    var restored = rowNode(id).querySelector('.mbh-input[data-field="' + field + '"]');
+
+    if (restored) {
+      restored.focus();
+      if (restored.select) {
+        restored.select();
+      }
+
+      var shown = restored.tagName === "SELECT" ? statusLabel(restored.value) : restored.value;
+
+      MBH.announce(t("cellRestored", label, shown === "" ? t(field === "sale_price" ? "noSale" : "empty") : shown));
+    }
+
+    return true;
+  }
+
+  function onCellKey(event) {
+    var isSelect = this.tagName === "SELECT";
+
+    if (event.altKey || event.ctrlKey || event.metaKey || event.isComposing) {
+      return;
+    }
+
+    if (event.key === "Escape") {
+      // An open list of a select closes on Escape by itself and reports no change
+      if (restoreCell(this)) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    // In a select, Enter and the arrows are the browser's: they open the list and choose from it
+    if (isSelect) {
+      return;
+    }
+
+    var step = event.key === "Enter" ? (event.shiftKey ? -1 : 1) : event.key === "ArrowDown" && !event.shiftKey ? 1 : event.key === "ArrowUp" && !event.shiftKey ? -1 : 0;
+
+    if (!step) {
+      return;
+    }
+
+    // Never the browser's own meaning of the key in a field (caret to the start or end, a form sent)
+    event.preventDefault();
+
+    var target = cellBelow(this, step);
+
+    if (target) {
+      target.focus(); // focusin selects its content; on the last row the focus stays where it is
+    }
+  }
+
+  // Ctrl+S / Cmd+S saves. The browser's "save page" never opens here; in a dialog or the filter drawer the key does nothing.
+  document.addEventListener("keydown", function (event) {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || (event.key !== "s" && event.key !== "S")) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!bar.save || MBH.dialogOpen() || (MBH.filtersOpen && MBH.filtersOpen())) {
+      return;
+    }
+
+    // What is being typed counts: leaving the cell finishes it (and may find it invalid)
+    var active = document.activeElement;
+    var cell = activeCell();
+
+    if (active && table.contains(active) && active.classList.contains("mbh-input")) {
+      var entry = entryOf(cell.id, active.getAttribute("data-field"));
+
+      if (entry && entry.typing) {
+        entry.typing = false;
+        decorateCell(active.parentNode, cell.id, cell.field);
+        updateSaveBar();
+      }
+    }
+
+    if (!bar.save.disabled) {
+      save();
+    }
+  });
+
+  /* --- Edit product | History: in the tab order only for the row that holds the focus --- */
+
+  var linkedRow = null;
+
+  function settleRowLinks(tr) {
+    if (linkedRow === tr) {
+      return;
+    }
+
+    if (linkedRow) {
+      $(linkedRow).find(".mbh-row-links a").attr("tabindex", "-1");
+    }
+
+    linkedRow = tr;
+
+    if (tr) {
+      $(tr).find(".mbh-row-links a").attr("tabindex", "0");
+    }
+  }
+
+  if (collapseAll) {
+    collapseAll.addEventListener("click", function () {
+      Object.keys(state.family).forEach(function (id) {
+        if (state.family[id].open && rowNode(id)) {
+          closeFamily(id);
+        }
+      });
+      MBH.announce(t("allCollapsed"));
+    });
+  }
 
   if (bar.save) {
     bar.save.addEventListener("click", function () {
@@ -1878,6 +2212,8 @@
     }
 
     var differences = [];
+
+    settleRowLinks(null);
 
     (page.rows || []).forEach(function (row) {
       var printed = rowNode(row.id);

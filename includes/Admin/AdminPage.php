@@ -271,8 +271,6 @@ class AdminPage
             }
         } else {
             $args = $this->list_args($request);
-            // Thumbnails are not shown yet; leave their lookups out
-            $args['with_images'] = false;
 
             $result = $this->data_manager->get_list($args);
             $period = $result['period'];
@@ -284,7 +282,36 @@ class AdminPage
             'period' => $period,
             'caps' => self::permissions(),
             'history_item' => $history_item,
+            'attention_count' => $this->attention_count($request, $result),
         ]);
+    }
+
+    /**
+     * The number on the Needs attention tab: everything that needs attention,
+     * whatever the search and filters of the page are
+     *
+     * @param array      $request From parse_request()
+     * @param array|null $result  The list of the page, when it has one
+     * @return int|null Null when the count could not be read
+     */
+    private function attention_count($request, $result)
+    {
+        if (!class_exists('WooCommerce')) {
+            return null;
+        }
+
+        // The Needs attention tab without search, filter or "sold only" has just counted it
+        $plain = $request['tab'] === 'attention' && $request['search'] === '' && !$request['sold_only']
+            && !$request['category_filter'] && !$request['tag_filter'] && !$request['attribute_filter']
+            && !($request['min_price'] > 0) && !($request['max_price'] > 0) && !($request['min_sales'] > 0) && !($request['max_sales'] > 0);
+
+        if ($plain && $result && empty($result['error']) && isset($result['counts']['all'])) {
+            return (int) $result['counts']['all'];
+        }
+
+        $list = $this->data_manager->get_list(['tab' => DataManager::TAB_ATTENTION, 'per_page' => 1, 'with_images' => false]);
+
+        return empty($list['error']) && isset($list['counts']['all']) ? (int) $list['counts']['all'] : null;
     }
 
     /**
