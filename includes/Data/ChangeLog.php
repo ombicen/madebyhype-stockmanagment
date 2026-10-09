@@ -12,6 +12,11 @@ if (!defined('ABSPATH')) {
  *
  * A batch is one save or one undo. A change is one field of one product or
  * variation inside a batch, with the value before and the value after.
+ *
+ * A change is either requested (typed_value holds what the user asked for)
+ * or derived (typed_value is NULL: a consequence, such as the stock status
+ * WooCommerce set from a new quantity). Counts, undo and resend detection
+ * work on requested changes; derived ones follow the change that caused them.
  */
 class ChangeLog
 {
@@ -122,7 +127,8 @@ class ChangeLog
 
     /**
      * Change rows of one batch, in the order they were recorded.
-     * Values come back as stored; use decode_value() to get typed values.
+     * Values come back as stored; use decode_value() to get typed values,
+     * or get_batch_changes() for rows ready to show.
      *
      * @param int $batch_id
      * @return array
@@ -148,7 +154,8 @@ class ChangeLog
      *
      * @param int    $batch_id
      * @param array  $item    ['item_id' => int, 'product_id' => int (parent for a variation, else the item itself), 'item_type' => string]
-     * @param array  $changes field => ['old' => value, 'new' => value], unencoded
+     * @param array  $changes field => ['old' => value, 'new' => value, 'typed' => value the user asked for (optional;
+     *                        leave out or null for a derived change)], unencoded
      * @param string $status  One of the STATUS_ constants
      * @param string $message
      * @return array|false field => change row id; false when any row could not be written
@@ -175,8 +182,9 @@ class ChangeLog
                     'new_value' => self::encode_value($change['new']),
                     'status' => $status,
                     'message' => self::truncate($message, 255),
+                    'typed_value' => self::encode_value(isset($change['typed']) ? $change['typed'] : null),
                 ],
-                ['%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s']
+                ['%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
             );
             $last_error = $wpdb->last_error;
             $wpdb->suppress_errors($suppress);
@@ -203,42 +211,567 @@ class ChangeLog
      * @param int    $change_id
      * @param string $status    One of the STATUS_ constants
      * @param string $message
+     * @param array  $values    Optional 'old' and/or 'new' (unencoded): replace the recorded values with
+     *                          what the product really held before and holds after the write
      * @return bool
      */
-    public function set_change_status($change_id, $status, $message = '')
+    public function set_change_status($change_id, $status, $message = '', $values = [])
     {
         global $wpdb;
 
+        $data = ['status' => $status, 'message' => self::truncate($message, 255)];
+
+        foreach (['old' => 'old_value', 'new' => 'new_value'] as $key => $column) {
+            if (array_key_exists($key, $values)) {
+                $data[$column] = self::encode_value($values[$key]);
+            }
+        }
+
         return $wpdb->update(
             Schema::changes_table(),
-            ['status' => $status, 'message' => self::truncate($message, 255)],
+            $data,
             ['id' => (int) $change_id],
-            ['%s', '%s'],
+            array_fill(0, count($data), '%s'),
             ['%d']
         ) !== false;
     }
 
     /**
-     * Set the outcome of one change row and replace new_value with the value
-     * the product really holds after the write
+     * Move a change row from one status to another, only if it still has the
+     * first one. One statement, so of two requests that try the same move
+     * exactly one succeeds: this is what keeps a change from being undone twice.
      *
      * @param int    $change_id
-     * @param string $status    One of the STATUS_ constants
-     * @param mixed  $new_value Unencoded
-     * @param string $message
-     * @return bool
+     * @param string $from
+     * @param string $to
+     * @return bool Whether this call made the move
      */
-    public function set_change_result($change_id, $status, $new_value, $message = '')
+    public function claim_change($change_id, $from, $to)
     {
         global $wpdb;
 
-        return $wpdb->update(
-            Schema::changes_table(),
-            ['status' => $status, 'new_value' => self::encode_value($new_value), 'message' => self::truncate($message, 255)],
-            ['id' => (int) $change_id],
-            ['%s', '%s', '%s'],
-            ['%d']
-        ) !== false;
+        $table = Schema::changes_table();
+
+        return $wpdb->query(
+            $wpdb->prepare("UPDATE {$table} SET status = %s WHERE id = %d AND status = %s", $to, $change_id, $from)
+        ) === 1;
+    }
+
+    /**
+     * Mark the derived changes of one item in a batch as undone, after the
+     * requested change that caused them was undone
+     *
+     * @param int $batch_id
+     * @param int $item_id
+     */
+    public function mark_derived_undone($batch_id, $item_id)
+    {
+        global $wpdb;
+
+        $table = Schema::changes_table();
+
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$table} SET status = %s WHERE batch_id = %d AND item_id = %d AND typed_value IS NULL AND status = %s",
+                self::STATUS_UNDONE,
+                $batch_id,
+                $item_id,
+                self::STATUS_APPLIED
+            )
+        );
+    }
+
+    /**
+     * Saves and undos, newest first, one summary each (see summarise())
+     *
+     * @param array $args {
+     *     @type int    $page     Default 1.
+     *     @type int    $per_page Default 20, at most 100.
+     *     @type int    $user_id  Only batches of this user. Default all.
+     *     @type string $kind     'save' or 'undo'. Default both.
+     *     @type string $search   Only batches that touched a product or variation whose name or SKU
+     *                            contains this text. Default none.
+     * }
+     * @return array ['batches' => summaries, 'total' => int, 'page' => int, 'per_page' => int, 'pages' => int]
+     */
+    public function get_batches($args = [])
+    {
+        global $wpdb;
+
+        $args = array_merge(['page' => 1, 'per_page' => 20, 'user_id' => 0, 'kind' => '', 'search' => ''], $args);
+        $per_page = max(1, min(100, (int) $args['per_page']));
+        $page = max(1, (int) $args['page']);
+        $batches = Schema::batches_table();
+        $changes = Schema::changes_table();
+        $result = ['batches' => [], 'total' => 0, 'page' => $page, 'per_page' => $per_page, 'pages' => 0];
+
+        $where = ['1 = 1'];
+
+        if ((int) $args['user_id'] > 0) {
+            $where[] = 'b.user_id = ' . (int) $args['user_id'];
+        }
+
+        if (in_array($args['kind'], [self::KIND_SAVE, self::KIND_UNDO], true)) {
+            $where[] = "b.kind = '" . $args['kind'] . "'";
+        }
+
+        if (trim((string) $args['search']) !== '') {
+            $item_ids = $this->find_item_ids($args['search']);
+            if (empty($item_ids)) {
+                return $result;
+            }
+
+            $in = implode(',', $item_ids);
+            $where[] = "b.id IN (SELECT c.batch_id FROM {$changes} c WHERE c.item_id IN ({$in}) OR c.product_id IN ({$in}))";
+        }
+
+        $where = implode(' AND ', $where);
+        $offset = ($page - 1) * $per_page;
+
+        $result['total'] = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$batches} b WHERE {$where}");
+        $result['pages'] = (int) ceil($result['total'] / $per_page);
+        $result['batches'] = $this->summarise(
+            $wpdb->get_results("SELECT b.* FROM {$batches} b WHERE {$where} ORDER BY b.id DESC LIMIT {$per_page} OFFSET {$offset}", ARRAY_A)
+        );
+
+        return $result;
+    }
+
+    /**
+     * @param int $batch_id
+     * @return array|null Summary of one batch (see summarise()), null when it does not exist
+     */
+    public function get_batch_summary($batch_id)
+    {
+        $batch = $this->get_batch($batch_id);
+        $summaries = $batch ? $this->summarise([$batch]) : [];
+
+        return $summaries ? $summaries[0] : null;
+    }
+
+    /**
+     * The most recent save of one user, for "Your last save"
+     *
+     * @param int $user_id
+     * @return array|null Summary, see summarise()
+     */
+    public function get_last_save($user_id)
+    {
+        $found = $this->get_batches(['user_id' => (int) $user_id, 'kind' => self::KIND_SAVE, 'per_page' => 1]);
+
+        return $found['batches'] ? $found['batches'][0] : null;
+    }
+
+    /**
+     * The changes of one batch, ready to show (see describe_changes())
+     *
+     * @param int $batch_id
+     * @return array
+     */
+    public function get_batch_changes($batch_id)
+    {
+        return $this->describe_changes($this->get_changes($batch_id));
+    }
+
+    /**
+     * Every change that landed on one item, newest first, across all batches
+     *
+     * For a product the list covers the product itself and all its
+     * variations; for a variation, that variation only.
+     *
+     * Each row also says whether the history joins up: 'gap' is set when the
+     * value this change found (old) is not the value the previous change to
+     * the same field of the same item left behind. Something outside this
+     * tool changed it in between: an order, the product editor, an import.
+     *
+     * @param int   $id   Product or variation id
+     * @param array $args 'page' (default 1), 'per_page' (default 50, at most 200)
+     * @return array ['rows' => describe_changes() rows plus 'kind', 'undoes_batch_id', 'user_id', 'user_name',
+     *               'created_at_gmt' of the batch and 'gap' => null | ['from' => value, 'to' => value],
+     *               'total' => int, 'page' => int, 'per_page' => int, 'pages' => int]
+     */
+    public function get_item_history($id, $args = [])
+    {
+        global $wpdb;
+
+        $id = (int) $id;
+        $args = array_merge(['page' => 1, 'per_page' => 50], $args);
+        $per_page = max(1, min(200, (int) $args['per_page']));
+        $page = max(1, (int) $args['page']);
+        $offset = ($page - 1) * $per_page;
+        $batches = Schema::batches_table();
+        $changes = Schema::changes_table();
+        $landed = "('" . self::STATUS_APPLIED . "','" . self::STATUS_UNDONE . "')";
+
+        // product_id is the parent for a variation, else the item itself. One
+        // equality on one index, whose entries are already in id order, so a
+        // page is read without sorting the whole history of the product. The
+        // index is named because "ORDER BY id LIMIT n" otherwise tempts the
+        // optimiser into walking the whole table by its primary key.
+        $post_type = get_post_type($id);
+        if ($post_type === 'product_variation') {
+            $from = "{$changes} c FORCE INDEX (item_id) WHERE c.item_id = {$id}";
+        } elseif ($post_type) {
+            $from = "{$changes} c FORCE INDEX (product_id) WHERE c.product_id = {$id}";
+        } else {
+            // The item is gone and its type with it: look both ways
+            $from = "{$changes} c WHERE (c.product_id = {$id} OR c.item_id = {$id})";
+        }
+        $from .= " AND c.status IN {$landed}";
+
+        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$from}");
+        $rows = $wpdb->get_results("SELECT c.* FROM {$from} ORDER BY c.id DESC LIMIT {$per_page} OFFSET {$offset}", ARRAY_A);
+
+        $batch_rows = [];
+        $previous = [];
+
+        if ($rows) {
+            $in = implode(',', array_unique(array_map('intval', wp_list_pluck($rows, 'batch_id'))));
+            foreach ($wpdb->get_results("SELECT id, kind, undoes_batch_id, user_id, created_at_gmt FROM {$batches} WHERE id IN ({$in})", ARRAY_A) as $batch) {
+                $batch_rows[(int) $batch['id']] = $batch;
+            }
+
+            // What the change before each row, on the same field of the same
+            // item, left behind. Within the page that is the next row of the
+            // same item and field (the rows are newest first)...
+            $oldest = [];
+            foreach ($rows as $row) {
+                $key = $row['item_id'] . ':' . $row['field'];
+                if (isset($oldest[$key])) {
+                    $previous[(int) $oldest[$key]['id']] = $row['new_value'];
+                }
+                $oldest[$key] = $row;
+            }
+
+            // ...and for the oldest row of each item and field on the page it
+            // is looked up: one short walk down the item_id index each
+            $lookups = [];
+            foreach ($oldest as $row) {
+                $lookups[] = $wpdb->prepare(
+                    "(SELECT %d AS change_id, p.new_value FROM {$changes} p FORCE INDEX (item_id)
+                       WHERE p.item_id = %d AND p.field = %s AND p.id < %d AND p.status IN {$landed}
+                       ORDER BY p.id DESC LIMIT 1)",
+                    $row['id'],
+                    $row['item_id'],
+                    $row['field'],
+                    $row['id']
+                );
+            }
+            foreach ($wpdb->get_results(implode(' UNION ALL ', $lookups), ARRAY_A) as $found) {
+                $previous[(int) $found['change_id']] = $found['new_value'];
+            }
+        }
+
+        $names = $this->user_names(wp_list_pluck($batch_rows, 'user_id'));
+        $described = $this->describe_changes($rows);
+
+        foreach ($rows as $index => $row) {
+            $batch = isset($batch_rows[(int) $row['batch_id']]) ? $batch_rows[(int) $row['batch_id']] : null;
+            $user_id = $batch ? (int) $batch['user_id'] : 0;
+            $gap = null;
+
+            if (array_key_exists((int) $row['id'], $previous) && !self::same_value($previous[(int) $row['id']], $row['old_value'])) {
+                $gap = [
+                    'from' => self::decode_value($row['field'], $previous[(int) $row['id']]),
+                    'to' => self::decode_value($row['field'], $row['old_value']),
+                ];
+            }
+
+            $described[$index] += [
+                'kind' => $batch ? $batch['kind'] : '',
+                'undoes_batch_id' => $batch && $batch['undoes_batch_id'] !== null ? (int) $batch['undoes_batch_id'] : null,
+                'user_id' => $user_id,
+                'user_name' => isset($names[$user_id]) ? $names[$user_id] : '',
+                'created_at_gmt' => $batch ? $batch['created_at_gmt'] : '',
+                'gap' => $gap,
+            ];
+        }
+
+        return [
+            'rows' => $described,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $per_page,
+            'pages' => (int) ceil($total / $per_page),
+        ];
+    }
+
+    /**
+     * One summary per batch row, in the order given
+     *
+     * @param array $rows Batch rows
+     * @return array List of [
+     *     'id', 'kind' ('save'|'undo'), 'undoes_batch_id' (int|null), 'user_id', 'user_name' (display name
+     *     only, '' when the user is gone), 'created_at_gmt' (UTC, Y-m-d H:i:s), 'source', 'note',
+     *     'changes'     => requested changes that landed (applied or since undone),
+     *     'items'       => products and variations those changes are on,
+     *     'by_field'    => field => count of those changes,
+     *     'open'        => how many are still in force, 'undone' => how many were undone since,
+     *     'failed'      => rows whose write failed, 'pending' => rows never settled,
+     *     'interrupted' => bool: a request died while writing (pending > 0),
+     *     'state'       => '' | 'partly_undone' | 'undone' (always '' for an undo),
+     *     'undoable'    => bool: a save with at least one change still in force,
+     *     'undone_by'   => null | ['batch_id', 'user_id', 'user_name', 'created_at_gmt'] of the latest undo of it
+     * ]
+     */
+    private function summarise($rows)
+    {
+        global $wpdb;
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        $batches = Schema::batches_table();
+        $changes = Schema::changes_table();
+        $summaries = [];
+
+        foreach ($rows as $row) {
+            $summaries[(int) $row['id']] = [
+                'id' => (int) $row['id'],
+                'kind' => $row['kind'],
+                'undoes_batch_id' => $row['undoes_batch_id'] === null ? null : (int) $row['undoes_batch_id'],
+                'user_id' => (int) $row['user_id'],
+                'user_name' => '',
+                'created_at_gmt' => $row['created_at_gmt'],
+                'source' => $row['source'],
+                'note' => $row['note'],
+                'changes' => 0,
+                'items' => 0,
+                'by_field' => [],
+                'open' => 0,
+                'undone' => 0,
+                'failed' => 0,
+                'pending' => 0,
+                'interrupted' => false,
+                'state' => '',
+                'undoable' => false,
+                'undone_by' => null,
+            ];
+        }
+
+        $in = implode(',', array_keys($summaries));
+        $landed = [self::STATUS_APPLIED, self::STATUS_UNDONE];
+
+        $counts = $wpdb->get_results(
+            "SELECT batch_id, field, status, (typed_value IS NOT NULL) AS requested, COUNT(*) AS n
+               FROM {$changes} WHERE batch_id IN ({$in})
+              GROUP BY batch_id, field, status, requested",
+            ARRAY_A
+        );
+
+        foreach ($counts as $count) {
+            $id = (int) $count['batch_id'];
+            $n = (int) $count['n'];
+
+            if ($count['status'] === self::STATUS_PENDING) {
+                $summaries[$id]['pending'] += $n;
+            } elseif ($count['status'] === self::STATUS_FAILED) {
+                $summaries[$id]['failed'] += $n;
+            }
+
+            if (!(int) $count['requested'] || !in_array($count['status'], $landed, true)) {
+                continue;
+            }
+
+            $field = $count['field'];
+            $summaries[$id]['changes'] += $n;
+            $summaries[$id]['by_field'][$field] = (isset($summaries[$id]['by_field'][$field]) ? $summaries[$id]['by_field'][$field] : 0) + $n;
+            $summaries[$id][$count['status'] === self::STATUS_UNDONE ? 'undone' : 'open'] += $n;
+        }
+
+        $items = $wpdb->get_results(
+            "SELECT batch_id, COUNT(DISTINCT item_id) AS n
+               FROM {$changes}
+              WHERE batch_id IN ({$in}) AND typed_value IS NOT NULL AND status IN ('" . implode("','", $landed) . "')
+              GROUP BY batch_id",
+            ARRAY_A
+        );
+
+        foreach ($items as $row) {
+            $summaries[(int) $row['batch_id']]['items'] = (int) $row['n'];
+        }
+
+        // Undo batches that undid something (one that only recorded skipped rows
+        // does not count). Oldest first, so the latest undo of a batch stays.
+        $undos = $wpdb->get_results(
+            "SELECT b.id, b.undoes_batch_id, b.user_id, b.created_at_gmt
+               FROM {$batches} b
+              WHERE b.undoes_batch_id IN ({$in})
+                AND EXISTS (SELECT 1 FROM {$changes} c WHERE c.batch_id = b.id AND c.status = '" . self::STATUS_APPLIED . "')
+              ORDER BY b.id ASC",
+            ARRAY_A
+        );
+
+        $user_ids = wp_list_pluck($rows, 'user_id');
+
+        foreach ($undos as $undo) {
+            $user_ids[] = $undo['user_id'];
+            $summaries[(int) $undo['undoes_batch_id']]['undone_by'] = [
+                'batch_id' => (int) $undo['id'],
+                'user_id' => (int) $undo['user_id'],
+                'user_name' => '',
+                'created_at_gmt' => $undo['created_at_gmt'],
+            ];
+        }
+
+        $names = $this->user_names($user_ids);
+
+        foreach ($summaries as $id => $summary) {
+            $is_save = $summary['kind'] === self::KIND_SAVE;
+
+            $summaries[$id]['user_name'] = isset($names[$summary['user_id']]) ? $names[$summary['user_id']] : '';
+            $summaries[$id]['interrupted'] = $summary['pending'] > 0;
+            $summaries[$id]['undoable'] = $is_save && $summary['open'] > 0;
+
+            if ($is_save && $summary['undone'] > 0) {
+                $summaries[$id]['state'] = $summary['open'] > 0 ? 'partly_undone' : 'undone';
+            }
+
+            if ($summary['undone_by']) {
+                $by = $summary['undone_by']['user_id'];
+                $summaries[$id]['undone_by']['user_name'] = isset($names[$by]) ? $names[$by] : '';
+            }
+        }
+
+        return array_values($summaries);
+    }
+
+    /**
+     * Change rows with decoded values and the name and SKU of their item
+     *
+     * @param array $rows Change rows as stored
+     * @return array List, same order, of ['id', 'batch_id', 'item_id', 'product_id', 'item_type', 'field',
+     *               'old', 'new' (decoded), 'typed' (what the user asked for; null on a derived change),
+     *               'requested' (bool), 'status', 'message',
+     *               'name' (null when the item no longer exists), 'sku', 'exists' (bool)]
+     */
+    private function describe_changes($rows)
+    {
+        $labels = $this->item_labels(wp_list_pluck($rows, 'item_id'));
+        $described = [];
+
+        foreach ($rows as $row) {
+            $item_id = (int) $row['item_id'];
+            $label = isset($labels[$item_id]) ? $labels[$item_id] : null;
+
+            $described[] = [
+                'id' => (int) $row['id'],
+                'batch_id' => (int) $row['batch_id'],
+                'item_id' => $item_id,
+                'product_id' => (int) $row['product_id'],
+                'item_type' => $row['item_type'],
+                'field' => $row['field'],
+                'old' => self::decode_value($row['field'], $row['old_value']),
+                'new' => self::decode_value($row['field'], $row['new_value']),
+                'typed' => self::decode_typed($row['field'], $row['typed_value']),
+                'requested' => $row['typed_value'] !== null,
+                'status' => $row['status'],
+                'message' => $row['message'],
+                'name' => $label ? $label['name'] : null,
+                'sku' => $label ? $label['sku'] : '',
+                'exists' => (bool) $label,
+            ];
+        }
+
+        return $described;
+    }
+
+    /**
+     * Name and SKU of products and variations, read in one query
+     *
+     * A variation's name is its stored title ("Product - Size"); one without
+     * a SKU of its own shows its product's, as WooCommerce does.
+     *
+     * @param array $ids
+     * @return array id => ['name' => string, 'sku' => string]; ids that no longer exist are left out
+     */
+    private function item_labels($ids)
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids))));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $sql = "SELECT p.ID, p.post_title, p.post_parent, p.post_type, m.meta_value AS sku
+                  FROM {$wpdb->posts} p
+                  LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key = '_sku'
+                 WHERE p.ID IN (%s)";
+
+        $labels = [];
+        $inherit = [];
+
+        foreach ($wpdb->get_results(sprintf($sql, implode(',', $ids)), ARRAY_A) as $row) {
+            $labels[(int) $row['ID']] = ['name' => $row['post_title'], 'sku' => (string) $row['sku']];
+
+            if ($row['post_type'] === 'product_variation' && (string) $row['sku'] === '' && (int) $row['post_parent']) {
+                $inherit[(int) $row['ID']] = (int) $row['post_parent'];
+            }
+        }
+
+        if ($inherit) {
+            $parents = [];
+            foreach ($wpdb->get_results(sprintf($sql, implode(',', array_unique($inherit))), ARRAY_A) as $row) {
+                $parents[(int) $row['ID']] = (string) $row['sku'];
+            }
+
+            foreach ($inherit as $id => $parent_id) {
+                $labels[$id]['sku'] = isset($parents[$parent_id]) ? $parents[$parent_id] : '';
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Products and variations whose name or SKU contains a text
+     *
+     * @param string $text
+     * @return array Ids, at most 1000
+     */
+    private function find_item_ids($text)
+    {
+        global $wpdb;
+
+        $like = '%' . $wpdb->esc_like(trim((string) $text)) . '%';
+
+        return array_map('intval', $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts} WHERE post_type IN ('product', 'product_variation') AND post_title LIKE %s
+                  UNION
+                 SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_sku' AND meta_value LIKE %s
+                  LIMIT 1000",
+                $like,
+                $like
+            )
+        ));
+    }
+
+    /**
+     * Display names, the only thing History shows of a user
+     *
+     * @param array $user_ids
+     * @return array user id => display name; users that no longer exist are left out
+     */
+    private function user_names($user_ids)
+    {
+        $user_ids = array_values(array_unique(array_filter(array_map('intval', (array) $user_ids))));
+        $names = [];
+
+        if ($user_ids && function_exists('cache_users')) {
+            cache_users($user_ids);
+        }
+
+        foreach ($user_ids as $user_id) {
+            $user = get_userdata($user_id);
+            if ($user) {
+                $names[$user_id] = $user->display_name;
+            }
+        }
+
+        return $names;
     }
 
     /**
@@ -312,6 +845,44 @@ class ChangeLog
             default:
                 return $stored;
         }
+    }
+
+    /**
+     * Stored typed_value back to a value. Same as decode_value(), except that
+     * for manage_stock the user typed a starting quantity, not yes or no.
+     *
+     * @param string      $field
+     * @param string|null $stored
+     * @return mixed
+     */
+    public static function decode_typed($field, $stored)
+    {
+        if ($field === 'manage_stock' && is_numeric($stored)) {
+            return $stored + 0;
+        }
+
+        return self::decode_value($field, $stored);
+    }
+
+    /**
+     * Whether two stored values are the same value. Numbers are compared as
+     * numbers, so '100' and '100.00' do not read as a change.
+     *
+     * @param string|null $a
+     * @param string|null $b
+     * @return bool
+     */
+    public static function same_value($a, $b)
+    {
+        if ($a === null || $b === null) {
+            return $a === $b;
+        }
+
+        if (is_numeric($a) && is_numeric($b)) {
+            return abs((float) $a - (float) $b) < 0.000001;
+        }
+
+        return (string) $a === (string) $b;
     }
 
     private static function truncate($text, $length)

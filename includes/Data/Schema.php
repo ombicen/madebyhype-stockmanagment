@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
  */
 class Schema
 {
-    const DB_VERSION = '2';
+    const DB_VERSION = '3';
     const VERSION_OPTION = 'madebyhype_stock_db_version';
     const RETRY_TRANSIENT = 'madebyhype_stock_db_retry';
     const PRUNE_HOOK = 'madebyhype_stock_prune_log';
@@ -39,8 +39,8 @@ class Schema
     }
 
     /**
-     * Snapshot table of the old Version History. Read and written by
-     * VersionManager only; kept until the legacy revert is retired.
+     * Snapshot table of the old Version History. No longer written; read by
+     * VersionManager only, to list the saves made before the change log.
      */
     public static function legacy_versions_table()
     {
@@ -143,7 +143,13 @@ class Schema
      * after PRIMARY KEY, KEY rather than INDEX)
      *
      * All timestamps are UTC and set by PHP, never by the database.
-     * Encoding of old_value/new_value: see ChangeLog::encode_value().
+     * Encoding of old_value/new_value/typed_value: see ChangeLog::encode_value().
+     *
+     * typed_value is the value the user asked for. It is NULL on a row that
+     * records a consequence of the edit rather than the edit itself (a stock
+     * status WooCommerce derived from a new quantity, for example); that is
+     * what tells a requested change from a derived one. New columns go last:
+     * dbDelta appends them on an existing table.
      *
      * The two unique keys are what makes a save safe to resend:
      * user_save_token gives one batch per press of Save (NULL, for a request
@@ -184,6 +190,7 @@ CREATE TABLE {$changes} (
   new_value varchar(191) DEFAULT NULL,
   status varchar(10) NOT NULL DEFAULT 'pending',
   message varchar(255) NOT NULL DEFAULT '',
+  typed_value varchar(191) DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY batch_item_field (batch_id,item_id,field),
   KEY item_id (item_id),

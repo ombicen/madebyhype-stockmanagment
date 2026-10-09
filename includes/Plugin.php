@@ -16,6 +16,7 @@ class Plugin
     private $ui_manager;
     private $assets_manager;
     private $ajax_handler;
+    private $read_ajax_handler;
     private $change_log;
     private $write_service;
     private $plugin_file;
@@ -92,6 +93,7 @@ class Plugin
             $this->ui_manager->init();
             $this->assets_manager->init();
             $this->ajax_handler->init();
+            $this->read_ajax_handler->init();
         }
     }
 
@@ -118,14 +120,10 @@ class Plugin
     {
         require_once plugin_dir_path(__FILE__) . 'Capabilities.php';
         require_once plugin_dir_path(__FILE__) . 'Data/ChangeLog.php';
-        require_once plugin_dir_path(__FILE__) . 'Data/VersionManager.php';
         require_once plugin_dir_path(__FILE__) . 'Data/WriteService.php';
 
         $this->change_log = new Data\ChangeLog();
-
-        // TRANSITION: VersionManager is passed in only so saves keep feeding
-        // the legacy Version History. Drop the argument with the legacy revert.
-        $this->write_service = new Data\WriteService($this->change_log, new Data\VersionManager());
+        $this->write_service = new Data\WriteService($this->change_log);
     }
 
     /**
@@ -148,6 +146,7 @@ class Plugin
     {
         require_once plugin_dir_path(__FILE__) . 'Admin/AdminPage.php';
         require_once plugin_dir_path(__FILE__) . 'Admin/AjaxHandler.php';
+        require_once plugin_dir_path(__FILE__) . 'Admin/ReadAjaxHandler.php';
         require_once plugin_dir_path(__FILE__) . 'Data/DataManager.php';
         require_once plugin_dir_path(__FILE__) . 'UI/UIManager.php';
         require_once plugin_dir_path(__FILE__) . 'Assets/AssetsManager.php';
@@ -156,7 +155,8 @@ class Plugin
         $this->ui_manager = new UI\UIManager();
         $this->assets_manager = new Assets\AssetsManager();
         $this->admin_page = new Admin\AdminPage();
-        $this->ajax_handler = new Admin\AjaxHandler($this->write_service);
+        $this->ajax_handler = new Admin\AjaxHandler($this->write_service, $this->change_log);
+        $this->read_ajax_handler = new Admin\ReadAjaxHandler($this->data_manager);
 
         // Set dependencies
         $this->admin_page->set_dependencies($this->data_manager, $this->ui_manager);
