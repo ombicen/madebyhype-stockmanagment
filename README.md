@@ -1,140 +1,111 @@
-# MadeByHype Stock Management Plugin
+# MadeByHype Stock Management
 
-A WordPress plugin for stock management integrated with WooCommerce, featuring a comprehensive admin interface for product stock overview with sales data, filtering, and pagination.
+<a href="https://buymeacoffee.com/okanat"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="48"></a>
+
+If this plugin saves you time, you can [buy me a coffee](https://buymeacoffee.com/okanat).
+
+A WooCommerce plugin for editing stock and prices in one screen: a fast, searchable grid of every product and variation, with bulk price changes, a full change history and undo.
 
 ## Features
 
-- **Product Stock Overview**: Display all products with stock information, prices, and sales data
-- **Sales Data Integration**: Show total sales, monthly sales, and revenue with date filtering
-- **Variable Product Support**: Expandable rows for product variations with detailed information
-- **Advanced Filtering**: Filter by categories, tags, stock status, price range, product type, and sales range
-- **Sorting**: Sort by total sales or stock quantity
-- **Pagination**: Configurable items per page (20, 50, 100, 500)
-- **Modern UI**: Clean, professional interface with minimalistic black and white design
-- **Responsive Design**: Mobile-friendly with collapsible sidebar
+### The stock screen
+- One grid for all products, under **Products → Stock Management**: stock, stock status, regular price and sale price are edited in place and saved together.
+- Variable products open to show their variations; variations load when a row is opened.
+- Two views: **By product**, or **By SKU** (every item that holds stock on its own row).
+- A **Needs attention** tab for items that are out of stock, low, or on backorder.
+- Search by product name, SKU, variation SKU or ID.
+- Sort by name, stock, price, units sold or days of cover.
+- Units sold in a period you choose (30, 90, 180 or 365 days, all time, or custom dates), and how many days the stock lasts at that rate.
+- 20, 50, 100 or 500 rows per page; sorting, paging and filtering update the list without a page reload.
+- Keyboard movement in the grid: Enter and arrows move down a column, Escape restores a cell, Ctrl+S saves.
 
-## Plugin Structure
+### Safe saving
+- Each cell shows what the server did with it: saved, adjusted, conflict, refused or dropped, with the reason.
+- A stock edit is applied as a difference to the current quantity, so units sold while the page was open are kept.
+- A price is only written if it is still the price you were looking at; otherwise it is reported as a conflict.
+- A sale price must stay below the regular price, and a price of 0 has to be confirmed.
+- Stock tracking never changes as a side effect: items that do not track stock get a **Start tracking** control.
 
-The plugin has been refactored into a modular architecture for better maintainability:
+### Filters
+- Stock status, category (a searchable tree), tags, attribute values, price range and units sold.
+- Every value can be **included or left out**: one click includes it, a second leaves it out, a third clears it. "Rings but not Wedding rings" is Rings included and Wedding rings left out inside it.
+- **Products named one by one**: an included product is listed on top of what the other filters match, a product that is left out is never listed. A product can also be left out from its own row.
+- Active filters show as chips above the list; exclusions read "Category is not: …".
 
-```
-madebyhype-stockmanagment/
-├── includes/
-│   ├── Plugin.php              # Main plugin class (coordinator)
-│   ├── Admin/
-│   │   └── AdminPage.php       # Admin menu and page handling
-│   ├── Data/
-│   │   └── DataManager.php     # Database operations and data fetching
-│   ├── UI/
-│   │   └── UIManager.php       # User interface rendering
-│   └── Assets/
-│       └── AssetsManager.php   # CSS, JavaScript, and asset management
-├── assets/
-│   └── images/
-│       └── chevron.svg         # Custom chevron icon
-└── madebyhype-stockmanagment.php    # Plugin bootstrap file
-```
+### Bulk price change
+- One rule applied to everything the search and filters match, on every page and including variations.
+- Change the regular price, the sale price or both: by a percentage, by an amount, or to an exact price. Put items on sale at a percentage off, or remove sale prices.
+- Rounding: whole number, nearest 10, ends in 9, or ends in .99.
+- A preview comes first: how many prices change, what is left alone and why, and before and after for the first and the largest changes.
+- The run shows its progress and can be stopped and continued. It is recorded as one save and can be undone.
 
-## Architecture Overview
-
-### Plugin.php (Main Coordinator)
-- Initializes and coordinates all components
-- Handles WordPress hooks and actions
-- Manages component dependencies
-
-### AdminPage.php
-- Registers admin menu
-- Handles page rendering coordination
-- Processes form parameters and validation
-
-### DataManager.php
-- Manages all database operations
-- Handles product data fetching with optimized SQL queries
-- Processes sales data and variations
-- Implements pagination and filtering logic
-
-### UIManager.php
-- Renders all user interface components
-- Handles table display, forms, and pagination
-- Manages responsive design elements
-
-### AssetsManager.php
-- Loads CSS and JavaScript files
-- Manages Flatpickr date picker integration
-- Handles inline styles and scripts
-
-## Installation
-
-1. Upload the plugin files to `/wp-content/plugins/madebyhype-stockmanagment/`
-2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Ensure WooCommerce is installed and activated
-4. Access the plugin via 'Stock Management' in the admin menu
-
-## Usage
-
-### Date Filtering
-- Use the date range picker to filter sales data by specific periods
-- Apply filters to see sales data for selected date ranges
-
-### Product Filtering
-- Use the sidebar filters to narrow down products by:
-  - Categories
-  - Tags
-  - Stock status (In Stock, Out of Stock, On Backorder)
-  - Price range
-  - Product type (Simple, Variable, Grouped, External)
-  - Sales range
-
-### Sorting
-- Click on column headers to sort by:
-  - Stock Quantity (ascending/descending)
-  - Total Sales (ascending/descending)
-
-### Pagination
-- Select items per page from the dropdown (20, 50, 100, 500)
-- Navigate through pages using the pagination controls
-
-### Variable Products
-- Click the chevron icon next to variable products to expand/collapse variation details
-- View individual variation stock levels, prices, and sales data
-
-## Technical Details
-
-### Database Optimization
-- Uses optimized SQL queries with JOINs for better performance
-- Implements bulk data fetching for variations
-- Efficient pagination with proper count queries
-
-### Frontend Features
-- Flatpickr date range picker for intuitive date selection
-- Responsive sidebar with mobile-friendly toggle
-- Modern CSS styling with hover effects and transitions
-- JavaScript for interactive elements (expand/collapse, pagination)
-
-### Security
-- Proper sanitization of all user inputs
-- WordPress nonce verification for forms
-- Escaped output for all displayed data
+### History and undo
+- Every save is recorded with who made it, when, and the value before and after for each field.
+- History per save and per product, with a note where a value was changed outside this tool.
+- Any save can be undone on its own, with a preview first. Only fields that still hold what the save wrote are put back.
+- History is kept for 12 months.
 
 ## Requirements
 
 - WordPress 5.0 or higher
-- WooCommerce 3.0 or higher
+- WooCommerce (must be active)
 - PHP 7.4 or higher
 
-## Browser Support
+## Installation
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
+1. Upload the plugin folder to `/wp-content/plugins/`, or install the zip from a [release](https://github.com/ombicen/madebyhype-stockmanagment/releases) through **Plugins → Add New → Upload Plugin**.
+2. Make sure WooCommerce is active.
+3. Activate the plugin on the **Plugins** screen.
+4. Open **Products → Stock Management**.
 
-## Contributing
+When updating by copying files, replace the whole plugin folder rather than copying over it, and clear the server's PHP cache if the screen does not change.
 
-When contributing to this plugin:
+## Permissions
 
-1. Follow the existing modular structure
-2. Add new features in appropriate component files
-3. Maintain separation of concerns between data, UI, and assets
-4. Test thoroughly with different WooCommerce setups
-5. Ensure responsive design works on mobile devices
+The screen and everything on it need the WooCommerce capability `manage_woocommerce`. Viewing, editing stock, editing prices and undoing are separate permissions in the code (`includes/Capabilities.php`) and all map to that capability for now.
+
+## Plugin structure
+
+```
+madebyhype-stockmanagment/
+├── madebyhype-stockmanagment.php   # Bootstrap
+├── uninstall.php                   # Removes the plugin's tables and options on delete
+├── includes/
+│   ├── Plugin.php                  # Wires the parts together
+│   ├── Capabilities.php            # What the current user may do
+│   ├── Admin/
+│   │   ├── AdminPage.php           # Menu, and reading the request
+│   │   ├── AjaxHandler.php         # Save, undo, history
+│   │   ├── ReadAjaxHandler.php     # List, variations, filter options, product search
+│   │   └── BulkAjaxHandler.php     # Bulk price change: preview and apply
+│   ├── Data/
+│   │   ├── DataManager.php         # The list query: search, filters, views
+│   │   ├── WriteService.php        # The only code that changes products
+│   │   ├── ChangeLog.php           # Saves and undos, field by field
+│   │   ├── BulkPriceRule.php       # The arithmetic of a bulk price change
+│   │   ├── BulkPriceService.php    # Preview and apply of a bulk price change
+│   │   ├── Schema.php              # The plugin's tables
+│   │   └── VersionManager.php      # Read-only list of saves made before 1.1.0
+│   ├── UI/
+│   │   ├── UIManager.php           # What the templates and scripts show, and all strings
+│   │   ├── templates/              # Page, toolbar, grid, row, chips, pager, history
+│   │   ├── scripts/                # stock-model (rules), core, grid, filters, history, bulk
+│   │   └── styles/stock-screen.css
+│   └── Assets/AssetsManager.php    # Loads the scripts and the stylesheet on this screen only
+├── languages/                      # Translation template
+└── assets/images/
+```
+
+Products are written through WooCommerce product objects only, and every write is recorded in the change log before it is made.
+
+## Translations
+
+All strings are translatable (text domain `madebyhype-stockmanagment`). The template in `languages/` is not yet regenerated for 1.2.0.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+GPL v2 or later.
