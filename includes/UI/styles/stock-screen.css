@@ -802,14 +802,10 @@
     table-layout: fixed;
 }
 
-/* The heading: a band that runs from grey to black, and nothing but greys on it. Small capitals, a hairline
-   between the columns, and each heading that sorts a pill that lights up: under the pointer, and
-   for good on the column the list is sorted by. */
+/* The heading: a white band on a heavy black rule, the column names in grey. The column the list
+   is sorted by is black on grey, and its cells below are tinted, so the eye follows it down. */
 .mbh-stock .mbh-grid {
     --mbh-head-top: var(--wp-admin--admin-bar--height, 32px);
-    --mbh-head-ink: #f2f2f2;
-    --mbh-head-dim: #b5b5b5;
-    --mbh-head-rule: rgba(255, 255, 255, 0.14);
 }
 
 .mbh-grid thead th {
@@ -818,62 +814,65 @@
     z-index: 3;
     padding: 0;
     border: 0;
-    border-bottom: 1px solid #000;
-    /* The hairline at the left edge parts a column from the one before it */
-    background: linear-gradient(var(--mbh-head-rule), var(--mbh-head-rule)) left center / 1px 16px no-repeat, linear-gradient(#3d3d3d, #000);
-    color: var(--mbh-head-dim);
-    font-size: 11px;
+    border-bottom: 2px solid #111;
+    background: var(--mbh-surface);
+    color: #6a6a6a;
+    font-size: 12.5px;
     font-weight: 600;
-    letter-spacing: 0.08em;
-    line-height: 16px;
+    line-height: 18px;
     text-align: left;
-    text-transform: uppercase;
-    vertical-align: middle;
+    vertical-align: bottom;
     white-space: nowrap;
 }
 
 .mbh-grid thead th:first-child {
     border-top-left-radius: var(--mbh-radius);
-    background: linear-gradient(#3d3d3d, #000);
 }
 
 .mbh-grid thead th:last-child {
     border-top-right-radius: var(--mbh-radius);
 }
 
-/* A heading and the pill of one that sorts take the same room, so the words line up either way */
 .mbh-grid thead th > .mbh-th-label,
 .mbh-grid thead th > a {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 6px;
-    margin: 7px 6px;
-    padding: 6px 8px;
-    border-radius: 6px;
+    padding: 14px 14px 12px;
 }
 
 .mbh-grid thead th > a {
     color: inherit;
     text-decoration: none;
-    transition: background-color 0.15s, color 0.15s;
+    transition: color 0.15s;
 }
 
 .mbh-grid thead th > a:hover,
 .mbh-grid thead th > a:focus {
-    background-color: rgba(255, 255, 255, 0.08);
-    color: var(--mbh-head-ink);
+    color: #000;
 }
 
-/* The sorted column: its pill stays lit, with a hairline round it, and the arrow says which way */
+.mbh-grid thead th.is-sorted {
+    background: #efefef;
+    box-shadow: inset 0 -3px 0 #111;
+    color: #000;
+}
+
 .mbh-grid thead th.is-sorted > a {
-    background-color: rgba(255, 255, 255, 0.16);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
-    color: var(--mbh-head-ink);
+    font-weight: 700;
 }
 
-.mbh-stock .mbh-grid thead th > a:focus-visible {
-    outline-color: var(--mbh-head-ink);
-    outline-offset: 1px;
+.mbh-grid thead th > a:focus-visible {
+    outline-offset: -3px;
+}
+
+/* The cells of the sorted column, a shade off white. A row of a variation keeps its own tint. */
+.mbh-grid:has(thead .mbh-col-name.is-sorted) tbody tr:not(.mbh-row--child) > td.mbh-col-name,
+.mbh-grid:has(thead .mbh-col-stock.is-sorted) tbody tr:not(.mbh-row--child) > td.mbh-col-stock,
+.mbh-grid:has(thead .mbh-col-regular.is-sorted) tbody tr:not(.mbh-row--child) > td.mbh-col-regular,
+.mbh-grid:has(thead .mbh-col-sold.is-sorted) tbody tr:not(.mbh-row--child) > td.mbh-col-sold,
+.mbh-grid:has(thead .mbh-col-cover.is-sorted) tbody tr:not(.mbh-row--child) > td.mbh-col-cover {
+    --mbh-row-bg: #f6f6f6;
 }
 
 .mbh-grid thead th.mbh-num > a,
@@ -882,28 +881,30 @@
     text-align: right;
 }
 
-/* Over a column of numbers the arrow stands before the words, so the words end where the numbers do */
+/* Over a column of numbers the arrow stands before the words, in the gap between two columns, so the words keep the whole width */
 .mbh-grid thead th.mbh-num > a {
     flex-direction: row-reverse;
     justify-content: flex-start;
 }
 
+.mbh-grid thead th.mbh-num .mbh-sort-icon {
+    margin-left: -20px;
+}
+
 /* A second line under a heading, lighter */
 .mbh-th-sub {
     display: block;
-    color: var(--mbh-head-dim);
     font-size: 11px;
     font-weight: 400;
-    letter-spacing: 0;
     line-height: 14px;
-    text-transform: none;
 }
 
 /* Direction of the sort: an arrow. Faint on every heading that sorts, so it is seen that it does;
-   white on the sorted column, and under the pointer (the direction a click gives). */
+   black on the sorted column, and under the pointer (the direction a click gives). */
 .mbh-sort-icon {
     width: 13px;
     height: 13px;
+    margin-bottom: 2px;
     opacity: 0.4;
     transition: opacity 0.15s;
 }
@@ -2683,7 +2684,7 @@ body.mbh-dialog-open {
 
     .mbh-grid thead th > .mbh-th-label,
     .mbh-grid thead th > a {
-        margin: 7px 4px;
+        padding: 14px 12px 12px;
     }
 
     .mbh-grid thead th {
@@ -2761,7 +2762,11 @@ body.mbh-dialog-open {
 
     .mbh-grid thead .mbh-col-name {
         z-index: 4;
-        box-shadow: 1px 0 0 #3c434a;
+    }
+
+    /* Pinned and sorted: the rule under the heading and the edge beside the column, both */
+    .mbh-grid thead .mbh-col-name.is-sorted {
+        box-shadow: inset 0 -3px 0 #111, 1px 0 0 var(--mbh-line);
     }
 
     .mbh-msgs {
