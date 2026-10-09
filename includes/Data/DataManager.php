@@ -213,6 +213,62 @@ class DataManager
     }
 
     /**
+     * Every item that holds a price among what a list matches: what a bulk
+     * price change applies to
+     *
+     * Products that are not variable (and not grouped), and every variation
+     * of a variable product, also the ones that use their product's stock.
+     * Each item answers the search and the filters itself, as By SKU does: a
+     * variation by its own price, stock and attribute values, and by the name,
+     * categories and tags of its product. So a variable product whose
+     * variations only partly match contributes only the ones that do.
+     *
+     * @param array $args As get_list(); tab, view, page, per_page, sorting and with_images are ignored
+     * @return array {
+     *     ids (int[], products first by name), products (how many products those items belong to),
+     *     error (null, or ['code' => 'db_error', 'message' => string])
+     * }
+     */
+    public function price_target_ids($args = [])
+    {
+        $args = is_array($args) ? $args : [];
+        $args['tab'] = self::TAB_ALL;
+        $args['view'] = self::VIEW_SKU;
+        $args['sort_by'] = '';
+
+        $q = $this->normalise_list_args($args);
+        $q['priced'] = true;
+
+        $result = ['ids' => [], 'products' => 0, 'error' => null];
+
+        if (!class_exists('WooCommerce')) {
+            return $result;
+        }
+
+        try {
+            // The sales are joined only when they decide which rows match
+            $branches = $this->build_branches($q, $q['sales_in_where']);
+
+            $rows = $this->run(
+                'get_results',
+                'SELECT r.id, r.k_owner FROM (' . $this->select_sql($branches, ['id', 'k_owner', 'k_name', 'k_order']) . ') r'
+                . ' ORDER BY r.k_name ASC, r.k_owner ASC, r.k_order ASC, r.id ASC'
+            );
+        } catch (\RuntimeException $e) {
+            return $this->failed($result, $e);
+        }
+
+        $owners = [];
+        foreach ($rows as $row) {
+            $result['ids'][] = (int) $row->id;
+            $owners[(int) $row->k_owner] = true;
+        }
+        $result['products'] = count($owners);
+
+        return $result;
+    }
+
+    /**
      * For every category: how many rows the list would have with that
      * category as its only category filter
      *
@@ -728,6 +784,7 @@ class DataManager
      *                                            pp = its product,  pl = the product's lookup row)
      * By product: the product branch, every product.
      * By SKU:     products that hold stock or could, plus variations that do.
+     * Priced ($q['priced'], with By SKU): products that hold a price, plus every variation.
      * ------------------------------------------------------------------- */
 
     /**
@@ -743,6 +800,7 @@ class DataManager
         $lookup = $this->lookup_table();
         $statuses = $this->prepare_in($q['statuses'], '%s');
         $by_sku = $q['view'] === self::VIEW_SKU;
+        $priced = !empty($q['priced']);
         $variable = $this->type_tt_ids(self::VARIABLE_TYPES);
         $sales = $with_sales ? ' LEFT JOIN (' . $this->sales_subquery($q['period']) . ') s ON s.id = p.ID' : '';
 
@@ -756,7 +814,13 @@ class DataManager
         }
 
         $where = ["p.post_type = 'product'", "p.post_status IN ({$statuses})"];
-        if ($by_sku) {
+        if ($priced) {
+            // A variable product has no price of its own, a grouped product none at all
+            $no_price = array_merge($variable, $this->type_tt_ids(['grouped']));
+            if ($no_price) {
+                $where[] = 'NOT ' . $this->has_type_sql('p.ID', $no_price);
+            }
+        } elseif ($by_sku) {
             // A product is a stock row when it is not variable (and not a type without stock),
             // or when it is variable, tracks stock, and at least one variation draws on that stock
             $not_stock_item = array_merge($variable, $this->type_tt_ids(self::NO_STOCK_TYPES));
@@ -781,8 +845,11 @@ class DataManager
                 "pp.post_type = 'product'",
                 "pp.post_status IN ({$statuses})",
                 $this->has_type_sql('pp.ID', $variable),
-                '(l.stock_quantity IS NOT NULL OR pl.stock_quantity IS NULL)',
             ];
+
+            if (!$priced) {
+                $where[] = '(l.stock_quantity IS NOT NULL OR pl.stock_quantity IS NULL)';
+            }
 
             $branches[] = $this->finish_branch('variation', $from, $where, $q, $with_sales);
         }
@@ -854,7 +921,7 @@ class DataManager
 
         // Stock status
         if ($q['stock_filter']) {
-            $where[] = $this->stock_filter_sql($q['stock_filter'], $by_sku, $threshold, $q['low_stock_amount']);
+            $where[] = $this->stock_filter_sql($q['stock_filter'], $by_sku, $threshold, $q['low_stock_amount'], $is_variation ? 'pl' : null);
         }
 
         // Current price (sale applied). An item answers with its own price; a variable
@@ -1305,8 +1372,11 @@ class DataManager
      *
      * By SKU each row answers for itself. By product a variable product
      * matches when it or at least one of its variations does.
+     *
+     * @param string|null $parent_lookup By SKU, for variations: the alias of the product's lookup row.
+     *                                   A variation that uses its product's stock is not untracked.
      */
-    private function stock_filter_sql($values, $by_sku, $threshold, $store_amount)
+    private function stock_filter_sql($values, $by_sku, $threshold, $store_amount, $parent_lookup = null)
     {
         $statuses = array_values(array_intersect($values, ['instock', 'outofstock', 'onbackorder']));
         $variable = $this->type_tt_ids(self::VARIABLE_TYPES);
@@ -1338,7 +1408,7 @@ class DataManager
         // Not tracked: no stock of its own and none to draw on
         if (in_array('untracked', $values, true)) {
             $parts[] = $by_sku
-                ? 'l.stock_quantity IS NULL'
+                ? ($parent_lookup ? "(l.stock_quantity IS NULL AND {$parent_lookup}.stock_quantity IS NULL)" : 'l.stock_quantity IS NULL')
                 : "(l.stock_quantity IS NULL AND (NOT {$is_variable} OR " . $this->child_exists('vl.stock_quantity IS NULL') . '))';
         }
 

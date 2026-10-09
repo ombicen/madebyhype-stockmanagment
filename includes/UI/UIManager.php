@@ -44,6 +44,7 @@ class UIManager
         'info' => 'M17.5 10a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0zM10 9.3v4.5M10 6.3v.2',
         'keyboard' => 'M2.5 5.5h15v9h-15zM5.5 8.5h.1M8.5 8.5h.1M11.5 8.5h.1M14.5 8.5h.1M6.5 11.5h7',
         'undo' => 'M4 8.5h8a4 4 0 0 1 0 8H8M4 8.5l3.5-3.5M4 8.5L7.5 12',
+        'price' => 'M3.5 3.5h6.2l6.8 6.8-6.2 6.2-6.8-6.8zM7 7h.1',
     ];
 
     /** @var array Parsed request, see AdminPage::parse_request() */
@@ -570,6 +571,104 @@ class UIManager
             'lastPage' => __('Last page', 'madebyhype-stockmanagment'),
             /* translators: 1: field name, 2: value now, 3: value after the undo */
             'undoResult' => __('%1$s %2$s → %3$s', 'madebyhype-stockmanagment'),
+
+            // Bulk price change
+            'bulk' => [
+                'changes' => [
+                    'regular' => __('Regular price', 'madebyhype-stockmanagment'),
+                    'sale' => __('Sale price', 'madebyhype-stockmanagment'),
+                    'both' => __('Regular and sale price', 'madebyhype-stockmanagment'),
+                    'sale_from_regular' => __('Put on sale at a percentage off', 'madebyhype-stockmanagment'),
+                    'clear_sale' => __('Remove sale prices', 'madebyhype-stockmanagment'),
+                ],
+                'methods' => [
+                    'increase_percent' => __('Increase by a percentage', 'madebyhype-stockmanagment'),
+                    'decrease_percent' => __('Decrease by a percentage', 'madebyhype-stockmanagment'),
+                    'increase_amount' => __('Increase by an amount', 'madebyhype-stockmanagment'),
+                    'decrease_amount' => __('Decrease by an amount', 'madebyhype-stockmanagment'),
+                    'set' => __('Set to an exact price', 'madebyhype-stockmanagment'),
+                ],
+                'roundings' => [
+                    'none' => __('No rounding', 'madebyhype-stockmanagment'),
+                    'whole' => __('Nearest whole number', 'madebyhype-stockmanagment'),
+                    'ten' => __('Nearest 10', 'madebyhype-stockmanagment'),
+                    'nine' => __('Ends in 9', 'madebyhype-stockmanagment'),
+                ],
+                'skips' => [
+                    'no_regular_price' => __('No regular price to work from', 'madebyhype-stockmanagment'),
+                    'no_sale_price' => __('Not on sale', 'madebyhype-stockmanagment'),
+                    'already_on_sale' => __('Already on sale', 'madebyhype-stockmanagment'),
+                    'unchanged' => __('Already at the new price', 'madebyhype-stockmanagment'),
+                    'not_positive' => __('The new price would be 0 or less', 'madebyhype-stockmanagment'),
+                    'sale_not_below_regular' => __('The sale price would not be below the regular price', 'madebyhype-stockmanagment'),
+                ],
+            ],
+            'bulkButton' => __('Bulk price change…', 'madebyhype-stockmanagment'),
+            'bulkTitle' => __('Bulk price change', 'madebyhype-stockmanagment'),
+            'bulkUnsaved' => __('Save or discard your changes first.', 'madebyhype-stockmanagment'),
+            /* translators: %s: what the list shows, for example "214 products" */
+            'bulkScope' => __('Applies to everything your search and filters match (%s), on every page. Variations are included.', 'madebyhype-stockmanagment'),
+            /* translators: %s: what the list shows, for example "3,923 products" */
+            'bulkScopeAll' => __('No search or filter is on: this applies to the whole list (%s), variations included. Close this and filter the list first to change only part of it.', 'madebyhype-stockmanagment'),
+            'bulkChange' => __('Change', 'madebyhype-stockmanagment'),
+            'bulkHow' => __('How', 'madebyhype-stockmanagment'),
+            'bulkPercent' => __('Percentage', 'madebyhype-stockmanagment'),
+            'bulkPercentOff' => __('Percentage off the regular price', 'madebyhype-stockmanagment'),
+            'bulkAmount' => __('Amount', 'madebyhype-stockmanagment'),
+            'bulkPrice' => __('Price', 'madebyhype-stockmanagment'),
+            'bulkRounding' => __('Rounding', 'madebyhype-stockmanagment'),
+            'bulkRoundingHint' => __('Applied to the calculated price.', 'madebyhype-stockmanagment'),
+            /* translators: %s: the decimal separator */
+            'bulkRoundNinetyNine' => __('Ends in %s99', 'madebyhype-stockmanagment'),
+            'bulkSkipOnSale' => __('Leave items that are already on sale as they are', 'madebyhype-stockmanagment'),
+            'bulkClearNote' => __('Sale dates set on these items are removed with the sale price. Undo puts the sale price back, not the dates.', 'madebyhype-stockmanagment'),
+            'bulkErrValue' => __('Enter a number above 0.', 'madebyhype-stockmanagment'),
+            'bulkErrPercent' => __('Enter a percentage that leaves a price: below 100 to take off, at most 1000 to add.', 'madebyhype-stockmanagment'),
+            'bulkPreview' => __('Preview', 'madebyhype-stockmanagment'),
+            'bulkBack' => __('Back', 'madebyhype-stockmanagment'),
+            'bulkWorking' => __('Working out the changes…', 'madebyhype-stockmanagment'),
+            'bulkPreviewFailed' => __('The changes could not be worked out. Nothing was changed.', 'madebyhype-stockmanagment'),
+            'bulkSession' => __('Your session has expired. Log in again in another browser tab, then try again.', 'madebyhype-stockmanagment'),
+            'bulkWillChange' => _n_noop('%d price will change', '%d prices will change', 'madebyhype-stockmanagment'),
+            'bulkNothing' => __('This would change nothing.', 'madebyhype-stockmanagment'),
+            /* translators: 1: a number of items, for example "1,340 priced items", 2: a number of products, for example "214 products" */
+            'bulkOfMatched' => __('The list matches %1$s on %2$s.', 'madebyhype-stockmanagment'),
+            'bulkItems' => _n_noop('%d priced item', '%d priced items', 'madebyhype-stockmanagment'),
+            'bulkProducts' => _n_noop('%d product', '%d products', 'madebyhype-stockmanagment'),
+            'bulkLarge' => _n_noop('%d price moves by more than half. Check the rule.', '%d prices move by more than half. Check the rule.', 'madebyhype-stockmanagment'),
+            'bulkSampleHeading' => __('The first changes, and the largest', 'madebyhype-stockmanagment'),
+            'bulkAllHeading' => __('The changes', 'madebyhype-stockmanagment'),
+            'bulkUp' => __('(up)', 'madebyhype-stockmanagment'),
+            'bulkDown' => __('(down)', 'madebyhype-stockmanagment'),
+            /* translators: %s: number of items */
+            'bulkLeftHeading' => __('Left as they are (%s)', 'madebyhype-stockmanagment'),
+            'bulkFooter' => __('Each price is worked out again from what the item holds when it is changed. The change is recorded in History as one save and can be undone.', 'madebyhype-stockmanagment'),
+            'bulkConfirm' => _n_noop('Change %d price', 'Change %d prices', 'madebyhype-stockmanagment'),
+            'bulkRunning' => __('Changing prices…', 'madebyhype-stockmanagment'),
+            /* translators: 1: items handled so far, 2: items to handle */
+            'bulkProgress' => __('%1$s of %2$s', 'madebyhype-stockmanagment'),
+            'bulkMinutesLeft' => _n_noop('About %d minute left', 'About %d minutes left', 'madebyhype-stockmanagment'),
+            'bulkUnderMinute' => __('Less than a minute left', 'madebyhype-stockmanagment'),
+            'bulkKeepOpen' => __('Keep this page open until it is done.', 'madebyhype-stockmanagment'),
+            'bulkStop' => __('Stop', 'madebyhype-stockmanagment'),
+            'bulkStopping' => __('Stopping after the prices now being changed…', 'madebyhype-stockmanagment'),
+            'bulkDone' => _n_noop('Changed %d price.', 'Changed %d prices.', 'madebyhype-stockmanagment'),
+            /* translators: 1: prices changed, 2: prices that were to change */
+            'bulkDonePartly' => __('Changed %1$s of %2$s prices.', 'madebyhype-stockmanagment'),
+            /* translators: 1: prices changed, 2: prices that were to change */
+            'bulkStopped' => __('Stopped. %1$s of %2$s prices were changed; the rest are as they were.', 'madebyhype-stockmanagment'),
+            /* translators: 1: prices changed, 2: prices that were to change */
+            'bulkLost' => __('Interrupted. %1$s of %2$s prices were changed so far.', 'madebyhype-stockmanagment'),
+            'bulkLostWhy' => __('The server did not answer. Continue picks up where it stopped; no price is changed twice.', 'madebyhype-stockmanagment'),
+            /* translators: %s: number of items */
+            'bulkNotChangedHeading' => __('Not changed (%s)', 'madebyhype-stockmanagment'),
+            /* translators: %s: save number */
+            'bulkInHistory' => __('Recorded in History as save #%s.', 'madebyhype-stockmanagment'),
+            'bulkViewHistory' => __('View in History', 'madebyhype-stockmanagment'),
+            'bulkContinue' => __('Continue', 'madebyhype-stockmanagment'),
+            'bulkFinish' => __('Done', 'madebyhype-stockmanagment'),
+            /* translators: %s: the rule in words, for example "Regular price increased by 5%" */
+            'bulkSaveNote' => __('Bulk price change: %s', 'madebyhype-stockmanagment'),
         ];
 
         return self::$strings;

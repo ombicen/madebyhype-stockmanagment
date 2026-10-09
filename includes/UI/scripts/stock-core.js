@@ -375,7 +375,8 @@
    *
    * @param {object} options {
    *   title, body (text or nodes), wide (bool),
-   *   buttons: [{label, primary, danger (bool: it destroys or reverses something), action(dialog), focus (bool), disabled}],
+   *   buttons: [{label, primary, danger (bool: it destroys or reverses something), action(dialog), focus (bool), disabled,
+   *              whileBusy (bool: it stays usable while the dialog is busy, to stop what is running)}],
    *   onCancel(): Escape, the backdrop or dialog.cancel(),
    *   returnFocus: element to focus on close (default: what had focus)
    * }
@@ -461,9 +462,10 @@
             type: "button",
             class: "button" + (button.primary ? " button-primary" : "") + (button.danger ? " mbh-danger" : ""),
             disabled: button.disabled ? true : false,
+            "data-while-busy": button.whileBusy ? "1" : false,
             text: button.label,
             onclick: function () {
-              if (!busy && button.action) {
+              if ((!busy || button.whileBusy) && button.action) {
                 button.action(dialog, node);
               }
             },
@@ -483,10 +485,10 @@
         }
       },
 
-      /** While busy the buttons are off and the dialog cannot be dismissed */
+      /** While busy the buttons are off (but for one marked whileBusy) and the dialog cannot be dismissed */
       setBusy: function (state) {
         busy = !!state;
-        $(buttons).find("button").prop("disabled", busy);
+        $(buttons).find("button").not("[data-while-busy]").prop("disabled", busy);
         box.setAttribute("aria-busy", busy ? "true" : "false");
       },
     };

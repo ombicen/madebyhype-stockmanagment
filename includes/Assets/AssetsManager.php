@@ -43,12 +43,13 @@ class AssetsManager
 
         $this->style('madebyhype-stock-screen', 'includes/UI/styles/stock-screen.css', [], $plugin_file);
 
-        // The rules (no DOM), then what every tab shares, then History, the grid and its filter drawer
+        // The rules (no DOM), then what every tab shares, then History, the grid, its filter drawer and the bulk price change
         $this->script('madebyhype-stock-model', 'includes/UI/scripts/stock-model.js', [], $plugin_file);
         $this->script('madebyhype-stock-core', 'includes/UI/scripts/stock-core.js', ['jquery', 'heartbeat', 'madebyhype-stock-model'], $plugin_file);
         $this->script('madebyhype-stock-history', 'includes/UI/scripts/stock-history.js', ['madebyhype-stock-core'], $plugin_file);
         $this->script('madebyhype-stock-grid', 'includes/UI/scripts/stock-grid.js', ['madebyhype-stock-core', 'madebyhype-stock-history'], $plugin_file);
         $this->script('madebyhype-stock-filters', 'includes/UI/scripts/stock-filters.js', ['madebyhype-stock-core', 'madebyhype-stock-grid'], $plugin_file);
+        $this->script('madebyhype-stock-bulk', 'includes/UI/scripts/stock-bulk.js', ['madebyhype-stock-core', 'madebyhype-stock-history', 'madebyhype-stock-grid'], $plugin_file);
 
         wp_localize_script('madebyhype-stock-core', self::SCRIPT_DATA, $this->script_data());
     }

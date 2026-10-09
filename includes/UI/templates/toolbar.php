@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Toolbar of the grid tabs, one row: search, view switch, the Filters button and the sales period
+ * Toolbar of the grid tabs, one row: search, view switch, the Filters button, the bulk price change and the sales period
  *
  * The script reads the fields and loads the list without leaving the page.
  * The form is still a working GET form (search, period, and the view and
@@ -14,6 +14,7 @@
  * @var array|null $list UIManager::list_frame()
  * @var string     $tab
  * @var string     $view
+ * @var array      $caps
  */
 
 use MadeByHypeStockmanagment\Admin\AdminPage;
@@ -73,6 +74,12 @@ $views = [
             ?>
         </span>
     </button>
+    <?php if ($tab === 'all' && !empty($caps['prices'])): ?>
+    <button type="button" class="button mbh-bulk-toggle" id="mbh-bulk-price" aria-haspopup="dialog">
+        <?php echo self::icon('price'); ?>
+        <span><?php echo esc_html($this->t('bulkButton')); ?></span>
+    </button>
+    <?php endif; ?>
     <?php endif; ?>
 
     <span class="mbh-period">

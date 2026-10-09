@@ -2158,6 +2158,317 @@ body.mbh-dialog-open {
 }
 
 /* ---------------------------------------------------------------------
+ * Bulk price change: the rule, its preview, the run and the result
+ * ------------------------------------------------------------------- */
+
+.mbh-bulk-toggle .mbh-icon {
+    color: var(--mbh-muted);
+}
+
+.mbh-dialog--bulk {
+    max-width: 720px;
+}
+
+/* What the change applies to: said first, and louder when nothing narrows it */
+.mbh-bulk-scope {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 4px 0 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--mbh-line);
+    border-radius: var(--mbh-radius);
+    background: var(--mbh-soft);
+}
+
+.mbh-bulk-scope .mbh-icon {
+    margin-top: 2px;
+    color: var(--mbh-muted);
+}
+
+.mbh-dialog-body .mbh-bulk-scope p {
+    margin: 0;
+    color: var(--mbh-ink);
+    font-size: 13px;
+}
+
+.mbh-bulk-scope--all {
+    border-color: var(--mbh-amber-line);
+    background: var(--mbh-amber-bg);
+}
+
+.mbh-bulk-scope--all .mbh-icon,
+.mbh-dialog-body .mbh-bulk-scope--all p {
+    color: var(--mbh-amber);
+}
+
+.mbh-bulk-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 16px;
+    margin: 0;
+}
+
+.mbh-bulk-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.mbh-bulk-field:first-child,
+.mbh-bulk-check,
+.mbh-bulk-form > .mbh-bulk-hint {
+    grid-column: 1 / -1;
+}
+
+.mbh-bulk-field > label {
+    color: var(--mbh-ink);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.mbh-dialog .mbh-bulk-form select,
+.mbh-dialog .mbh-bulk-form input[type="text"] {
+    width: 100%;
+    max-width: none;
+    min-height: var(--mbh-control);
+    margin: 0;
+    padding: 0 10px;
+    border: 1px solid var(--mbh-line);
+    border-radius: var(--mbh-radius);
+    background-color: var(--mbh-surface);
+    color: var(--mbh-ink);
+    font-size: 14px;
+    line-height: 1.2;
+    box-shadow: none;
+}
+
+.mbh-dialog .mbh-bulk-form select:hover,
+.mbh-dialog .mbh-bulk-form input[type="text"]:hover {
+    border-color: var(--mbh-faint);
+}
+
+.mbh-dialog .mbh-bulk-form select:focus,
+.mbh-dialog .mbh-bulk-form input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.mbh-dialog .mbh-bulk-form select:focus-visible,
+.mbh-dialog .mbh-bulk-form input[type="text"]:focus-visible {
+    border-color: var(--mbh-focus);
+    outline: 2px solid var(--mbh-focus);
+    outline-offset: 0;
+}
+
+.mbh-dialog .mbh-bulk-form input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--mbh-focus);
+    outline-offset: 2px;
+}
+
+.mbh-dialog .mbh-bulk-form input[aria-invalid="true"] {
+    border-color: var(--mbh-red);
+    background: var(--mbh-red-bg);
+}
+
+/* The number and its unit in one box */
+.mbh-bulk-value {
+    position: relative;
+    display: block;
+}
+
+.mbh-dialog .mbh-bulk-form .mbh-bulk-value input {
+    padding-right: 30px;
+    font-variant-numeric: tabular-nums;
+}
+
+.mbh-bulk-unit {
+    position: absolute;
+    top: 0;
+    right: 12px;
+    color: var(--mbh-muted);
+    line-height: var(--mbh-control);
+    pointer-events: none;
+}
+
+.mbh-dialog-body .mbh-bulk-hint,
+.mbh-dialog-body .mbh-bulk-error {
+    margin: 0;
+    font-size: 12px;
+}
+
+.mbh-dialog-body .mbh-bulk-error {
+    color: var(--mbh-red);
+}
+
+.mbh-bulk-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.mbh-bulk-check input {
+    flex: none;
+    margin: 2px 0 0;
+}
+
+/* The preview */
+.mbh-dialog-body .mbh-bulk-sentence {
+    margin: 4px 0 2px;
+    color: var(--mbh-ink);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mbh-dialog-body .mbh-bulk-headline {
+    margin-bottom: 12px;
+}
+
+.mbh-bulk-headline strong {
+    color: var(--mbh-ink);
+}
+
+.mbh-bulk-scroll {
+    border: 1px solid var(--mbh-line);
+    border-radius: var(--mbh-radius);
+    overflow-x: auto;
+}
+
+.mbh-bulk-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.mbh-bulk-table th,
+.mbh-bulk-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--mbh-line);
+    text-align: left;
+    vertical-align: top;
+}
+
+.mbh-bulk-table tbody tr:last-child th,
+.mbh-bulk-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.mbh-bulk-table thead th {
+    background: var(--mbh-soft);
+    color: var(--mbh-muted);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.mbh-bulk-table tbody th {
+    color: var(--mbh-ink);
+    font-weight: 400;
+    overflow-wrap: anywhere;
+}
+
+.mbh-bulk-table .mbh-sku {
+    display: block;
+    color: var(--mbh-muted);
+    font-family: ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+    font-size: 12px;
+}
+
+.mbh-bulk-table td {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.mbh-bulk-old,
+.mbh-bulk-same {
+    color: var(--mbh-muted);
+}
+
+/* A fall is the one to look twice at: red, and an arrow that does not depend on the colour */
+.mbh-bulk-down {
+    color: var(--mbh-red);
+}
+
+.mbh-bulk-down::after {
+    content: " ↓";
+}
+
+.mbh-bulk-up::after {
+    content: " ↑";
+    color: var(--mbh-muted);
+}
+
+.mbh-bulk-reasons {
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--mbh-line);
+    border-radius: var(--mbh-radius);
+    list-style: none;
+}
+
+.mbh-bulk-reasons li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--mbh-line);
+    background: var(--mbh-soft);
+    font-size: 13px;
+}
+
+.mbh-bulk-reasons li:last-child {
+    border-bottom: 0;
+}
+
+.mbh-bulk-reasons strong {
+    font-variant-numeric: tabular-nums;
+}
+
+.mbh-bulk-reasons + .mbh-list {
+    margin-top: 8px;
+}
+
+/* The run: how far it is */
+.mbh-meter {
+    height: 8px;
+    margin: 12px 0 8px;
+    border-radius: 4px;
+    background: var(--mbh-ground);
+    overflow: hidden;
+}
+
+.mbh-meter-fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: 4px;
+    background: var(--mbh-black);
+    transition: width 0.2s ease-out;
+}
+
+.mbh-dialog-body .mbh-bulk-progress {
+    margin: 0;
+    color: var(--mbh-ink);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mbh-meter-fill {
+        transition: none;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .mbh-bulk-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------------------------------------------------------------------
  * History: one row per save, its changes folded underneath
  * ------------------------------------------------------------------- */
 

@@ -17,6 +17,7 @@ class Plugin
     private $assets_manager;
     private $ajax_handler;
     private $read_ajax_handler;
+    private $bulk_ajax_handler;
     private $change_log;
     private $write_service;
     private $plugin_file;
@@ -99,6 +100,7 @@ class Plugin
             $this->assets_manager->init();
             $this->ajax_handler->init();
             $this->read_ajax_handler->init();
+            $this->bulk_ajax_handler->init();
         }
     }
 
@@ -152,7 +154,10 @@ class Plugin
         require_once plugin_dir_path(__FILE__) . 'Admin/AdminPage.php';
         require_once plugin_dir_path(__FILE__) . 'Admin/AjaxHandler.php';
         require_once plugin_dir_path(__FILE__) . 'Admin/ReadAjaxHandler.php';
+        require_once plugin_dir_path(__FILE__) . 'Admin/BulkAjaxHandler.php';
         require_once plugin_dir_path(__FILE__) . 'Data/DataManager.php';
+        require_once plugin_dir_path(__FILE__) . 'Data/BulkPriceRule.php';
+        require_once plugin_dir_path(__FILE__) . 'Data/BulkPriceService.php';
         require_once plugin_dir_path(__FILE__) . 'UI/UIManager.php';
         require_once plugin_dir_path(__FILE__) . 'Assets/AssetsManager.php';
 
@@ -162,6 +167,7 @@ class Plugin
         $this->admin_page = new Admin\AdminPage();
         $this->ajax_handler = new Admin\AjaxHandler($this->write_service, $this->change_log);
         $this->read_ajax_handler = new Admin\ReadAjaxHandler($this->data_manager);
+        $this->bulk_ajax_handler = new Admin\BulkAjaxHandler(new Data\BulkPriceService($this->data_manager, $this->write_service));
 
         // Set dependencies
         $this->admin_page->set_dependencies($this->data_manager, $this->ui_manager);

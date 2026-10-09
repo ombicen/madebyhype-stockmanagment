@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Bulk price change: one rule applied to everything the search and filters match, on every page and including variations. Increase or decrease by a percentage or an amount, set an exact price, put items on sale at a percentage off, or remove sale prices, with optional rounding (whole number, nearest 10, ends in 9, ends in .99)
+- The bulk change shows a preview first (how many prices change, what is left alone and why, before and after for the first and the largest changes), runs with a progress bar that can be stopped and continued, and is one save in History that can be undone
+
+### Changed
+- Undo and History cope with very large saves: an undo runs in steps with its progress shown, and the changes of a save are listed 200 at a time
+
 ## [1.1.0] - 2026-10-09
 
 ### Added

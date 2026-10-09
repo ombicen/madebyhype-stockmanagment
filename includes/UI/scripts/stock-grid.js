@@ -2765,6 +2765,12 @@
     applyUndo: applyUndo,
     checkRender: checkRender,
     load: loadList,
+
+    /** A save made from this page by something other than the grid: it gets the save bar's Undo too */
+    savedHere: function (save) {
+      state.savedHere = true;
+      setLastSave(save);
+    },
   };
 
   /**

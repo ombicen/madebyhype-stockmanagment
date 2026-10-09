@@ -287,6 +287,10 @@
         if (save) {
           // Two statements, each whole: who and when, then how much
           body.push(el("p", {}, [el("span", { text: t("undoSavedBy", save.user_name || t("unknownUser"), save.when) }), " ", el("span", { text: changeSummary(save) })]));
+
+          if (save.source === "bulk_price" && save.note) {
+            body.push(el("p", { text: t("bulkSaveNote", save.note) }));
+          }
         }
 
         if (!groups.undo.length) {
@@ -469,6 +473,9 @@
     var summary = save.kind === "undo" ? t("undoOfSummary", save.undoes_batch_id, changeSummary(save)) : changeSummary(save);
     var flags = [];
 
+    // A bulk price change says which rule it was
+    var rule = save.source === "bulk_price" && save.note ? el("span", { class: "mbh-sub", text: t("bulkSaveNote", save.note) }) : null;
+
     if (save.interrupted) {
       flags.push(t("didNotFinish"));
     }
@@ -583,7 +590,7 @@
           el("span", { class: "mbh-save-number", text: t("idNumber", save.id) }),
           save.when,
           save.user_name || t("unknownUser"),
-          [summary, flags.length ? el("span", { class: "mbh-sub", text: flags.join(t("listSeparator")) }) : null],
+          [summary, rule, flags.length ? el("span", { class: "mbh-sub", text: flags.join(t("listSeparator")) }) : null],
           stateText(save),
           actions,
         ],
