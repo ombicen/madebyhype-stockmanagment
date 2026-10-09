@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-09T03:46:46+00:00\n"
+"POT-Creation-Date: 2026-10-09T04:05:24+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: makepot.php (PHP tokenizer)\n"
 "X-Domain: madebyhype-stockmanagment\n"
@@ -90,7 +90,7 @@ msgid "Nothing in this save can be undone."
 msgstr ""
 
 #: includes/Data/WriteService.php:255
-#: includes/UI/UIManager.php:462
+#: includes/UI/UIManager.php:466
 msgid "Nothing in this save can be undone now."
 msgstr ""
 
@@ -383,7 +383,7 @@ msgstr ""
 #: includes/Data/WriteService.php:1832
 #: includes/UI/UIManager.php:163
 #: includes/UI/UIManager.php:329
-#: includes/UI/UIManager.php:1189
+#: includes/UI/UIManager.php:1193
 msgid "Stock"
 msgstr ""
 
@@ -394,13 +394,13 @@ msgstr ""
 
 #: includes/Data/WriteService.php:1836
 #: includes/UI/UIManager.php:165
-#: includes/UI/UIManager.php:1191
+#: includes/UI/UIManager.php:1195
 msgid "Regular price"
 msgstr ""
 
 #: includes/Data/WriteService.php:1838
 #: includes/UI/UIManager.php:166
-#: includes/UI/UIManager.php:1192
+#: includes/UI/UIManager.php:1196
 msgid "Sale price"
 msgstr ""
 
@@ -430,14 +430,14 @@ msgstr ""
 #: includes/Data/WriteService.php:1865
 #: includes/UI/UIManager.php:171
 #: includes/UI/UIManager.php:342
-#: includes/UI/UIManager.php:1274
+#: includes/UI/UIManager.php:1278
 msgid "Out of stock"
 msgstr ""
 
 #: includes/Data/WriteService.php:1866
 #: includes/UI/UIManager.php:172
 #: includes/UI/UIManager.php:343
-#: includes/UI/UIManager.php:1276
+#: includes/UI/UIManager.php:1280
 msgid "On backorder"
 msgstr ""
 
@@ -469,7 +469,7 @@ msgstr ""
 
 #: includes/UI/UIManager.php:173
 #: includes/UI/UIManager.php:341
-#: includes/UI/UIManager.php:1275
+#: includes/UI/UIManager.php:1279
 msgid "Low stock"
 msgstr ""
 
@@ -575,8 +575,8 @@ msgstr ""
 #. translators: 1: lowest value, 2: highest value
 #. translators: 1: first day of a period, 2: its last day
 #: includes/UI/UIManager.php:210
-#: includes/UI/UIManager.php:374
-#: includes/UI/UIManager.php:1145
+#: includes/UI/UIManager.php:378
+#: includes/UI/UIManager.php:1149
 msgid "%1$s – %2$s"
 msgstr ""
 
@@ -743,9 +743,9 @@ msgstr ""
 #. translators: 1: a count of changes, for example "3 changes on 2 SKUs", 2: what kinds they were, for example "2 stock, 1 price"
 #. translators: 1: what is filtered on, for example "Category" or "Size", 2: the value
 #: includes/UI/UIManager.php:269
-#: includes/UI/UIManager.php:359
-#: includes/UI/UIManager.php:494
-#: includes/UI/UIManager.php:978
+#: includes/UI/UIManager.php:363
+#: includes/UI/UIManager.php:498
+#: includes/UI/UIManager.php:982
 msgid "%1$s: %2$s"
 msgstr ""
 
@@ -833,7 +833,7 @@ msgstr ""
 
 #. translators: %s: the filter, for example "Category: Rings"
 #: includes/UI/UIManager.php:299
-#: includes/UI/UIManager.php:1365
+#: includes/UI/UIManager.php:1369
 msgid "Remove %s"
 msgstr ""
 
@@ -863,7 +863,7 @@ msgid "Pages"
 msgstr ""
 
 #: includes/UI/UIManager.php:307
-#: includes/UI/UIManager.php:1056
+#: includes/UI/UIManager.php:1060
 msgid "Only items sold in this period"
 msgstr ""
 
@@ -877,7 +877,7 @@ msgstr ""
 
 #. translators: %d: number of filters that are switched on
 #: includes/UI/UIManager.php:310
-#: includes/UI/UIManager.php:1370
+#: includes/UI/UIManager.php:1374
 #: includes/UI/templates/toolbar.php:72
 msgid "%d filter is on"
 msgid_plural "%d filters are on"
@@ -940,7 +940,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: includes/UI/UIManager.php:330
-#: includes/UI/UIManager.php:985
+#: includes/UI/UIManager.php:989
 msgid "Category"
 msgstr ""
 
@@ -973,7 +973,7 @@ msgid "Include drafts"
 msgstr ""
 
 #: includes/UI/UIManager.php:338
-#: includes/UI/UIManager.php:1052
+#: includes/UI/UIManager.php:1056
 msgid "Drafts included"
 msgstr ""
 
@@ -995,856 +995,866 @@ msgstr[1] ""
 msgid "Show fewer"
 msgstr ""
 
-#: includes/UI/UIManager.php:350
+#. translators: %s: category name
+#: includes/UI/UIManager.php:351
+msgid "Show the categories under %s"
+msgstr ""
+
+#. translators: %s: category name
+#: includes/UI/UIManager.php:353
+msgid "Hide the categories under %s"
+msgstr ""
+
+#: includes/UI/UIManager.php:354
 msgid "Nothing matches."
 msgstr ""
 
-#: includes/UI/UIManager.php:351
+#: includes/UI/UIManager.php:355
 msgid "Type to search %d tag."
 msgid_plural "Type to search %d tags."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:352
+#: includes/UI/UIManager.php:356
 msgid "%d more match. Type more to narrow it down."
 msgid_plural "%d more matches. Type more to narrow them down."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:353
+#: includes/UI/UIManager.php:357
 msgid "Selected tags"
 msgstr ""
 
-#: includes/UI/UIManager.php:354
+#: includes/UI/UIManager.php:358
 msgid "Matching tags"
 msgstr ""
 
-#: includes/UI/UIManager.php:355
+#: includes/UI/UIManager.php:359
 msgid "Attribute"
 msgstr ""
 
 #. translators: %s: attribute name, for example "Metal"
-#: includes/UI/UIManager.php:357
+#: includes/UI/UIManager.php:361
 msgid "Values of %s"
 msgstr ""
 
 #. translators: 1: attribute name, 2: number of selected values
-#: includes/UI/UIManager.php:361
+#: includes/UI/UIManager.php:365
 msgid "%1$s (%2$s selected)"
 msgstr ""
 
-#: includes/UI/UIManager.php:362
+#: includes/UI/UIManager.php:366
 msgid "This shop has no attributes to filter on."
 msgstr ""
 
-#: includes/UI/UIManager.php:363
+#: includes/UI/UIManager.php:367
 msgid "This shop has no categories."
 msgstr ""
 
-#: includes/UI/UIManager.php:364
+#: includes/UI/UIManager.php:368
 msgid "This shop has no tags."
 msgstr ""
 
-#: includes/UI/UIManager.php:365
+#: includes/UI/UIManager.php:369
 msgid "Min"
 msgstr ""
 
-#: includes/UI/UIManager.php:366
+#: includes/UI/UIManager.php:370
 msgid "Max"
 msgstr ""
 
 #. translators: between the two fields of a range, as in "10 to 50"
-#: includes/UI/UIManager.php:368
+#: includes/UI/UIManager.php:372
 msgid "to"
 msgstr ""
 
-#: includes/UI/UIManager.php:369
+#: includes/UI/UIManager.php:373
 msgid "Lowest price"
 msgstr ""
 
-#: includes/UI/UIManager.php:370
+#: includes/UI/UIManager.php:374
 msgid "Highest price"
 msgstr ""
 
-#: includes/UI/UIManager.php:371
+#: includes/UI/UIManager.php:375
 msgid "Fewest units sold"
 msgstr ""
 
-#: includes/UI/UIManager.php:372
+#: includes/UI/UIManager.php:376
 msgid "Most units sold"
 msgstr ""
 
 #. translators: %s: lowest value
-#: includes/UI/UIManager.php:376
+#: includes/UI/UIManager.php:380
 msgid "%s or more"
 msgstr ""
 
 #. translators: %s: highest value
-#: includes/UI/UIManager.php:378
+#: includes/UI/UIManager.php:382
 msgid "up to %s"
 msgstr ""
 
-#: includes/UI/UIManager.php:379
+#: includes/UI/UIManager.php:383
 msgid "Show results"
 msgstr ""
 
 #. translators: 1: the first names of a list, 2: how many more there are
-#: includes/UI/UIManager.php:381
+#: includes/UI/UIManager.php:385
 msgid "%1$s +%2$s"
 msgstr ""
 
-#: includes/UI/UIManager.php:382
+#: includes/UI/UIManager.php:386
 msgid "Counting…"
 msgstr ""
 
-#: includes/UI/UIManager.php:383
+#: includes/UI/UIManager.php:387
 msgid "Loading the choices…"
 msgstr ""
 
-#: includes/UI/UIManager.php:384
+#: includes/UI/UIManager.php:388
 msgid "The choices could not be loaded."
 msgstr ""
 
-#: includes/UI/UIManager.php:385
+#: includes/UI/UIManager.php:389
 msgid "The choices could not be loaded because your session has expired. Log in again in another browser tab, then try again."
 msgstr ""
 
-#: includes/UI/UIManager.php:386
+#: includes/UI/UIManager.php:390
 msgid "Published products, whatever else is filtered"
 msgstr ""
 
-#: includes/UI/UIManager.php:389
+#: includes/UI/UIManager.php:393
 #: includes/UI/templates/save-bar.php:19
 msgid "No unsaved changes"
 msgstr ""
 
 #. translators: %d: number of unsaved changes, all in one row of the table
-#: includes/UI/UIManager.php:391
+#: includes/UI/UIManager.php:395
 msgid "%d unsaved change in 1 row"
 msgid_plural "%d unsaved changes in 1 row"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of unsaved changes, 2: number of rows they are in (2 or more)
-#: includes/UI/UIManager.php:393
+#: includes/UI/UIManager.php:397
 msgid "%1$d unsaved change in %2$d rows"
 msgid_plural "%1$d unsaved changes in %2$d rows"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:394
+#: includes/UI/UIManager.php:398
 msgid "%d invalid; fix to save"
 msgid_plural "%d invalid; fix to save"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:395
+#: includes/UI/UIManager.php:399
 msgid "%d waiting for your choice"
 msgid_plural "%d waiting for your choice"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:396
-#: includes/UI/UIManager.php:475
+#: includes/UI/UIManager.php:400
+#: includes/UI/UIManager.php:479
 #: includes/UI/templates/save-bar.php:44
 msgid "Save"
 msgstr ""
 
-#: includes/UI/UIManager.php:397
+#: includes/UI/UIManager.php:401
 msgid "Save %d change"
 msgid_plural "Save %d changes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:398
+#: includes/UI/UIManager.php:402
 msgid "Saving…"
 msgstr ""
 
 #. translators: 1: changes sent so far, 2: changes in this save
-#: includes/UI/UIManager.php:400
+#: includes/UI/UIManager.php:404
 msgid "Saving… %1$s of %2$s"
 msgstr ""
 
-#: includes/UI/UIManager.php:401
+#: includes/UI/UIManager.php:405
 #: includes/UI/templates/save-bar.php:43
 msgid "Discard changes"
 msgstr ""
 
-#: includes/UI/UIManager.php:402
+#: includes/UI/UIManager.php:406
 msgid "Discard %d unsaved change?"
 msgid_plural "Discard %d unsaved changes?"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:403
+#: includes/UI/UIManager.php:407
 msgid "The cells go back to the values that are stored now."
 msgstr ""
 
-#: includes/UI/UIManager.php:404
+#: includes/UI/UIManager.php:408
 msgid "Keep editing"
 msgstr ""
 
-#: includes/UI/UIManager.php:405
+#: includes/UI/UIManager.php:409
 msgid "Changes discarded."
 msgstr ""
 
 #. translators: 1: number of changes, 2: date and time
-#: includes/UI/UIManager.php:407
+#: includes/UI/UIManager.php:411
 msgid "Your last save: %2$s, %1$d change"
 msgid_plural "Your last save: %2$s, %1$d changes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:408
+#: includes/UI/UIManager.php:412
 #: includes/UI/templates/save-bar.php:37
 msgid "Undo…"
 msgstr ""
 
-#: includes/UI/UIManager.php:409
+#: includes/UI/UIManager.php:413
 msgid "Undo the rest…"
 msgstr ""
 
-#: includes/UI/UIManager.php:412
+#: includes/UI/UIManager.php:416
 msgid "Saved %d change."
 msgid_plural "Saved %d changes."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:413
+#: includes/UI/UIManager.php:417
 msgid "%d adjusted for stock that changed while you were editing."
 msgid_plural "%d adjusted for stock that changed while you were editing."
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: changes saved, 2: changes in the save, 3: changes not saved
-#: includes/UI/UIManager.php:415
+#: includes/UI/UIManager.php:419
 msgid "Saved %1$s of %2$s changes. %3$s not saved; they are still marked in the table."
 msgstr ""
 
-#: includes/UI/UIManager.php:416
+#: includes/UI/UIManager.php:420
 msgid "Show the first one"
 msgstr ""
 
-#: includes/UI/UIManager.php:417
+#: includes/UI/UIManager.php:421
 msgid "Nothing was saved. %d change is still marked in the table."
 msgid_plural "Nothing was saved. %d changes are still marked in the table."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:418
+#: includes/UI/UIManager.php:422
 msgid "Nothing was saved. The change history could not be written, so no product was changed."
 msgstr ""
 
 #. translators: 1: changes saved, 2: changes in the save, 3: changes not sent
-#: includes/UI/UIManager.php:420
+#: includes/UI/UIManager.php:424
 msgid "Saved %1$s of %2$s changes. The connection was lost; the other %3$s are still marked in the table. Press Save to try again."
 msgstr ""
 
-#: includes/UI/UIManager.php:421
+#: includes/UI/UIManager.php:425
 msgid "The connection was lost before the save was confirmed. Your changes are still marked in the table. Press Save to try again; no change is applied twice."
 msgstr ""
 
-#: includes/UI/UIManager.php:422
+#: includes/UI/UIManager.php:426
 msgid "Your session has expired. Your changes are still on this page. Log in again in another browser tab, then press Save here."
 msgstr ""
 
 #. translators: %s: the server's reason
-#: includes/UI/UIManager.php:424
+#: includes/UI/UIManager.php:428
 msgid "The save was refused: %s Your changes are still marked in the table."
 msgstr ""
 
-#: includes/UI/UIManager.php:425
+#: includes/UI/UIManager.php:429
 msgid "The save was refused by the server. Your changes are still marked in the table."
 msgstr ""
 
-#: includes/UI/UIManager.php:428
+#: includes/UI/UIManager.php:432
 msgid "Check before saving"
 msgstr ""
 
-#: includes/UI/UIManager.php:429
+#: includes/UI/UIManager.php:433
 msgid "This save contains changes that are easy to make by mistake:"
 msgstr ""
 
 #. translators: 1: product name, 2: SKU, 3: field name
-#: includes/UI/UIManager.php:431
+#: includes/UI/UIManager.php:435
 msgid "Price set to 0 (the product becomes free): %1$s (%2$s), %3$s"
 msgstr ""
 
 #. translators: 1: product name, 2: SKU, 3: field name, 4: old price, 5: new price, 6: change in percent with its sign, for example +150; %% prints a percent sign
-#: includes/UI/UIManager.php:433
+#: includes/UI/UIManager.php:437
 msgid "Large price change: %1$s (%2$s), %3$s %4$s → %5$s (%6$s%%)"
 msgstr ""
 
 #. translators: 1: product name, 2: SKU, 3: starting quantity
-#: includes/UI/UIManager.php:435
+#: includes/UI/UIManager.php:439
 msgid "Start tracking stock: %1$s (%2$s) at %3$s"
 msgstr ""
 
-#: includes/UI/UIManager.php:436
+#: includes/UI/UIManager.php:440
 msgid "Go back"
 msgstr ""
 
-#: includes/UI/UIManager.php:439
+#: includes/UI/UIManager.php:443
 msgid "You have %d unsaved change"
 msgid_plural "You have %d unsaved changes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:440
+#: includes/UI/UIManager.php:444
 msgid "They are lost if you continue without saving."
 msgstr ""
 
-#: includes/UI/UIManager.php:441
+#: includes/UI/UIManager.php:445
 msgid "Save and continue"
 msgstr ""
 
-#: includes/UI/UIManager.php:442
+#: includes/UI/UIManager.php:446
 msgid "Cancel"
 msgstr ""
 
-#: includes/UI/UIManager.php:443
+#: includes/UI/UIManager.php:447
 msgid "Close"
 msgstr ""
 
 #. translators: %s: save number
-#: includes/UI/UIManager.php:447
+#: includes/UI/UIManager.php:451
 msgid "Undo save #%s?"
 msgstr ""
 
-#: includes/UI/UIManager.php:448
+#: includes/UI/UIManager.php:452
 msgid "Checking what can be undone…"
 msgstr ""
 
 #. translators: 1: user, 2: date and time
-#: includes/UI/UIManager.php:450
+#: includes/UI/UIManager.php:454
 msgid "Saved by %1$s on %2$s."
 msgstr ""
 
 #. translators: %s: number of changes
-#: includes/UI/UIManager.php:452
+#: includes/UI/UIManager.php:456
 msgid "Will be undone (%s)"
 msgstr ""
 
 #. translators: %s: number of changes
-#: includes/UI/UIManager.php:454
+#: includes/UI/UIManager.php:458
 msgid "Will be skipped (%s)"
 msgstr ""
 
 #. translators: %s: number of changes
-#: includes/UI/UIManager.php:456
+#: includes/UI/UIManager.php:460
 msgid "Skipped (%s)"
 msgstr ""
 
 #. translators: 1: value now, 2: value after the undo
-#: includes/UI/UIManager.php:458
+#: includes/UI/UIManager.php:462
 msgid "%1$s → %2$s"
 msgstr ""
 
-#: includes/UI/UIManager.php:459
+#: includes/UI/UIManager.php:463
 msgid "Only the fields this save changed are touched. The undo is recorded in History."
 msgstr ""
 
-#: includes/UI/UIManager.php:460
+#: includes/UI/UIManager.php:464
 msgid "Undo %d change"
 msgid_plural "Undo %d changes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:461
+#: includes/UI/UIManager.php:465
 msgid "Undoing…"
 msgstr ""
 
-#: includes/UI/UIManager.php:463
+#: includes/UI/UIManager.php:467
 msgid "Could not check what can be undone. Nothing was changed."
 msgstr ""
 
-#: includes/UI/UIManager.php:464
+#: includes/UI/UIManager.php:468
 msgid "The undo could not be completed. Open History to see what was undone before it stopped."
 msgstr ""
 
-#: includes/UI/UIManager.php:465
+#: includes/UI/UIManager.php:469
 msgid "Your session has expired. Log in again in another browser tab, then try again."
 msgstr ""
 
-#: includes/UI/UIManager.php:466
+#: includes/UI/UIManager.php:470
 msgid "(deleted user)"
 msgstr ""
 
-#: includes/UI/UIManager.php:469
+#: includes/UI/UIManager.php:473
 msgid "Loading…"
 msgstr ""
 
-#: includes/UI/UIManager.php:470
+#: includes/UI/UIManager.php:474
 msgid "History could not be loaded."
 msgstr ""
 
-#: includes/UI/UIManager.php:471
+#: includes/UI/UIManager.php:475
 msgid "History could not be loaded because your session has expired. Log in again in another browser tab, then try again."
 msgstr ""
 
-#: includes/UI/UIManager.php:472
+#: includes/UI/UIManager.php:476
 msgid "No saves yet. Every save made in this tool is listed here for 12 months."
 msgstr ""
 
-#: includes/UI/UIManager.php:473
+#: includes/UI/UIManager.php:477
 msgid "No saves match this search."
 msgstr ""
 
-#: includes/UI/UIManager.php:474
+#: includes/UI/UIManager.php:478
 msgid "No changes to this item have been made in this tool in the last 12 months."
 msgstr ""
 
-#: includes/UI/UIManager.php:476
+#: includes/UI/UIManager.php:480
 msgid "When"
 msgstr ""
 
-#: includes/UI/UIManager.php:477
+#: includes/UI/UIManager.php:481
 msgid "Who"
 msgstr ""
 
-#: includes/UI/UIManager.php:478
+#: includes/UI/UIManager.php:482
 msgid "Summary"
 msgstr ""
 
-#: includes/UI/UIManager.php:479
+#: includes/UI/UIManager.php:483
 msgid "State"
 msgstr ""
 
-#: includes/UI/UIManager.php:480
+#: includes/UI/UIManager.php:484
 msgid "Actions"
 msgstr ""
 
-#: includes/UI/UIManager.php:481
-#: includes/UI/UIManager.php:1188
+#: includes/UI/UIManager.php:485
+#: includes/UI/UIManager.php:1192
 msgid "Product"
 msgstr ""
 
-#: includes/UI/UIManager.php:482
+#: includes/UI/UIManager.php:486
 msgid "SKU"
 msgstr ""
 
-#: includes/UI/UIManager.php:483
+#: includes/UI/UIManager.php:487
 msgid "Field"
 msgstr ""
 
-#: includes/UI/UIManager.php:484
+#: includes/UI/UIManager.php:488
 msgid "Before"
 msgstr ""
 
-#: includes/UI/UIManager.php:485
+#: includes/UI/UIManager.php:489
 msgid "After"
 msgstr ""
 
-#: includes/UI/UIManager.php:486
+#: includes/UI/UIManager.php:490
 msgid "Note"
 msgstr ""
 
-#: includes/UI/UIManager.php:487
+#: includes/UI/UIManager.php:491
 msgid "Reason"
 msgstr ""
 
-#: includes/UI/UIManager.php:488
+#: includes/UI/UIManager.php:492
 msgid "Now → After undo"
 msgstr ""
 
 #. translators: %d: number of changes, all to one SKU
-#: includes/UI/UIManager.php:490
+#: includes/UI/UIManager.php:494
 msgid "%d change on 1 SKU"
 msgid_plural "%d changes on 1 SKU"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of changes, 2: number of SKUs they were made to (2 or more)
-#: includes/UI/UIManager.php:492
+#: includes/UI/UIManager.php:496
 msgid "%1$d change on %2$d SKUs"
 msgid_plural "%1$d changes on %2$d SKUs"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: between the items of a list, for example "2 stock, 1 price"
-#: includes/UI/UIManager.php:496
+#: includes/UI/UIManager.php:500
 msgid ", "
 msgstr ""
 
 #. translators: %d: number of stock changes, in a list such as "2 stock, 1 price"
-#: includes/UI/UIManager.php:498
+#: includes/UI/UIManager.php:502
 msgid "%d stock"
 msgid_plural "%d stock"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of price changes, in a list such as "2 stock, 1 price"
-#: includes/UI/UIManager.php:500
+#: includes/UI/UIManager.php:504
 msgid "%d price"
 msgid_plural "%d price"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of other changes, in a list such as "2 stock, 1 other"
-#: includes/UI/UIManager.php:502
+#: includes/UI/UIManager.php:506
 msgid "%d other"
 msgid_plural "%d other"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:503
+#: includes/UI/UIManager.php:507
 msgid "No changes were stored"
 msgstr ""
 
 #. translators: 1: save number, 2: a count of changes, for example "3 changes on 2 SKUs: 2 stock, 1 price"
-#: includes/UI/UIManager.php:505
+#: includes/UI/UIManager.php:509
 msgid "Undo of #%1$s · %2$s"
 msgstr ""
 
 #. translators: 1: user, 2: save number
-#: includes/UI/UIManager.php:507
+#: includes/UI/UIManager.php:511
 msgid "%1$s (undo of #%2$s)"
 msgstr ""
 
 #. translators: %d: user id of an account that no longer exists
-#: includes/UI/UIManager.php:509
+#: includes/UI/UIManager.php:513
 msgid "User #%d"
 msgstr ""
 
 #. translators: 1: user, 2: date and time
-#: includes/UI/UIManager.php:511
+#: includes/UI/UIManager.php:515
 msgid "Undone by %1$s, %2$s"
 msgstr ""
 
-#: includes/UI/UIManager.php:512
+#: includes/UI/UIManager.php:516
 msgid "Undone"
 msgstr ""
 
 #. translators: 1: changes undone, 2: changes in the save
-#: includes/UI/UIManager.php:514
+#: includes/UI/UIManager.php:518
 msgid "Partly undone: %1$s of %2$s"
 msgstr ""
 
-#: includes/UI/UIManager.php:515
+#: includes/UI/UIManager.php:519
 msgid "View changes"
 msgstr ""
 
 #. translators: %s: save number
-#: includes/UI/UIManager.php:517
+#: includes/UI/UIManager.php:521
 msgid "View changes of save #%s"
 msgstr ""
 
 #. translators: %s: save number
-#: includes/UI/UIManager.php:519
+#: includes/UI/UIManager.php:523
 msgid "Undo save #%s…"
 msgstr ""
 
-#: includes/UI/UIManager.php:520
+#: includes/UI/UIManager.php:524
 msgid "Undone since"
 msgstr ""
 
-#: includes/UI/UIManager.php:521
+#: includes/UI/UIManager.php:525
 msgid "Could not be written."
 msgstr ""
 
-#: includes/UI/UIManager.php:522
+#: includes/UI/UIManager.php:526
 msgid "Had no effect."
 msgstr ""
 
-#: includes/UI/UIManager.php:523
+#: includes/UI/UIManager.php:527
 msgid "Did not finish"
 msgstr ""
 
-#: includes/UI/UIManager.php:524
+#: includes/UI/UIManager.php:528
 msgid "%d failed"
 msgid_plural "%d failed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:525
+#: includes/UI/UIManager.php:529
 msgid "(deleted product)"
 msgstr ""
 
 #. translators: 1: "on" 2: starting quantity
-#: includes/UI/UIManager.php:527
+#: includes/UI/UIManager.php:531
 msgid "%1$s, quantity %2$s"
 msgstr ""
 
 #. translators: 1: value stored, 2: value typed
-#: includes/UI/UIManager.php:529
+#: includes/UI/UIManager.php:533
 msgid "%1$s (typed %2$s)"
 msgstr ""
 
-#: includes/UI/UIManager.php:530
+#: includes/UI/UIManager.php:534
 msgid "follows from another change"
 msgstr ""
 
 #. translators: 1: field name, 2: value before, 3: value after
-#: includes/UI/UIManager.php:532
+#: includes/UI/UIManager.php:536
 msgid "%1$s changed from %2$s to %3$s outside this tool (for example online orders or the product editor)."
 msgstr ""
 
 #. translators: %s: version number
-#: includes/UI/UIManager.php:534
+#: includes/UI/UIManager.php:538
 msgid "Version %s"
 msgstr ""
 
-#: includes/UI/UIManager.php:535
+#: includes/UI/UIManager.php:539
 msgid "Saved before this update. Details and undo are not available."
 msgstr ""
 
 #. translators: %s: save number
-#: includes/UI/UIManager.php:537
+#: includes/UI/UIManager.php:541
 msgid "Save #%s"
 msgstr ""
 
-#: includes/UI/UIManager.php:538
+#: includes/UI/UIManager.php:542
 msgid "All saves"
 msgstr ""
 
-#: includes/UI/UIManager.php:539
+#: includes/UI/UIManager.php:543
 msgid "%d item"
 msgid_plural "%d items"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: current page, 2: number of pages
-#: includes/UI/UIManager.php:541
+#: includes/UI/UIManager.php:545
 msgid "%1$s of %2$s"
 msgstr ""
 
-#: includes/UI/UIManager.php:542
+#: includes/UI/UIManager.php:546
 msgid "First page"
 msgstr ""
 
-#: includes/UI/UIManager.php:543
+#: includes/UI/UIManager.php:547
 msgid "Previous page"
 msgstr ""
 
-#: includes/UI/UIManager.php:544
+#: includes/UI/UIManager.php:548
 msgid "Next page"
 msgstr ""
 
-#: includes/UI/UIManager.php:545
+#: includes/UI/UIManager.php:549
 msgid "Last page"
 msgstr ""
 
 #. translators: 1: field name, 2: value now, 3: value after the undo
-#: includes/UI/UIManager.php:547
+#: includes/UI/UIManager.php:551
 msgid "%1$s %2$s → %3$s"
 msgstr ""
 
 #. translators: %s: search text
-#: includes/UI/UIManager.php:957
+#: includes/UI/UIManager.php:961
 msgid "Search: \"%s\""
 msgstr ""
 
-#: includes/UI/UIManager.php:986
+#: includes/UI/UIManager.php:990
 msgid "Tag"
 msgstr ""
 
 #. translators: %s: stock status
-#: includes/UI/UIManager.php:998
+#: includes/UI/UIManager.php:1002
 msgid "Status: %s"
 msgstr ""
 
 #. translators: 1: lowest price, 2: highest price
-#: includes/UI/UIManager.php:1019
+#: includes/UI/UIManager.php:1023
 msgid "Price: %1$s – %2$s"
 msgstr ""
 
 #. translators: %s: lowest price
-#: includes/UI/UIManager.php:1021
+#: includes/UI/UIManager.php:1025
 msgid "Price: %s or more"
 msgstr ""
 
 #. translators: %s: highest price
-#: includes/UI/UIManager.php:1023
+#: includes/UI/UIManager.php:1027
 msgid "Price: up to %s"
 msgstr ""
 
 #. translators: 1: fewest units sold, 2: most units sold
-#: includes/UI/UIManager.php:1039
+#: includes/UI/UIManager.php:1043
 msgid "Sold: %1$s – %2$s"
 msgstr ""
 
 #. translators: %s: fewest units sold
-#: includes/UI/UIManager.php:1041
+#: includes/UI/UIManager.php:1045
 msgid "Sold: %s or more"
 msgstr ""
 
 #. translators: %s: most units sold
-#: includes/UI/UIManager.php:1043
+#: includes/UI/UIManager.php:1047
 msgid "Sold: up to %s"
 msgstr ""
 
-#: includes/UI/UIManager.php:1099
+#: includes/UI/UIManager.php:1103
 msgid "Last 30 days"
 msgstr ""
 
-#: includes/UI/UIManager.php:1100
+#: includes/UI/UIManager.php:1104
 msgid "Last 90 days"
 msgstr ""
 
-#: includes/UI/UIManager.php:1101
+#: includes/UI/UIManager.php:1105
 msgid "Last 6 months"
 msgstr ""
 
-#: includes/UI/UIManager.php:1102
+#: includes/UI/UIManager.php:1106
 msgid "Last 12 months"
 msgstr ""
 
-#: includes/UI/UIManager.php:1103
+#: includes/UI/UIManager.php:1107
 msgid "All time"
 msgstr ""
 
 #. translators: %s: number of days
-#: includes/UI/UIManager.php:1110
+#: includes/UI/UIManager.php:1114
 msgid "Last %s days"
 msgstr ""
 
-#: includes/UI/UIManager.php:1113
+#: includes/UI/UIManager.php:1117
 msgid "Custom range…"
 msgstr ""
 
-#: includes/UI/UIManager.php:1127
+#: includes/UI/UIManager.php:1131
 msgid "last 30 days"
 msgstr ""
 
-#: includes/UI/UIManager.php:1128
+#: includes/UI/UIManager.php:1132
 msgid "last 90 days"
 msgstr ""
 
-#: includes/UI/UIManager.php:1129
+#: includes/UI/UIManager.php:1133
 msgid "last 6 months"
 msgstr ""
 
-#: includes/UI/UIManager.php:1130
+#: includes/UI/UIManager.php:1134
 msgid "last 12 months"
 msgstr ""
 
-#: includes/UI/UIManager.php:1131
+#: includes/UI/UIManager.php:1135
 msgid "all time"
 msgstr ""
 
 #. translators: %s: number of days
-#: includes/UI/UIManager.php:1140
+#: includes/UI/UIManager.php:1144
 msgid "last %s days"
 msgstr ""
 
-#: includes/UI/UIManager.php:1183
+#: includes/UI/UIManager.php:1187
 msgid "Sort ascending."
 msgstr ""
 
-#: includes/UI/UIManager.php:1183
+#: includes/UI/UIManager.php:1187
 msgid "Sort descending."
 msgstr ""
 
-#: includes/UI/UIManager.php:1190
+#: includes/UI/UIManager.php:1194
 msgid "Status"
 msgstr ""
 
-#: includes/UI/UIManager.php:1191
+#: includes/UI/UIManager.php:1195
 msgid "Sorts by the price customers pay now (the sale price when there is one)."
 msgstr ""
 
-#: includes/UI/UIManager.php:1194
+#: includes/UI/UIManager.php:1198
 msgid "Sold"
 msgstr ""
 
-#: includes/UI/UIManager.php:1194
+#: includes/UI/UIManager.php:1198
 msgid "Units in paid orders (processing or completed) placed in this period."
 msgstr ""
 
-#: includes/UI/UIManager.php:1195
+#: includes/UI/UIManager.php:1199
 msgid "Cover"
 msgstr ""
 
-#: includes/UI/UIManager.php:1195
+#: includes/UI/UIManager.php:1199
 msgid "Days the stock lasts at the rate it sold in this period."
 msgstr ""
 
 #. translators: %s: number of SKUs
-#: includes/UI/UIManager.php:1250
+#: includes/UI/UIManager.php:1254
 msgid "%s SKU"
 msgid_plural "%s SKUs"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: number of products
-#: includes/UI/UIManager.php:1253
+#: includes/UI/UIManager.php:1257
 msgid "%s product"
 msgid_plural "%s products"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/UI/UIManager.php:1257
+#: includes/UI/UIManager.php:1261
 msgid "Items that are out of stock or low"
 msgstr ""
 
-#: includes/UI/UIManager.php:1259
+#: includes/UI/UIManager.php:1263
 msgid "Stock and prices, one row per SKU"
 msgstr ""
 
-#: includes/UI/UIManager.php:1261
+#: includes/UI/UIManager.php:1265
 msgid "Stock and prices, one row per product"
 msgstr ""
 
-#: includes/UI/UIManager.php:1273
+#: includes/UI/UIManager.php:1277
 msgid "All"
 msgstr ""
 
-#: includes/UI/UIManager.php:1293
+#: includes/UI/UIManager.php:1297
 #: includes/UI/templates/toolbar.php:31
 msgid "By product"
 msgstr ""
 
-#: includes/UI/UIManager.php:1293
+#: includes/UI/UIManager.php:1297
 #: includes/UI/templates/toolbar.php:32
 msgid "By SKU"
 msgstr ""
 
 #. translators: %s: search text
-#: includes/UI/UIManager.php:1307
+#: includes/UI/UIManager.php:1311
 msgid "Nothing in Needs attention matches \"%s\"."
 msgstr ""
 
-#: includes/UI/UIManager.php:1307
+#: includes/UI/UIManager.php:1311
 msgid "Search all stock"
 msgstr ""
 
-#: includes/UI/UIManager.php:1309
+#: includes/UI/UIManager.php:1313
 msgid "Nothing in Needs attention matches these filters."
 msgstr ""
 
-#: includes/UI/UIManager.php:1309
-#: includes/UI/UIManager.php:1316
-#: includes/UI/UIManager.php:1319
+#: includes/UI/UIManager.php:1313
+#: includes/UI/UIManager.php:1320
+#: includes/UI/UIManager.php:1323
 msgid "Clear all filters"
 msgstr ""
 
-#: includes/UI/UIManager.php:1311
+#: includes/UI/UIManager.php:1315
 msgid "Nothing needs attention. No SKU is out of stock or low."
 msgstr ""
 
 #. translators: %s: search text
-#: includes/UI/UIManager.php:1314
+#: includes/UI/UIManager.php:1318
 msgid "No products or SKUs match \"%s\"."
 msgstr ""
 
-#: includes/UI/UIManager.php:1314
+#: includes/UI/UIManager.php:1318
 msgid "Clear search"
 msgstr ""
 
-#: includes/UI/UIManager.php:1316
+#: includes/UI/UIManager.php:1320
 msgid "Filters are also active."
 msgstr ""
 
-#: includes/UI/UIManager.php:1319
+#: includes/UI/UIManager.php:1323
 msgid "No products match these filters."
 msgstr ""
 
-#: includes/UI/UIManager.php:1321
+#: includes/UI/UIManager.php:1325
 msgid "No products found."
 msgstr ""
 
 #. translators: %s: number of items
-#: includes/UI/UIManager.php:1397
+#: includes/UI/UIManager.php:1401
 #: includes/UI/templates/page.php:49
 msgid "%s item"
 msgid_plural "%s items"
@@ -1852,14 +1862,14 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: number of SKUs
-#: includes/UI/UIManager.php:1436
+#: includes/UI/UIManager.php:1440
 msgid "Show %s SKU"
 msgid_plural "Show %s SKUs"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: number of products
-#: includes/UI/UIManager.php:1440
+#: includes/UI/UIManager.php:1444
 msgid "Show %s product"
 msgid_plural "Show %s products"
 msgstr[0] ""

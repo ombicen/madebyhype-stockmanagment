@@ -55,7 +55,7 @@
   var draft = null;
   var applied = "";
   var sections = {}; // key => {node, summary, inner, render()}
-  var ui = { open: {}, categoryQuery: "", categoryAll: false, tagQuery: "", attribute: "" };
+  var ui = { open: {}, categoryQuery: "", categoryAll: false, categoryOpen: null, tagQuery: "", attribute: "" };
   var countSeq = 0;
   var countTimer = null;
 
@@ -297,7 +297,7 @@
     );
   }
 
-  /* --- categories: a searchable, indented list of checkboxes --- */
+  /* --- categories: a searchable tree of checkboxes; a parent opens to show its direct children --- */
 
   /** The categories in the shop's order, each after its parent, with its depth */
   function categoryRows() {
@@ -317,7 +317,7 @@
 
     (function walk(parent, depth) {
       (byParent[parent] || []).forEach(function (category) {
-        rows.push({ id: category.id, name: category.name, count: category.count, depth: depth });
+        rows.push({ id: category.id, name: category.name, count: category.count, depth: depth, parent: parent, children: (byParent[category.id] || []).length });
         walk(category.id, depth + 1);
       });
     })(0, 0);
@@ -325,7 +325,7 @@
     // A selected category the shop no longer lists (no product uses it) can still be taken off
     ids(draft.categories).forEach(function (id) {
       if (!known[id]) {
-        rows.unshift({ id: id, name: draft.categories[id], count: null, depth: 0 });
+        rows.unshift({ id: id, name: draft.categories[id], count: null, depth: 0, parent: 0, children: 0 });
       }
     });
 
@@ -347,14 +347,43 @@
         more = el("p", { class: "mbh-fsec-hint", text: tn("moreMatches", shown.length - MATCH_LIMIT) });
         shown = shown.slice(0, MATCH_LIMIT);
       }
-    } else if (ui.categoryAll || rows.length <= CATEGORY_PREVIEW) {
-      shown = rows;
     } else {
-      // Folded: the first top-level categories, and whatever is selected wherever it sits
-      var top = 0;
+      var parentOf = {};
+      var shownTop = {};
+      var topCount = 0;
 
+      rows.forEach(function (row) {
+        parentOf[row.id] = row.parent;
+
+        if (row.depth === 0 && (++topCount <= CATEGORY_PREVIEW || ui.categoryAll)) {
+          shownTop[row.id] = true;
+        }
+      });
+
+      // First time: open the branches that lead to a selected category
+      if (ui.categoryOpen === null) {
+        ui.categoryOpen = {};
+        ids(draft.categories).forEach(function (id) {
+          for (var up = parentOf[id]; up; up = parentOf[up]) {
+            ui.categoryOpen[up] = true;
+          }
+        });
+      }
+
+      // Top-level categories first (the first few, or all of them). A category
+      // below shows only while every category above it is open.
       shown = rows.filter(function (row) {
-        return (row.depth === 0 && ++top <= CATEGORY_PREVIEW) || draft.categories[row.id] !== undefined;
+        var up = row.id;
+
+        while (parentOf[up]) {
+          up = parentOf[up];
+
+          if (!ui.categoryOpen[up]) {
+            return false;
+          }
+        }
+
+        return shownTop[up] === true;
       });
     }
 
@@ -362,17 +391,40 @@
       "div",
       { class: "mbh-opts", role: "group", "aria-label": t("filterCategory") },
       shown.map(function (row) {
-        return el("label", { class: "mbh-opt" + (query ? "" : " mbh-opt--d" + Math.min(row.depth, 3)) }, [
-          el("input", { type: "checkbox", "data-category": row.id, "data-name": row.name, checked: draft.categories[row.id] !== undefined ? true : false }),
-          el("span", { class: "mbh-opt-name", text: row.name }),
-          row.count === null ? null : el("span", { class: "mbh-opt-count", title: t("productCountTitle"), text: grouped(row.count) }),
+        var isOpen = !query && ui.categoryOpen !== null && ui.categoryOpen[row.id] === true;
+
+        return el("div", { class: "mbh-opt mbh-opt--tree mbh-opt--t" + (query ? 0 : Math.min(row.depth, 4)) }, [
+          // The arrow sits left of the checkbox and opens the direct children
+          row.children && !query
+            ? el(
+                "button",
+                {
+                  type: "button",
+                  class: "mbh-opt-toggle" + (isOpen ? " is-open" : ""),
+                  "data-category-toggle": row.id,
+                  "aria-expanded": isOpen ? "true" : "false",
+                  "aria-label": t(isOpen ? "hideSubcategories" : "showSubcategories", row.name),
+                },
+                [MBH.icon("chevron")]
+              )
+            : el("span", { class: "mbh-opt-toggle mbh-opt-toggle--none", "aria-hidden": "true" }),
+          el("label", { class: "mbh-opt-label" }, [
+            el("input", { type: "checkbox", "data-category": row.id, "data-name": row.name, checked: draft.categories[row.id] !== undefined ? true : false }),
+            el("span", { class: "mbh-opt-name", text: row.name }),
+            row.count === null ? null : el("span", { class: "mbh-opt-count", title: t("productCountTitle"), text: grouped(row.count) }),
+          ]),
         ]);
       })
     );
 
     var parts = [shown.length ? list : el("p", { class: "mbh-fsec-hint", text: query ? t("noMatches") : t("noCategories") }), more];
 
-    if (!query && rows.length > CATEGORY_PREVIEW) {
+    if (
+      !query &&
+      rows.filter(function (row) {
+        return row.depth === 0;
+      }).length > CATEGORY_PREVIEW
+    ) {
       parts.push(
         el("button", {
           type: "button",
@@ -871,6 +923,14 @@
       }
 
       changed("category");
+    })
+    .on("click", "[data-category-toggle]", function () {
+      var id = this.getAttribute("data-category-toggle");
+
+      ui.categoryOpen = ui.categoryOpen || {};
+      ui.categoryOpen[id] = !ui.categoryOpen[id];
+      $("#mbh-category-list").empty().append(categoryList());
+      refocus('[data-category-toggle="' + id + '"]');
     })
     .on("click", "#mbh-category-more", function () {
       ui.categoryAll = !ui.categoryAll;

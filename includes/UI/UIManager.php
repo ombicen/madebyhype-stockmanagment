@@ -347,6 +347,10 @@ class UIManager
             'findTag' => __('Find a tag', 'madebyhype-stockmanagment'),
             'showAllCategories' => _n_noop('Show all %d category', 'Show all %d categories', 'madebyhype-stockmanagment'),
             'showFewer' => __('Show fewer', 'madebyhype-stockmanagment'),
+            /* translators: %s: category name */
+            'showSubcategories' => __('Show the categories under %s', 'madebyhype-stockmanagment'),
+            /* translators: %s: category name */
+            'hideSubcategories' => __('Hide the categories under %s', 'madebyhype-stockmanagment'),
             'noMatches' => __('Nothing matches.', 'madebyhype-stockmanagment'),
             'tagHint' => _n_noop('Type to search %d tag.', 'Type to search %d tags.', 'madebyhype-stockmanagment'),
             'moreMatches' => _n_noop('%d more match. Type more to narrow it down.', '%d more matches. Type more to narrow them down.', 'madebyhype-stockmanagment'),
