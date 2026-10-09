@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - What is left out shows as its own chip above the list ("Category is not: Clearance") and counts as a filter
 
 ### Changed
+- The table heading is clearer: a tinted band, a short rule between columns, an arrow on every column that sorts, and the sorted column marked
 - Undo and History cope with very large saves: an undo runs in steps with its progress shown, and the changes of a save are listed 200 at a time
 
 ## [1.1.0] - 2026-10-09
