@@ -16,7 +16,7 @@
  * Text Domain: madebyhype-stockmanagment
  * Domain Path: /languages
  * Network: false
- * Update URI: https://madebyhype.se/
+ * Update URI: https://github.com/ombicen/madebyhype-stockmanagment
  * 
  * WC requires at least: 6.0
  * WC tested up to: 9.8.5

@@ -49,7 +49,8 @@ class Plugin
      *
      * On a storefront request (a page view, the cart, checkout, REST) this
      * plugin does two things and nothing else: the HPOS declaration and the
-     * schema version comparison. Everything else is decided in init_plugin().
+     * schema version comparison. Everything else is decided in init_plugin();
+     * the updater is loaded where WordPress checks for updates.
      */
     public function run()
     {
@@ -61,6 +62,13 @@ class Plugin
         add_action('init', [Data\Schema::class, 'maybe_upgrade'], 5);
 
         add_action('init', [$this, 'init_plugin']);
+
+        // Updates from the releases on GitHub. Where WordPress checks for updates: wp-admin, cron
+        // and WP-CLI; with or without WooCommerce, so a broken set-up can still be updated.
+        if ($this->core_runs_here() || (defined('WP_CLI') && WP_CLI)) {
+            require_once plugin_dir_path(__FILE__) . 'Updater.php';
+            (new Updater($this->plugin_file))->init();
+        }
 
         // The menu and the assets are wp-admin only
         if (is_admin()) {

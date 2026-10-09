@@ -58,7 +58,13 @@ A WooCommerce plugin for editing stock and prices in one screen: a fast, searcha
 3. Activate the plugin on the **Plugins** screen.
 4. Open **Products → Stock Management**.
 
-When updating by copying files, replace the whole plugin folder rather than copying over it, and clear the server's PHP cache if the screen does not change.
+## Updates
+
+From 1.2.1 on the plugin updates itself from the [releases](https://github.com/ombicen/madebyhype-stockmanagment/releases) of this repository: a new release shows under **Dashboard → Updates** and on the **Plugins** screen, with its release notes under "View details", and automatic updates can be switched on there. WordPress looks for updates about twice a day; **Check again** on the Updates screen looks at once.
+
+An installation that is a git working copy (it has a `.git` folder) is never offered an update: update it with git.
+
+When updating by copying files instead, replace the whole plugin folder rather than copying over it, and clear the server's PHP cache if the screen does not change.
 
 ## Permissions
 
@@ -72,6 +78,7 @@ madebyhype-stockmanagment/
 ├── uninstall.php                   # Removes the plugin's tables and options on delete
 ├── includes/
 │   ├── Plugin.php                  # Wires the parts together
+│   ├── Updater.php                 # Updates from the releases on GitHub
 │   ├── Capabilities.php            # What the current user may do
 │   ├── Admin/
 │   │   ├── AdminPage.php           # Menu, and reading the request
