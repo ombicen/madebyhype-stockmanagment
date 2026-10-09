@@ -46,8 +46,8 @@ class Settings
     const PER_PAGE_CHOICES = [20, 50, 100, 500];
     const PERIOD_CHOICES = ['30', '90', '180', '365', 'all'];
 
-    // Items one request of a bulk price change handles. The write service takes at most 100 at a time.
-    const BULK_CHUNK_CHOICES = [10, 25, 50, 100];
+    // Items one request of a bulk price change handles
+    const BULK_CHUNK_CHOICES = [50, 100, 250, 500];
 
     private $plugin_file;
 
@@ -253,14 +253,14 @@ class Settings
                 // What a request takes on top of WordPress itself was measured on a shop with variations;
                 // the memory is what PHP should be allowed in all, with room for plugins that react to a product being saved
                 'options' => [
-                    '10' => __('10: lightest. About 1 MB and under half a second per request. PHP memory: 128 MB', 'madebyhype-stockmanagment'),
-                    '25' => __('25: about 2 MB and half a second per request. PHP memory: 128 MB', 'madebyhype-stockmanagment'),
-                    '50' => __('50: recommended. About 3 MB and one second per request. PHP memory: 256 MB', 'madebyhype-stockmanagment'),
-                    '100' => __('100: fewest requests. About 7 MB and two seconds per request. PHP memory: 256 MB, 512 MB with many plugins', 'madebyhype-stockmanagment'),
+                    '50' => __('50: lightest, the default. About 3 MB and one second per request. PHP memory: 128 MB', 'madebyhype-stockmanagment'),
+                    '100' => __('100: about 5 MB and two seconds per request. PHP memory: 256 MB', 'madebyhype-stockmanagment'),
+                    '250' => __('250: about 15 MB and four seconds per request. PHP memory: 256 MB', 'madebyhype-stockmanagment'),
+                    '500' => __('500: fewest requests. About 27 MB and nine seconds per request. PHP memory: 512 MB', 'madebyhype-stockmanagment'),
                 ],
                 'desc' => '<br>' . sprintf(
                     /* translators: %s: a memory limit, for example "256M" */
-                    __('A bulk change is sent to the server in slices of this many items. Larger slices finish sooner; smaller ones are safer on a server that is short of memory or quick to time out, and stop sooner when you press Stop. This server allows PHP %s in wp-admin.', 'madebyhype-stockmanagment'),
+                    __('A bulk change is sent to the server in slices of this many items. Larger slices mean fewer requests; smaller ones are safer on a server that is short of memory or quick to time out, show progress more often, and stop sooner when you press Stop. The time grows with the size, so the largest need a server that lets a request run for 30 seconds. This server allows PHP %s in wp-admin.', 'madebyhype-stockmanagment'),
                     '<strong>' . esc_html(self::memory_limit()) . '</strong>'
                 ),
             ],

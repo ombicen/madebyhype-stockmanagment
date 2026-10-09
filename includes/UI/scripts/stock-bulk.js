@@ -23,8 +23,8 @@
   var format = MBH.config.format || { decimals: 2, decimalSep: ".", thousandSep: "," };
   var labels = MBH.config.strings.bulk || {};
 
-  // Items per request: what the plugin is set to (the server takes at most 100), and lines one list of the result shows
-  var APPLY_CHUNK = Math.max(1, Math.min(100, parseInt(MBH.config.bulkChunk, 10) || 50));
+  // Items per request: what the plugin is set to (the server takes at most 500), and lines one list of the result shows
+  var APPLY_CHUNK = Math.max(1, Math.min(500, parseInt(MBH.config.bulkChunk, 10) || 50));
   var LIST_MAX = 50;
 
   // What the form held last, so a rule that needed a second look does not have to be typed again

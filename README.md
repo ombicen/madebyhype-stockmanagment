@@ -73,7 +73,7 @@ When updating by copying files instead, replace the whole plugin folder rather t
 - Rows per page and the sales period the list opens with.
 - How long History is kept (12 months unless changed).
 - The largest bulk price change allowed, in items.
-- Items per request of a bulk price change: 10, 25, 50 (default) or 100, each listed with what it takes per request and the PHP memory recommended for it. The page also shows the memory this server allows.
+- Items per request of a bulk price change: 50 (default), 100, 250 or 500, each listed with what it takes per request and the PHP memory recommended for it. The page also shows the memory this server allows.
 - Whether History and these settings are kept when the plugin is deleted. Unticked, deleting the plugin removes what it stored; products are never touched.
 
 ## Permissions

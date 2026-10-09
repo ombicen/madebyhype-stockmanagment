@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 class BulkPriceService
 {
     // Most items one apply() call takes
-    const MAX_APPLY = 100;
+    const MAX_APPLY = 500;
 
     // Rows the preview shows, before the two largest changes are added
     const SAMPLE_ROWS = 10;
@@ -217,13 +217,21 @@ class BulkPriceService
             return $result;
         }
 
-        $saved = $this->write_service->save(
-            ['items' => $items, 'save_token' => $save_token, 'note' => $this->describe($rule)],
-            ChangeLog::SOURCE_BULK_PRICE
-        );
+        // The write service takes so many items at a time; the token makes its calls one save
+        $saved = ['batch_id' => null, 'results' => []];
 
-        if (is_wp_error($saved)) {
-            return $saved;
+        foreach (array_chunk($items, WriteService::MAX_ITEMS_PER_BUCKET, true) as $part) {
+            $outcome = $this->write_service->save(
+                ['items' => $part, 'save_token' => $save_token, 'note' => $this->describe($rule)],
+                ChangeLog::SOURCE_BULK_PRICE
+            );
+
+            if (is_wp_error($outcome)) {
+                return $outcome;
+            }
+
+            $saved['batch_id'] = $outcome['batch_id'] ? $outcome['batch_id'] : $saved['batch_id'];
+            $saved['results'] = array_merge($saved['results'], $outcome['results']);
         }
 
         $result['batch_id'] = $saved['batch_id'];
