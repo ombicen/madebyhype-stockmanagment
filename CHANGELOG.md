@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-10-11
+
+### Fixed
+- The plugin address in the plugin header is now the plugin’s own page on GitHub. It was the same address as the author’s, which the WordPress plugin check reports as an error
+
 ## [1.3.1] - 2026-10-09
 
 ### Changed

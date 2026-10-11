@@ -2041,8 +2041,12 @@ msgstr ""
 msgid "MadeByHype Stock Management"
 msgstr ""
 
-#. Author URI of the plugin
 #. Plugin URI of the plugin
+#: madebyhype-stockmanagment.php
+msgid "https://github.com/ombicen/madebyhype-stockmanagment"
+msgstr ""
+
+#. Author URI of the plugin
 #: madebyhype-stockmanagment.php
 msgid "https://madebyhype.se/"
 msgstr ""
