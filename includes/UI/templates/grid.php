@@ -26,6 +26,8 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Included from a UIManager method: these are its local variables, not globals.
+
 $strings = self::strings();
 $rows = $result['rows'];
 $edit_url = admin_url('post.php?action=edit&post=%d');
@@ -80,7 +82,7 @@ $sub = function ($text) {
                             <?php if ($heading['field'] !== null): ?>
                                 <a href="<?php echo esc_url($heading['url']); ?>" data-nav="sort-<?php echo esc_attr($heading['field']); ?>">
                                     <span class="mbh-th-label"><?php echo esc_html($heading['label']); ?><?php if ($heading['sub'] !== ''): ?><span class="mbh-th-sub"><?php echo esc_html($heading['sub']); ?></span><?php endif; ?></span>
-                                    <?php echo self::icon('arrow', 'mbh-sort-icon mbh-sort-icon--' . $heading['direction']); ?>
+                                    <?php echo wp_kses(self::icon('arrow', 'mbh-sort-icon mbh-sort-icon--' . $heading['direction']), self::icon_tags()); ?>
                                     <span class="screen-reader-text"><?php echo esc_html($heading['nextLabel']); ?></span>
                                 </a>
                             <?php else: ?>

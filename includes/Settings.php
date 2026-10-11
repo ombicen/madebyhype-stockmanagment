@@ -185,7 +185,7 @@ class Settings
      */
     public function add_section($sections)
     {
-        $sections[self::SECTION] = __('Stock Management', 'madebyhype-stockmanagment');
+        $sections[self::SECTION] = __('Stock Management', 'madebyhype-stock-management');
 
         return $sections;
     }
@@ -203,39 +203,39 @@ class Settings
 
         return [
             [
-                'title' => __('The stock list', 'madebyhype-stockmanagment'),
+                'title' => __('The stock list', 'madebyhype-stock-management'),
                 'type' => 'title',
                 'desc' => sprintf(
                     /* translators: %s: link to the Stock Management screen */
-                    __('How %s opens. Anyone can still choose otherwise on the screen itself.', 'madebyhype-stockmanagment'),
-                    '<a href="' . esc_url(admin_url('edit.php?post_type=product&page=madebyhype-stockmanagment')) . '">' . esc_html__('Stock Management', 'madebyhype-stockmanagment') . '</a>'
+                    __('How %s opens. Anyone can still choose otherwise on the screen itself.', 'madebyhype-stock-management'),
+                    '<a href="' . esc_url(admin_url('edit.php?post_type=product&page=madebyhype-stockmanagment')) . '">' . esc_html__('Stock Management', 'madebyhype-stock-management') . '</a>'
                 ),
                 'id' => 'madebyhype_stock_list',
             ],
             [
-                'title' => __('Rows per page', 'madebyhype-stockmanagment'),
+                'title' => __('Rows per page', 'madebyhype-stock-management'),
                 'id' => self::OPTION_PER_PAGE,
                 'type' => 'select',
                 'default' => (string) self::DEFAULT_PER_PAGE,
                 'options' => array_combine(array_map('strval', self::PER_PAGE_CHOICES), array_map('strval', self::PER_PAGE_CHOICES)),
-                'desc_tip' => __('More rows mean fewer pages and a slower one.', 'madebyhype-stockmanagment'),
+                'desc_tip' => __('More rows mean fewer pages and a slower one.', 'madebyhype-stock-management'),
             ],
             [
-                'title' => __('Sales period', 'madebyhype-stockmanagment'),
+                'title' => __('Sales period', 'madebyhype-stock-management'),
                 'id' => self::OPTION_PERIOD,
                 'type' => 'select',
                 'default' => self::DEFAULT_PERIOD,
                 'options' => [
-                    '30' => __('Last 30 days', 'madebyhype-stockmanagment'),
-                    '90' => __('Last 90 days', 'madebyhype-stockmanagment'),
-                    '180' => __('Last 180 days', 'madebyhype-stockmanagment'),
-                    '365' => __('Last 365 days', 'madebyhype-stockmanagment'),
-                    'all' => __('All time', 'madebyhype-stockmanagment'),
+                    '30' => __('Last 30 days', 'madebyhype-stock-management'),
+                    '90' => __('Last 90 days', 'madebyhype-stock-management'),
+                    '180' => __('Last 180 days', 'madebyhype-stock-management'),
+                    '365' => __('Last 365 days', 'madebyhype-stock-management'),
+                    'all' => __('All time', 'madebyhype-stock-management'),
                 ],
-                'desc_tip' => __('What "Sold" and "Cover" are counted over.', 'madebyhype-stockmanagment'),
+                'desc_tip' => __('What "Sold" and "Cover" are counted over.', 'madebyhype-stock-management'),
             ],
             [
-                'title' => __('Low stock at', 'madebyhype-stockmanagment'),
+                'title' => __('Low stock at', 'madebyhype-stock-management'),
                 'id' => self::OPTION_LOW_STOCK,
                 'type' => 'number',
                 'default' => '',
@@ -244,44 +244,44 @@ class Settings
                 'custom_attributes' => ['min' => 0, 'step' => 1],
                 'desc' => sprintf(
                     /* translators: %s: WooCommerce's own low-stock threshold, a number */
-                    __('or fewer in stock. An item at or below this is shown as "Low stock" and listed under Needs attention. 0 means no low-stock check. Empty follows WooCommerce\'s own threshold (now %s). A threshold set on a product itself still comes first, unless the check is off.', 'madebyhype-stockmanagment'),
+                    __('or fewer in stock. An item at or below this is shown as "Low stock" and listed under Needs attention. 0 means no low-stock check. Empty follows WooCommerce\'s own threshold (now %s). A threshold set on a product itself still comes first, unless the check is off.', 'madebyhype-stock-management'),
                     (int) get_option('woocommerce_notify_low_stock_amount', 2)
                 ),
             ],
             ['type' => 'sectionend', 'id' => 'madebyhype_stock_list'],
 
             [
-                'title' => __('History', 'madebyhype-stockmanagment'),
+                'title' => __('History', 'madebyhype-stock-management'),
                 'type' => 'title',
                 'id' => 'madebyhype_stock_history',
             ],
             [
-                'title' => __('Keep History for', 'madebyhype-stockmanagment'),
+                'title' => __('Keep History for', 'madebyhype-stock-management'),
                 'id' => self::OPTION_RETENTION,
                 'type' => 'number',
                 'default' => (string) self::DEFAULT_RETENTION_MONTHS,
                 'css' => 'width: 80px;',
                 'custom_attributes' => ['min' => 1, 'max' => 120, 'step' => 1],
-                'desc' => __('months. Older saves are removed once a day, and can then no longer be undone.', 'madebyhype-stockmanagment'),
+                'desc' => __('months. Older saves are removed once a day, and can then no longer be undone.', 'madebyhype-stock-management'),
             ],
             ['type' => 'sectionend', 'id' => 'madebyhype_stock_history'],
 
             [
-                'title' => __('Bulk price change', 'madebyhype-stockmanagment'),
+                'title' => __('Bulk price change', 'madebyhype-stock-management'),
                 'type' => 'title',
                 'id' => 'madebyhype_stock_bulk',
             ],
             [
-                'title' => __('Largest bulk change', 'madebyhype-stockmanagment'),
+                'title' => __('Largest bulk change', 'madebyhype-stock-management'),
                 'id' => self::OPTION_BULK_MAX,
                 'type' => 'number',
                 'default' => (string) self::DEFAULT_BULK_MAX,
                 'css' => 'width: 120px;',
                 'custom_attributes' => ['min' => 100, 'max' => 500000, 'step' => 100],
-                'desc' => __('items. A change that would touch more is refused, with the advice to narrow the list first. Variations count one each.', 'madebyhype-stockmanagment'),
+                'desc' => __('items. A change that would touch more is refused, with the advice to narrow the list first. Variations count one each.', 'madebyhype-stock-management'),
             ],
             [
-                'title' => __('Items per request', 'madebyhype-stockmanagment'),
+                'title' => __('Items per request', 'madebyhype-stock-management'),
                 'id' => self::OPTION_BULK_CHUNK,
                 'type' => 'select',
                 'default' => (string) self::DEFAULT_BULK_CHUNK,
@@ -289,32 +289,32 @@ class Settings
                 // What a request takes on top of WordPress itself was measured on a shop with variations;
                 // the memory is what PHP should be allowed in all, with room for plugins that react to a product being saved
                 'options' => [
-                    '50' => __('50: lightest, the default. About 3 MB and one second per request. PHP memory: 128 MB', 'madebyhype-stockmanagment'),
-                    '100' => __('100: about 5 MB and two seconds per request. PHP memory: 256 MB', 'madebyhype-stockmanagment'),
-                    '250' => __('250: about 15 MB and four seconds per request. PHP memory: 256 MB', 'madebyhype-stockmanagment'),
-                    '500' => __('500: about 27 MB and nine seconds per request. PHP memory: 512 MB', 'madebyhype-stockmanagment'),
-                    '1000' => __('1000: fewest requests. About 52 MB and 17 seconds per request. PHP memory: 512 MB', 'madebyhype-stockmanagment'),
+                    '50' => __('50: lightest, the default. About 3 MB and one second per request. PHP memory: 128 MB', 'madebyhype-stock-management'),
+                    '100' => __('100: about 5 MB and two seconds per request. PHP memory: 256 MB', 'madebyhype-stock-management'),
+                    '250' => __('250: about 15 MB and four seconds per request. PHP memory: 256 MB', 'madebyhype-stock-management'),
+                    '500' => __('500: about 27 MB and nine seconds per request. PHP memory: 512 MB', 'madebyhype-stock-management'),
+                    '1000' => __('1000: fewest requests. About 52 MB and 17 seconds per request. PHP memory: 512 MB', 'madebyhype-stock-management'),
                 ],
                 'desc' => '<br>' . sprintf(
                     /* translators: %s: a memory limit, for example "256M" */
-                    __('A bulk change is sent to the server in slices of this many items. Larger slices mean fewer requests; smaller ones are safer on a server that is short of memory or quick to time out, show progress more often, and stop sooner when you press Stop. The time grows with the size: 500 needs a server that lets a request run for 30 seconds, 1000 for 60. This server allows PHP %s in wp-admin.', 'madebyhype-stockmanagment'),
+                    __('A bulk change is sent to the server in slices of this many items. Larger slices mean fewer requests; smaller ones are safer on a server that is short of memory or quick to time out, show progress more often, and stop sooner when you press Stop. The time grows with the size: 500 needs a server that lets a request run for 30 seconds, 1000 for 60. This server allows PHP %s in wp-admin.', 'madebyhype-stock-management'),
                     '<strong>' . esc_html(self::memory_limit()) . '</strong>'
                 ),
             ],
             ['type' => 'sectionend', 'id' => 'madebyhype_stock_bulk'],
 
             [
-                'title' => __('When the plugin is deleted', 'madebyhype-stockmanagment'),
+                'title' => __('When the plugin is deleted', 'madebyhype-stock-management'),
                 'type' => 'title',
                 'id' => 'madebyhype_stock_delete',
             ],
             [
-                'title' => __('Data', 'madebyhype-stockmanagment'),
+                'title' => __('Data', 'madebyhype-stock-management'),
                 'id' => self::OPTION_KEEP_DATA,
                 'type' => 'checkbox',
                 'default' => 'no',
-                'desc' => __('Keep History and these settings', 'madebyhype-stockmanagment'),
-                'desc_tip' => __('Unticked, deleting the plugin from the Plugins screen removes everything it stored. Products, stock and prices are never touched either way.', 'madebyhype-stockmanagment'),
+                'desc' => __('Keep History and these settings', 'madebyhype-stock-management'),
+                'desc_tip' => __('Unticked, deleting the plugin from the Plugins screen removes everything it stored. Products, stock and prices are never touched either way.', 'madebyhype-stock-management'),
             ],
             ['type' => 'sectionend', 'id' => 'madebyhype_stock_delete'],
         ];
@@ -340,7 +340,7 @@ class Settings
             }
         }
 
-        return $limit === '-1' ? __('unlimited', 'madebyhype-stockmanagment') : $limit;
+        return $limit === '-1' ? __('unlimited', 'madebyhype-stock-management') : $limit;
     }
 
     /**
@@ -355,7 +355,7 @@ class Settings
             return $links;
         }
 
-        array_unshift($links, '<a href="' . esc_url(self::url()) . '">' . esc_html__('Settings', 'madebyhype-stockmanagment') . '</a>');
+        array_unshift($links, '<a href="' . esc_url(self::url()) . '">' . esc_html__('Settings', 'madebyhype-stock-management') . '</a>');
 
         return $links;
     }

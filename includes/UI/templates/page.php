@@ -19,10 +19,12 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Included from a UIManager method: these are its local variables, not globals.
+
 $tabs = [
-    'all' => __('All stock', 'madebyhype-stockmanagment'),
-    'attention' => __('Needs attention', 'madebyhype-stockmanagment'),
-    'history' => __('History', 'madebyhype-stockmanagment'),
+    'all' => __('All stock', 'madebyhype-stock-management'),
+    'attention' => __('Needs attention', 'madebyhype-stock-management'),
+    'history' => __('History', 'madebyhype-stock-management'),
 ];
 $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
 ?>
@@ -32,11 +34,11 @@ $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
 
     <?php if (!class_exists('WooCommerce')): ?>
         <div class="mbh-notice mbh-notice--error notice notice-error inline">
-            <?php echo self::icon('warning'); ?>
-            <p><strong><?php esc_html_e('WooCommerce is not active!', 'madebyhype-stockmanagment'); ?></strong> <?php esc_html_e('This plugin requires WooCommerce to be installed and activated to display products.', 'madebyhype-stockmanagment'); ?></p>
+            <?php echo wp_kses(self::icon('warning'), self::icon_tags()); ?>
+            <p><strong><?php esc_html_e('WooCommerce is not active!', 'madebyhype-stock-management'); ?></strong> <?php esc_html_e('This plugin requires WooCommerce to be installed and activated to display products.', 'madebyhype-stock-management'); ?></p>
         </div>
     <?php else: ?>
-        <nav class="mbh-tabs" aria-label="<?php esc_attr_e('Stock Management sections', 'madebyhype-stockmanagment'); ?>">
+        <nav class="mbh-tabs" aria-label="<?php esc_attr_e('Stock Management sections', 'madebyhype-stock-management'); ?>">
             <?php foreach ($tabs as $key => $label): ?>
                 <a href="<?php echo esc_url($this->tab_url($key)); ?>" class="mbh-tab<?php echo $key === $tab ? ' is-current' : ''; ?>" data-tab="<?php echo esc_attr($key); ?>"<?php echo $key === $tab ? ' aria-current="page"' : ''; ?>>
                     <?php echo esc_html($label); ?>
@@ -46,7 +48,7 @@ $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
                             <span class="screen-reader-text">
                                 <?php
                                 /* translators: %s: number of items */
-                                echo esc_html($attention_count === null ? '' : sprintf(_n('%s item', '%s items', $attention_count, 'madebyhype-stockmanagment'), number_format_i18n($attention_count)));
+                                echo esc_html($attention_count === null ? '' : sprintf(_n('%s item', '%s items', $attention_count, 'madebyhype-stock-management'), number_format_i18n($attention_count)));
                                 ?>
                             </span>
                         </span>
@@ -55,7 +57,7 @@ $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
             <?php endforeach; ?>
             <?php // The plugin's settings live with WooCommerce's own, under Products ?>
             <?php if (current_user_can('manage_woocommerce')): ?>
-                <a href="<?php echo esc_url(\MadeByHypeStockmanagment\Settings::url()); ?>" class="mbh-tab mbh-tab--settings"><?php esc_html_e('Settings', 'madebyhype-stockmanagment'); ?></a>
+                <a href="<?php echo esc_url(\MadeByHypeStockmanagment\Settings::url()); ?>" class="mbh-tab mbh-tab--settings"><?php esc_html_e('Settings', 'madebyhype-stock-management'); ?></a>
             <?php endif; ?>
         </nav>
 
@@ -63,8 +65,8 @@ $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
 
         <noscript>
             <div class="mbh-notice mbh-notice--warning notice notice-warning inline">
-                <?php echo self::icon('warning'); ?>
-                <p><?php esc_html_e('This screen needs JavaScript to save changes, open variations and show History.', 'madebyhype-stockmanagment'); ?></p>
+                <?php echo wp_kses(self::icon('warning'), self::icon_tags()); ?>
+                <p><?php esc_html_e('This screen needs JavaScript to save changes, open variations and show History.', 'madebyhype-stock-management'); ?></p>
             </div>
         </noscript>
 
@@ -77,17 +79,17 @@ $can_edit = !empty($caps['stock']) || !empty($caps['prices']);
             <?php include __DIR__ . '/toolbar.php'; ?>
 
             <?php if (!$can_edit): ?>
-                <p class="mbh-permission-note"><?php echo self::icon('info'); ?><span><?php esc_html_e('You can view stock here but not change it.', 'madebyhype-stockmanagment'); ?></span></p>
+                <p class="mbh-permission-note"><?php echo wp_kses(self::icon('info'), self::icon_tags()); ?><span><?php esc_html_e('You can view stock here but not change it.', 'madebyhype-stock-management'); ?></span></p>
             <?php elseif (empty($caps['prices'])): ?>
-                <p class="mbh-permission-note"><?php echo self::icon('info'); ?><span><?php esc_html_e('You can change stock here. Prices are read-only for your account.', 'madebyhype-stockmanagment'); ?></span></p>
+                <p class="mbh-permission-note"><?php echo wp_kses(self::icon('info'), self::icon_tags()); ?><span><?php esc_html_e('You can change stock here. Prices are read-only for your account.', 'madebyhype-stock-management'); ?></span></p>
             <?php elseif (empty($caps['stock'])): ?>
-                <p class="mbh-permission-note"><?php echo self::icon('info'); ?><span><?php esc_html_e('You can change prices here. Stock is read-only for your account.', 'madebyhype-stockmanagment'); ?></span></p>
+                <p class="mbh-permission-note"><?php echo wp_kses(self::icon('info'), self::icon_tags()); ?><span><?php esc_html_e('You can change prices here. Stock is read-only for your account.', 'madebyhype-stock-management'); ?></span></p>
             <?php endif; ?>
 
             <div id="mbh-notices" class="mbh-notices" role="status" aria-live="polite">
                 <?php if (!empty($result['error'])): ?>
                     <div class="mbh-notice mbh-notice--error notice notice-error inline">
-                        <?php echo self::icon('warning'); ?>
+                        <?php echo wp_kses(self::icon('warning'), self::icon_tags()); ?>
                         <p><?php echo esc_html($result['error']['message']); ?></p>
                     </div>
                 <?php endif; ?>

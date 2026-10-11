@@ -24,13 +24,15 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Included from a UIManager method: these are its local variables, not globals.
+
 $filter_count = count(array_filter($this->chips(), function ($chip) {
     return $chip['filter'];
 }));
 $period_key = (string) $period['key'];
 $views = [
-    'product' => __('By product', 'madebyhype-stockmanagment'),
-    'sku' => __('By SKU', 'madebyhype-stockmanagment'),
+    'product' => __('By product', 'madebyhype-stock-management'),
+    'sku' => __('By SKU', 'madebyhype-stock-management'),
 ];
 ?>
 <form id="mbh-list-form" class="mbh-get-form mbh-toolbar" method="get" action="<?php echo esc_url(admin_url('edit.php')); ?>" role="search">
@@ -48,14 +50,14 @@ $views = [
     <?php endif; ?>
 
     <div class="mbh-search">
-        <?php echo self::icon('search'); ?>
-        <label class="screen-reader-text" for="mbh-search"><?php esc_html_e('Search name, SKU or ID', 'madebyhype-stockmanagment'); ?></label>
-        <input type="search" id="mbh-search" name="s" value="<?php echo esc_attr($request['search']); ?>" placeholder="<?php esc_attr_e('Search name, SKU or ID', 'madebyhype-stockmanagment'); ?>" autocomplete="off">
-        <button type="submit" class="button mbh-search-button"><?php esc_html_e('Search', 'madebyhype-stockmanagment'); ?></button>
+        <?php echo wp_kses(self::icon('search'), self::icon_tags()); ?>
+        <label class="screen-reader-text" for="mbh-search"><?php esc_html_e('Search name, SKU or ID', 'madebyhype-stock-management'); ?></label>
+        <input type="search" id="mbh-search" name="s" value="<?php echo esc_attr($request['search']); ?>" placeholder="<?php esc_attr_e('Search name, SKU or ID', 'madebyhype-stock-management'); ?>" autocomplete="off">
+        <button type="submit" class="button mbh-search-button"><?php esc_html_e('Search', 'madebyhype-stock-management'); ?></button>
     </div>
 
     <?php if ($tab === 'all'): ?>
-        <span class="mbh-seg mbh-view-switch" id="mbh-view-switch" role="group" aria-label="<?php esc_attr_e('View', 'madebyhype-stockmanagment'); ?>">
+        <span class="mbh-seg mbh-view-switch" id="mbh-view-switch" role="group" aria-label="<?php esc_attr_e('View', 'madebyhype-stock-management'); ?>">
             <?php foreach ($views as $key => $label): ?>
                 <a href="<?php echo esc_url($this->url(['view' => $key === 'product' ? null : $key])); ?>" data-nav="view-<?php echo esc_attr($key); ?>"<?php echo $key === $view ? ' class="is-current" aria-current="true"' : ''; ?>><?php echo esc_html($label); ?></a>
             <?php endforeach; ?>
@@ -64,26 +66,26 @@ $views = [
 
     <?php if ($list): ?>
     <button type="button" class="button mbh-filters-toggle" id="mbh-filters-toggle" aria-expanded="false" aria-controls="mbh-filters" aria-haspopup="dialog">
-        <?php echo self::icon('filter'); ?>
-        <span><?php esc_html_e('Filters', 'madebyhype-stockmanagment'); ?></span>
+        <?php echo wp_kses(self::icon('filter'), self::icon_tags()); ?>
+        <span><?php esc_html_e('Filters', 'madebyhype-stock-management'); ?></span>
         <span class="mbh-dot" id="mbh-filters-dot" aria-hidden="true"<?php echo $filter_count ? '' : ' hidden'; ?>><?php echo esc_html($filter_count ? number_format_i18n($filter_count) : ''); ?></span>
         <span class="screen-reader-text" id="mbh-filters-dot-text">
             <?php
             /* translators: %d: number of filters that are switched on */
-            echo esc_html($filter_count ? sprintf(_n('%d filter is on', '%d filters are on', $filter_count, 'madebyhype-stockmanagment'), $filter_count) : '');
+            echo esc_html($filter_count ? sprintf(_n('%d filter is on', '%d filters are on', $filter_count, 'madebyhype-stock-management'), $filter_count) : '');
             ?>
         </span>
     </button>
     <?php if ($tab === 'all' && !empty($caps['prices'])): ?>
     <button type="button" class="button mbh-bulk-toggle" id="mbh-bulk-price" aria-haspopup="dialog">
-        <?php echo self::icon('price'); ?>
+        <?php echo wp_kses(self::icon('price'), self::icon_tags()); ?>
         <span><?php echo esc_html($this->t('bulkButton')); ?></span>
     </button>
     <?php endif; ?>
     <?php endif; ?>
 
     <span class="mbh-period">
-        <label for="mbh-period"><?php esc_html_e('Sold in', 'madebyhype-stockmanagment'); ?></label>
+        <label for="mbh-period"><?php esc_html_e('Sold in', 'madebyhype-stock-management'); ?></label>
         <select id="mbh-period" class="mbh-select" name="period" data-current="<?php echo esc_attr($period_key); ?>" data-default="<?php echo esc_attr(\MadeByHypeStockmanagment\Settings::period()); ?>">
             <?php foreach ($this->period_options() as $key => $label): ?>
                 <option value="<?php echo esc_attr($key); ?>"<?php selected($period_key, (string) $key); ?>><?php echo esc_html($label); ?></option>
@@ -91,12 +93,12 @@ $views = [
         </select>
 
         <span id="mbh-period-custom" class="mbh-period-custom"<?php echo $period_key === 'custom' ? '' : ' hidden'; ?>>
-            <label class="screen-reader-text" for="mbh-period-start"><?php esc_html_e('First day of the sales period', 'madebyhype-stockmanagment'); ?></label>
+            <label class="screen-reader-text" for="mbh-period-start"><?php esc_html_e('First day of the sales period', 'madebyhype-stock-management'); ?></label>
             <input type="date" id="mbh-period-start" name="start_date" value="<?php echo esc_attr($period_key === 'custom' ? $period['start_date'] : ''); ?>">
             <span aria-hidden="true"><?php echo esc_html($this->t('rangeTo')); ?></span>
-            <label class="screen-reader-text" for="mbh-period-end"><?php esc_html_e('Last day of the sales period', 'madebyhype-stockmanagment'); ?></label>
+            <label class="screen-reader-text" for="mbh-period-end"><?php esc_html_e('Last day of the sales period', 'madebyhype-stock-management'); ?></label>
             <input type="date" id="mbh-period-end" name="end_date" value="<?php echo esc_attr($period_key === 'custom' ? $period['end_date'] : ''); ?>">
-            <button type="submit" class="button" id="mbh-period-apply"><?php esc_html_e('Apply', 'madebyhype-stockmanagment'); ?></button>
+            <button type="submit" class="button" id="mbh-period-apply"><?php esc_html_e('Apply', 'madebyhype-stock-management'); ?></button>
         </span>
     </span>
 </form>

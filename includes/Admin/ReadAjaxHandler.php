@@ -64,7 +64,7 @@ class ReadAjaxHandler
         if (!Capabilities::can_view()) {
             wp_send_json_error([
                 'code' => 'forbidden',
-                'message' => __('You do not have permission to view stock.', 'madebyhype-stockmanagment'),
+                'message' => __('You do not have permission to view stock.', 'madebyhype-stock-management'),
             ], 403);
             return;
         }
@@ -109,7 +109,7 @@ class ReadAjaxHandler
         if (!Capabilities::can_view()) {
             wp_send_json_error([
                 'code' => 'forbidden',
-                'message' => __('You do not have permission to view stock.', 'madebyhype-stockmanagment'),
+                'message' => __('You do not have permission to view stock.', 'madebyhype-stock-management'),
             ], 403);
             return;
         }
@@ -120,7 +120,7 @@ class ReadAjaxHandler
         if ($query === null || strlen($query) > self::MAX_QUERY_LENGTH) {
             wp_send_json_error([
                 'code' => 'invalid_request',
-                'message' => __('The list that was asked for could not be read.', 'madebyhype-stockmanagment'),
+                'message' => __('The list that was asked for could not be read.', 'madebyhype-stock-management'),
             ], 400);
             return;
         }
@@ -138,7 +138,7 @@ class ReadAjaxHandler
         if ($parsed['tab'] === 'history') {
             wp_send_json_error([
                 'code' => 'invalid_request',
-                'message' => __('The list that was asked for could not be read.', 'madebyhype-stockmanagment'),
+                'message' => __('The list that was asked for could not be read.', 'madebyhype-stock-management'),
             ], 400);
             return;
         }
@@ -200,7 +200,7 @@ class ReadAjaxHandler
         if (!Capabilities::can_view()) {
             wp_send_json_error([
                 'code' => 'forbidden',
-                'message' => __('You do not have permission to view stock.', 'madebyhype-stockmanagment'),
+                'message' => __('You do not have permission to view stock.', 'madebyhype-stock-management'),
             ], 403);
             return;
         }
@@ -246,7 +246,7 @@ class ReadAjaxHandler
         if (!Capabilities::can_view()) {
             wp_send_json_error([
                 'code' => 'forbidden',
-                'message' => __('You do not have permission to view stock.', 'madebyhype-stockmanagment'),
+                'message' => __('You do not have permission to view stock.', 'madebyhype-stock-management'),
             ], 403);
             return;
         }
@@ -257,7 +257,7 @@ class ReadAjaxHandler
         if ($query === null || strlen($query) > self::MAX_QUERY_LENGTH) {
             wp_send_json_error([
                 'code' => 'invalid_request',
-                'message' => __('The list that was asked for could not be read.', 'madebyhype-stockmanagment'),
+                'message' => __('The list that was asked for could not be read.', 'madebyhype-stock-management'),
             ], 400);
             return;
         }
@@ -274,7 +274,7 @@ class ReadAjaxHandler
         if ($parsed['tab'] === 'history') {
             wp_send_json_error([
                 'code' => 'invalid_request',
-                'message' => __('The list that was asked for could not be read.', 'madebyhype-stockmanagment'),
+                'message' => __('The list that was asked for could not be read.', 'madebyhype-stock-management'),
             ], 400);
             return;
         }
@@ -312,7 +312,7 @@ class ReadAjaxHandler
         if (!Capabilities::can_view()) {
             wp_send_json_error([
                 'code' => 'forbidden',
-                'message' => __('You do not have permission to view stock.', 'madebyhype-stockmanagment'),
+                'message' => __('You do not have permission to view stock.', 'madebyhype-stock-management'),
             ], 403);
             return;
         }
@@ -323,7 +323,7 @@ class ReadAjaxHandler
         if (!$product_id) {
             wp_send_json_error([
                 'code' => 'invalid_request',
-                'message' => __('No product was given.', 'madebyhype-stockmanagment'),
+                'message' => __('No product was given.', 'madebyhype-stock-management'),
             ], 400);
             return;
         }
@@ -373,7 +373,7 @@ class ReadAjaxHandler
         if (!Capabilities::can_view()) {
             wp_send_json_error([
                 'code' => 'forbidden',
-                'message' => __('You do not have permission to view stock.', 'madebyhype-stockmanagment'),
+                'message' => __('You do not have permission to view stock.', 'madebyhype-stock-management'),
             ], 403);
             return;
         }
@@ -387,8 +387,8 @@ class ReadAjaxHandler
             wp_send_json_error([
                 'code' => 'invalid_request',
                 'message' => !$ids
-                    ? __('No product was given.', 'madebyhype-stockmanagment')
-                    : __('Too many products were asked for at once.', 'madebyhype-stockmanagment'),
+                    ? __('No product was given.', 'madebyhype-stock-management')
+                    : __('Too many products were asked for at once.', 'madebyhype-stock-management'),
             ], 400);
             return;
         }

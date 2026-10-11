@@ -47,7 +47,7 @@ A WooCommerce plugin for editing stock and prices in one screen: a fast, searcha
 
 ## Requirements
 
-- WordPress 5.0 or higher
+- WordPress 5.3 or higher
 - WooCommerce (must be active)
 - PHP 7.4 or higher
 
@@ -60,11 +60,7 @@ A WooCommerce plugin for editing stock and prices in one screen: a fast, searcha
 
 ## Updates
 
-From 1.2.1 on the plugin updates itself from the [releases](https://github.com/ombicen/madebyhype-stockmanagment/releases) of this repository: a new release shows under **Dashboard → Updates** and on the **Plugins** screen, with its release notes under "View details", and automatic updates can be switched on there. WordPress looks for updates about twice a day; **Check again** on the Updates screen looks at once.
-
-An installation that is a git working copy (it has a `.git` folder) is never offered an update: update it with git.
-
-When updating by copying files instead, replace the whole plugin folder rather than copying over it, and clear the server's PHP cache if the screen does not change.
+From 1.4.0 on the plugin is updated through WordPress.org, like any plugin from the directory. Versions 1.2.1 to 1.3.2 updated themselves from the releases of this repository; that updater is gone, because WordPress.org does not allow it.
 
 ## Settings
 
@@ -89,7 +85,6 @@ madebyhype-stockmanagment/
 ├── uninstall.php                   # Removes the plugin's tables and options on delete
 ├── includes/
 │   ├── Plugin.php                  # Wires the parts together
-│   ├── Updater.php                 # Updates from the releases on GitHub
 │   ├── Settings.php                # The settings and their page under WooCommerce > Settings > Products
 │   ├── Capabilities.php            # What the current user may do
 │   ├── Admin/
@@ -119,7 +114,7 @@ Products are written through WooCommerce product objects only, and every write i
 
 ## Translations
 
-All strings are translatable (text domain `madebyhype-stockmanagment`). The template in `languages/` is not yet regenerated for 1.2.0.
+All strings are translatable (text domain `madebyhype-stock-management`). The template is in `languages/`.
 
 ## Changelog
 

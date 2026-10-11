@@ -41,8 +41,8 @@ class AdminPage
     {
         $hook_suffix = add_submenu_page(
             'edit.php?post_type=product', // Parent slug (WooCommerce Products)
-            __('Stock Management', 'madebyhype-stockmanagment'), // Page title
-            __('Stock Management', 'madebyhype-stockmanagment'), // Menu title
+            __('Stock Management', 'madebyhype-stock-management'), // Page title
+            __('Stock Management', 'madebyhype-stock-management'), // Menu title
             Capabilities::VIEW, // Capability required to see the screen
             self::PAGE_SLUG, // Menu slug
             [$this, 'render_admin_page'] // Callback function
@@ -275,6 +275,7 @@ class AdminPage
      */
     public function render_admin_page()
     {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Says which list to show (search, filters, page). Nothing is changed.
         $request = $this->parse_request($_GET);
 
         // The period every link and the variations call carry, also on History

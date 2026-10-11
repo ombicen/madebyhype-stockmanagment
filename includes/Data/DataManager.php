@@ -6,6 +6,8 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- The list query is put together from parts. A part is either fixed SQL written in this class (table names, aliases, column expressions) or was made by $wpdb->prepare() or prepare_in(); nothing from the request is written into a query string as it came.
+
 /**
  * Read path of the stock screen: which rows a list holds, in which order,
  * and what each row says about its stock and prices.
@@ -418,7 +420,7 @@ class DataManager
 
         $post = $parent_id ? get_post($parent_id) : null;
         if (!$post || $post->post_type !== 'product' || $post->post_status === 'trash') {
-            $result['error'] = ['code' => 'not_found', 'message' => __('This product no longer exists.', 'madebyhype-stockmanagment')];
+            $result['error'] = ['code' => 'not_found', 'message' => __('This product no longer exists.', 'madebyhype-stock-management')];
             return $result;
         }
 
@@ -427,13 +429,13 @@ class DataManager
 
             $parents = $this->hydrate_rows([$parent_id], $result['period'], $opts);
             if (!$parents) {
-                $result['error'] = ['code' => 'not_found', 'message' => __('This product no longer exists.', 'madebyhype-stockmanagment')];
+                $result['error'] = ['code' => 'not_found', 'message' => __('This product no longer exists.', 'madebyhype-stock-management')];
                 return $result;
             }
             $result['parent'] = $parents[0];
 
             if (!in_array($parents[0]['type'], self::VARIABLE_TYPES, true)) {
-                $result['error'] = ['code' => 'not_variable', 'message' => __('This product has no variations.', 'madebyhype-stockmanagment')];
+                $result['error'] = ['code' => 'not_variable', 'message' => __('This product has no variations.', 'madebyhype-stock-management')];
                 return $result;
             }
 
@@ -986,6 +988,7 @@ class DataManager
             $meta_key = 'attribute_' . $taxonomy;
 
             $own_value = $slugs
+                // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- The IN list was made by prepare_in() and holds no placeholder; one value is passed for the one %s.
                 ? $wpdb->prepare(
                     "EXISTS (SELECT 1 FROM {$wpdb->postmeta} am WHERE am.post_id = p.ID AND am.meta_key = %s AND am.meta_value IN (" . $this->prepare_in($slugs, '%s') . '))',
                     $meta_key
@@ -1269,6 +1272,7 @@ class DataManager
 
         $values = array_values($values);
 
+        // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- The query is the placeholders: one $format for each value.
         return $wpdb->prepare(implode(',', array_fill(0, count($values), $format)), ...$values);
     }
 
@@ -1304,6 +1308,7 @@ class DataManager
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- The IN list was made by prepare_in() and holds no placeholder; one value is passed for the one %s.
         return $wpdb->prepare(
             "EXISTS (SELECT 1 FROM {$wpdb->term_relationships} tr"
             . " INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id"
@@ -2223,6 +2228,7 @@ class DataManager
         $wpdb->suppress_errors($suppressed);
 
         if ($error !== '') {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Caught in this class and written to the error log; never printed.
             throw new \RuntimeException($error);
         }
 
@@ -2235,11 +2241,12 @@ class DataManager
 
     private function failed($result, $e)
     {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- A failure the site owner needs in the error log; not debug output.
         error_log('MadeByHype Stock Management - list query error: ' . $e->getMessage());
 
         $result['error'] = [
             'code' => 'db_error',
-            'message' => __('The product list could not be loaded. Reload the page. If this keeps happening, tell your site administrator.', 'madebyhype-stockmanagment'),
+            'message' => __('The product list could not be loaded. Reload the page. If this keeps happening, tell your site administrator.', 'madebyhype-stock-management'),
         ];
 
         return $result;

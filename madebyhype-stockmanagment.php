@@ -4,22 +4,20 @@
  * Plugin Name: MadeByHype Stock Management
  * Plugin URI: https://github.com/ombicen/madebyhype-stockmanagment
  * Description: Advanced WooCommerce stock management plugin with version control, bulk editing, and comprehensive reporting. Features include real-time stock tracking, price management, variation support, and detailed sales analytics with customizable date filters.
- * Version: 1.3.2
- * Requires at least: 5.0
- * Tested up to: 6.4
+ * Version: 1.4.0
+ * Requires at least: 5.3
+ * Tested up to: 7.1
  * Requires PHP: 7.4
  * Requires Plugins: woocommerce
  * Author: MadebyHype
  * Author URI: https://madebyhype.se/
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: madebyhype-stockmanagment
+ * Text Domain: madebyhype-stock-management
  * Domain Path: /languages
- * Network: false
- * Update URI: https://github.com/ombicen/madebyhype-stockmanagment
  * 
  * WC requires at least: 6.0
- * WC tested up to: 9.8.5
+ * WC tested up to: 11.2
  * 
  * @package MadeByHypeStockmanagment
  * @author MadebyHype

@@ -205,16 +205,16 @@ class WriteService
         $after_item = max(0, (int) $step['after_item']);
 
         if (!$this->can('undo')) {
-            return new \WP_Error('forbidden', __('You do not have permission to undo saves.', 'madebyhype-stockmanagment'));
+            return new \WP_Error('forbidden', __('You do not have permission to undo saves.', 'madebyhype-stock-management'));
         }
 
         $batch = $this->log->get_batch((int) $batch_id);
         if (!$batch) {
-            return new \WP_Error('not_found', __('This save is no longer in History.', 'madebyhype-stockmanagment'));
+            return new \WP_Error('not_found', __('This save is no longer in History.', 'madebyhype-stock-management'));
         }
 
         if ($batch['kind'] !== ChangeLog::KIND_SAVE) {
-            return new \WP_Error('not_undoable', __('An undo cannot be undone.', 'madebyhype-stockmanagment'));
+            return new \WP_Error('not_undoable', __('An undo cannot be undone.', 'madebyhype-stock-management'));
         }
 
         $counts = $this->log->count_requested($batch['id']);
@@ -222,8 +222,8 @@ class WriteService
         // A later step may find nothing left in force: the earlier steps undid it
         if ($counts['open'] === 0 && $after_item === 0) {
             return $counts['undone'] > 0
-                ? new \WP_Error('already_undone', __('This save has already been undone.', 'madebyhype-stockmanagment'))
-                : new \WP_Error('nothing_to_undo', __('Nothing in this save can be undone.', 'madebyhype-stockmanagment'));
+                ? new \WP_Error('already_undone', __('This save has already been undone.', 'madebyhype-stock-management'))
+                : new \WP_Error('nothing_to_undo', __('Nothing in this save can be undone.', 'madebyhype-stock-management'));
         }
 
         $run = [
@@ -244,7 +244,7 @@ class WriteService
                 || (int) $earlier['undoes_batch_id'] !== (int) $batch['id']
                 || (int) $earlier['user_id'] !== get_current_user_id()
             ) {
-                return new \WP_Error('invalid_step', __('This undo could not be continued. Open History to see how far it got.', 'madebyhype-stockmanagment'));
+                return new \WP_Error('invalid_step', __('This undo could not be continued. Open History to see how far it got.', 'madebyhype-stock-management'));
             }
 
             $run['batch_id'] = (int) $earlier['id'];
@@ -286,15 +286,15 @@ class WriteService
         }));
 
         if ($undo === 0) {
-            $message = __('Nothing in this save can be undone now.', 'madebyhype-stockmanagment');
+            $message = __('Nothing in this save can be undone now.', 'madebyhype-stock-management');
         } elseif ($dry_run) {
             $message = '';
         } elseif ($undo === $total) {
             /* translators: %d: number of changes */
-            $message = sprintf(_n('Undid %d change.', 'Undid %d changes.', $undo, 'madebyhype-stockmanagment'), $undo);
+            $message = sprintf(_n('Undid %d change.', 'Undid %d changes.', $undo, 'madebyhype-stock-management'), $undo);
         } else {
             /* translators: 1: changes undone, 2: changes in the save, 3: changes skipped */
-            $message = sprintf(__('Undid %1$d of %2$d changes. %3$d skipped.', 'madebyhype-stockmanagment'), $undo, $total, $total - $undo);
+            $message = sprintf(__('Undid %1$d of %2$d changes. %3$d skipped.', 'madebyhype-stock-management'), $undo, $total, $total - $undo);
         }
 
         return [
@@ -410,7 +410,7 @@ class WriteService
             // Limit batch size to prevent abuse and timeouts
             if (count($items) > self::MAX_ITEMS_PER_BUCKET) {
                 /* translators: %d: maximum number of items */
-                return new \WP_Error('batch_too_large', sprintf(__('Batch size exceeds maximum allowed (%d items)', 'madebyhype-stockmanagment'), self::MAX_ITEMS_PER_BUCKET));
+                return new \WP_Error('batch_too_large', sprintf(__('Batch size exceeds maximum allowed (%d items)', 'madebyhype-stock-management'), self::MAX_ITEMS_PER_BUCKET));
             }
 
             foreach ($items as $id => $fields) {
@@ -419,7 +419,7 @@ class WriteService
         }
 
         if (empty($entries)) {
-            return new \WP_Error('empty_request', __('No valid data provided', 'madebyhype-stockmanagment'));
+            return new \WP_Error('empty_request', __('No valid data provided', 'madebyhype-stock-management'));
         }
 
         return $entries;
@@ -455,7 +455,7 @@ class WriteService
         }
 
         if (!is_string($request['save_token']) || !preg_match('/^[A-Za-z0-9_-]{8,64}$/', $request['save_token'])) {
-            return new \WP_Error('invalid_save_token', __('Invalid save token', 'madebyhype-stockmanagment'));
+            return new \WP_Error('invalid_save_token', __('Invalid save token', 'madebyhype-stock-management'));
         }
 
         $run['save_token'] = $request['save_token'];
@@ -487,7 +487,7 @@ class WriteService
         $batch = $this->log->find_batch_by_token(get_current_user_id(), $run['save_token']);
 
         if ($batch && ($batch['kind'] !== ChangeLog::KIND_SAVE || $batch['source'] !== $run['source'])) {
-            return new \WP_Error('invalid_save_token', __('Invalid save token', 'madebyhype-stockmanagment'));
+            return new \WP_Error('invalid_save_token', __('Invalid save token', 'madebyhype-stock-management'));
         }
 
         return $batch;
@@ -567,17 +567,17 @@ class WriteService
         $id = $entry['id'];
 
         if ($id <= 0) {
-            return $this->item_failure($id, 'invalid_id', __('Invalid item id.', 'madebyhype-stockmanagment'));
+            return $this->item_failure($id, 'invalid_id', __('Invalid item id.', 'madebyhype-stock-management'));
         }
 
         if (!is_array($entry['fields']) || empty($entry['fields'])) {
-            return $this->item_failure($id, 'invalid_fields', __('Nothing to save for this item.', 'madebyhype-stockmanagment'));
+            return $this->item_failure($id, 'invalid_fields', __('Nothing to save for this item.', 'madebyhype-stock-management'));
         }
 
         // The same id twice in one request: the second would be judged against
         // a product the first has just changed, and could not be logged
         if (isset($run['handled'][$id])) {
-            return $this->item_failure($id, 'duplicate_item', __('This item was sent twice in one request. Only the first was processed.', 'madebyhype-stockmanagment'));
+            return $this->item_failure($id, 'duplicate_item', __('This item was sent twice in one request. Only the first was processed.', 'madebyhype-stock-management'));
         }
         $run['handled'][$id] = true;
 
@@ -585,7 +585,7 @@ class WriteService
 
         $item = \wc_get_product($id);
         if (!$item) {
-            $message = self::not_saved(__('This product no longer exists.', 'madebyhype-stockmanagment'));
+            $message = self::not_saved(__('This product no longer exists.', 'madebyhype-stock-management'));
             $fields = [];
 
             foreach (array_keys($input['values']) as $field) {
@@ -602,7 +602,7 @@ class WriteService
         // An earlier request of this save died while writing this item. Whether
         // the product changed is unknown, so nothing more is written to it.
         if (in_array(ChangeLog::STATUS_PENDING, wp_list_pluck($stored, 'status'), true)) {
-            $message = __('An earlier attempt to save this item did not finish, so it was not sent again. Reload the page to see its current values.', 'madebyhype-stockmanagment');
+            $message = __('An earlier attempt to save this item did not finish, so it was not sent again. Reload the page to see its current values.', 'madebyhype-stock-management');
             $fields = [];
 
             foreach (array_keys($input['values']) as $field) {
@@ -675,7 +675,7 @@ class WriteService
 
         foreach (array_keys($input['values']) as $field) {
             if (!in_array($field, self::REQUEST_FIELDS, true)) {
-                $fields[$field] = $this->field_result('refused', 'unknown_field', self::not_saved(__('This field cannot be edited here.', 'madebyhype-stockmanagment')));
+                $fields[$field] = $this->field_result('refused', 'unknown_field', self::not_saved(__('This field cannot be edited here.', 'madebyhype-stock-management')));
             }
         }
 
@@ -699,8 +699,8 @@ class WriteService
 
             if (!$this->can($is_price ? 'prices' : 'stock')) {
                 $sentence = $is_price
-                    ? __('You do not have permission to change prices.', 'madebyhype-stockmanagment')
-                    : __('You do not have permission to change stock.', 'madebyhype-stockmanagment');
+                    ? __('You do not have permission to change prices.', 'madebyhype-stock-management')
+                    : __('You do not have permission to change stock.', 'madebyhype-stock-management');
                 $fields[$field] = $this->field_result('refused', 'forbidden', self::not_saved($sentence), null, $seen, $current);
                 continue;
             }
@@ -715,7 +715,7 @@ class WriteService
             }
 
             if ($ambiguous && !$is_price && $field !== 'stock_status') {
-                $fields[$field] = $this->field_result('refused', 'invalid_value', self::not_saved(__('Send either a starting quantity or a stock change for one product, not both.', 'madebyhype-stockmanagment')), null, $seen, $current);
+                $fields[$field] = $this->field_result('refused', 'invalid_value', self::not_saved(__('Send either a starting quantity or a stock change for one product, not both.', 'madebyhype-stock-management')), null, $seen, $current);
                 continue;
             }
 
@@ -727,7 +727,7 @@ class WriteService
             $value = $clean['value'];
 
             if ($seen === false) {
-                $fields[$field] = $this->field_result('refused', 'invalid_value', self::not_saved(__('Invalid value.', 'madebyhype-stockmanagment')), $value, null, $current);
+                $fields[$field] = $this->field_result('refused', 'invalid_value', self::not_saved(__('Invalid value.', 'madebyhype-stock-management')), $value, null, $current);
                 continue;
             }
 
@@ -769,7 +769,7 @@ class WriteService
             }
 
             /* translators: %s: regular price */
-            $sentence = sprintf(__('Sale price must be lower than the regular price (%s).', 'madebyhype-stockmanagment'), self::display_value('regular_price', $regular));
+            $sentence = sprintf(__('Sale price must be lower than the regular price (%s).', 'madebyhype-stock-management'), self::display_value('regular_price', $regular));
             $fields[$field] = $this->field_result('refused', 'invalid_value', self::not_saved($sentence), $intent[$field], $accepted[$field]['seen'], $before[$field]);
             unset($intent[$field], $typed[$field], $accepted[$field]);
         }
@@ -798,14 +798,14 @@ class WriteService
 
         if ($seen === null) {
             if ($current !== null && $stored == $value) {
-                return ['result' => $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stockmanagment'), $value, null, $current)];
+                return ['result' => $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stock-management'), $value, null, $current)];
             }
 
             return ['intent' => ['stock_set' => $value]];
         }
 
         if ($seen !== '' && !preg_match('/^-?\d+$/', $seen)) {
-            return ['result' => $this->field_result('refused', 'invalid_value', self::not_saved(__('Invalid value.', 'madebyhype-stockmanagment')), $value, $seen, $current)];
+            return ['result' => $this->field_result('refused', 'invalid_value', self::not_saved(__('Invalid value.', 'madebyhype-stock-management')), $value, $seen, $current)];
         }
 
         $delta = $value - (int) $seen;
@@ -814,9 +814,9 @@ class WriteService
         if ($result < 0) {
             $sentence = $delta < 0
                 /* translators: 1: stock the user saw, 2: stock now, 3: the change, with its sign */
-                ? __('Stock changed from %1$s to %2$s since you loaded the page. Your change of %3$s would take it below zero.', 'madebyhype-stockmanagment')
+                ? __('Stock changed from %1$s to %2$s since you loaded the page. Your change of %3$s would take it below zero.', 'madebyhype-stock-management')
                 /* translators: 1: stock the user saw, 2: stock now, 3: the change, with its sign */
-                : __('Stock changed from %1$s to %2$s since you loaded the page. Your change of %3$s would still leave it below zero.', 'madebyhype-stockmanagment');
+                : __('Stock changed from %1$s to %2$s since you loaded the page. Your change of %3$s would still leave it below zero.', 'madebyhype-stock-management');
 
             return ['result' => $this->field_result(
                 'conflict',
@@ -835,7 +835,7 @@ class WriteService
         }
 
         if ($delta == 0) {
-            return ['result' => $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stockmanagment'), $value, $seen, $current)];
+            return ['result' => $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stock-management'), $value, $seen, $current)];
         }
 
         return ['intent' => ['stock_delta' => $delta]];
@@ -853,7 +853,7 @@ class WriteService
         $current = $before['stock_status'];
 
         if ($value === $current) {
-            return ['result' => $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stockmanagment'), $value, $seen, $current)];
+            return ['result' => $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stock-management'), $value, $seen, $current)];
         }
 
         if ($seen !== null && $seen !== $current) {
@@ -875,14 +875,14 @@ class WriteService
         $current = $before[$field];
 
         if (self::same_price($value, $current)) {
-            return ['result' => $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stockmanagment'), $value, $seen, $current)];
+            return ['result' => $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stock-management'), $value, $seen, $current)];
         }
 
         if ($seen !== null) {
             $saw = $this->parse_price($seen);
 
             if ($saw === false) {
-                return ['result' => $this->field_result('refused', 'invalid_value', self::not_saved(__('Invalid value.', 'madebyhype-stockmanagment')), $value, $seen, $current)];
+                return ['result' => $this->field_result('refused', 'invalid_value', self::not_saved(__('Invalid value.', 'madebyhype-stock-management')), $value, $seen, $current)];
             }
 
             if (!self::same_price($saw, $current)) {
@@ -891,7 +891,7 @@ class WriteService
         }
 
         if ($value !== '' && (float) $value == 0 && !$confirmed) {
-            return ['result' => $this->field_result('refused', 'zero_price_unconfirmed', self::not_saved(__('A price of 0 must be confirmed before saving.', 'madebyhype-stockmanagment')), $value, $seen, $current)];
+            return ['result' => $this->field_result('refused', 'zero_price_unconfirmed', self::not_saved(__('A price of 0 must be confirmed before saving.', 'madebyhype-stock-management')), $value, $seen, $current)];
         }
 
         return ['intent' => [$field => $value]];
@@ -903,9 +903,9 @@ class WriteService
      */
     private function value_conflict($field, $value, $seen, $saw, $current)
     {
-        /* translators: 1: field name, 2: value the user saw, 3: value now */
         $sentence = sprintf(
-            __('%1$s was changed from %2$s to %3$s since you loaded the page.', 'madebyhype-stockmanagment'),
+            /* translators: 1: field name, 2: value the user saw, 3: value now */
+            __('%1$s was changed from %2$s to %3$s since you loaded the page.', 'madebyhype-stock-management'),
             self::field_label($field),
             self::display_value($field, $saw),
             self::display_value($field, $current)
@@ -929,7 +929,7 @@ class WriteService
         // Anything but a plain value is refused. It must never fall through
         // as an empty string, which for a sale price means "end the sale".
         if (!is_scalar($value)) {
-            return ['error' => __('Invalid value.', 'madebyhype-stockmanagment')];
+            return ['error' => __('Invalid value.', 'madebyhype-stock-management')];
         }
 
         $value = trim((string) $value);
@@ -938,12 +938,12 @@ class WriteService
             case 'start_tracking':
             case 'stock_quantity':
                 if (!preg_match('/^\d+(\.0+)?$/', $value)) {
-                    return ['error' => __('Enter a whole number, 0 or more.', 'madebyhype-stockmanagment')];
+                    return ['error' => __('Enter a whole number, 0 or more.', 'madebyhype-stock-management')];
                 }
                 return ['value' => (int) $value];
             case 'stock_status':
                 if (!in_array($value, self::STATUSES, true)) {
-                    return ['error' => __('Unknown stock status.', 'madebyhype-stockmanagment')];
+                    return ['error' => __('Unknown stock status.', 'madebyhype-stock-management')];
                 }
                 return ['value' => $value];
         }
@@ -952,12 +952,12 @@ class WriteService
         if ($value === '') {
             return $field === 'sale_price'
                 ? ['value' => '']
-                : ['error' => __('Enter a regular price.', 'madebyhype-stockmanagment')];
+                : ['error' => __('Enter a regular price.', 'madebyhype-stock-management')];
         }
 
         $price = $this->parse_price($value);
         if ($price === false || (float) $price < 0) {
-            return ['error' => __('Enter a price of 0 or more.', 'madebyhype-stockmanagment')];
+            return ['error' => __('Enter a price of 0 or more.', 'madebyhype-stock-management')];
         }
 
         return ['value' => $price];
@@ -1064,7 +1064,7 @@ class WriteService
 
         if ($claim && !call_user_func($claim)) {
             foreach ($row_ids as $row_id) {
-                $this->log->set_change_status($row_id, ChangeLog::STATUS_SKIPPED, __('Not written: this change was already undone.', 'madebyhype-stockmanagment'));
+                $this->log->set_change_status($row_id, ChangeLog::STATUS_SKIPPED, __('Not written: this change was already undone.', 'madebyhype-stock-management'));
             }
 
             // Whoever got there first has changed the product in the meantime
@@ -1118,7 +1118,7 @@ class WriteService
             if ($field === 'stock_quantity' && $delta) {
                 if ($reversed) {
                     $outcome['rows'][$field] = 'reversed';
-                    $this->log->set_change_status($row_id, ChangeLog::STATUS_SKIPPED, __('Taken back out: the stock had dropped in the meantime and would have gone below zero.', 'madebyhype-stockmanagment'));
+                    $this->log->set_change_status($row_id, ChangeLog::STATUS_SKIPPED, __('Taken back out: the stock had dropped in the meantime and would have gone below zero.', 'madebyhype-stock-management'));
                 } elseif ($adjusted) {
                     // The adjustment is exact even when the stock moved underneath
                     // it: record the value it landed on and the value it started from
@@ -1127,7 +1127,7 @@ class WriteService
                     $this->log->set_change_status($row_id, ChangeLog::STATUS_APPLIED, $error, ['old' => $outcome['old'][$field], 'new' => $after['stock_quantity']]);
                 } else {
                     $outcome['rows'][$field] = 'failed';
-                    $this->log->set_change_status($row_id, ChangeLog::STATUS_FAILED, $error !== '' ? $error : __('WooCommerce did not apply the stock adjustment.', 'madebyhype-stockmanagment'));
+                    $this->log->set_change_status($row_id, ChangeLog::STATUS_FAILED, $error !== '' ? $error : __('WooCommerce did not apply the stock adjustment.', 'madebyhype-stock-management'));
                 }
             } elseif (isset($actual[$field])) {
                 $outcome['rows'][$field] = 'applied';
@@ -1137,17 +1137,18 @@ class WriteService
                 $this->log->set_change_status($row_id, ChangeLog::STATUS_FAILED, $error);
             } else {
                 $outcome['rows'][$field] = 'skipped';
-                $this->log->set_change_status($row_id, ChangeLog::STATUS_SKIPPED, __('The save did not change this value.', 'madebyhype-stockmanagment'));
+                $this->log->set_change_status($row_id, ChangeLog::STATUS_SKIPPED, __('The save did not change this value.', 'madebyhype-stock-management'));
             }
         }
 
         // Anything the write changed beyond the plan is logged as well
         $unplanned = array_diff_key($actual, $row_ids);
         if (!empty($unplanned)) {
-            $this->log->add_changes($run['batch_id'], $log_item, $unplanned, ChangeLog::STATUS_APPLIED, __('Changed during the save, outside the planned edit.', 'madebyhype-stockmanagment'));
+            $this->log->add_changes($run['batch_id'], $log_item, $unplanned, ChangeLog::STATUS_APPLIED, __('Changed during the save, outside the planned edit.', 'madebyhype-stock-management'));
         }
 
         if ($error !== '') {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- A failure the site owner needs in the error log; not debug output.
             error_log('MadeByHype Stock Management - Error while saving item ' . $id . ': ' . $error);
         }
 
@@ -1298,13 +1299,13 @@ class WriteService
         $row = isset($commit['rows'][$log_field]) ? $commit['rows'][$log_field] : null;
 
         if ($commit['state'] === 'log_failed') {
-            return $this->field_result('refused', 'log_failed', self::not_saved(__('The change history could not be written, so this product was not changed.', 'madebyhype-stockmanagment')), $value, $seen, $current);
+            return $this->field_result('refused', 'log_failed', self::not_saved(__('The change history could not be written, so this product was not changed.', 'madebyhype-stock-management')), $value, $seen, $current);
         }
 
         if ($row === 'reversed') {
-            /* translators: 1: stock the user saw, 2: stock now, 3: the change, with its sign */
             $sentence = sprintf(
-                __('Stock changed from %1$s to %2$s since you loaded the page. Your change of %3$s would take it below zero.', 'madebyhype-stockmanagment'),
+                /* translators: 1: stock the user saw, 2: stock now, 3: the change, with its sign */
+                __('Stock changed from %1$s to %2$s since you loaded the page. Your change of %3$s would take it below zero.', 'madebyhype-stock-management'),
                 self::display_value('stock_quantity', $seen === '' ? null : (int) $seen),
                 self::display_value('stock_quantity', $stored),
                 self::signed($value - (int) $seen)
@@ -1315,18 +1316,18 @@ class WriteService
 
         // No row: the product already held the value, so there was nothing to write
         if ($row === null && $commit['state'] !== 'failed') {
-            return $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stockmanagment'), $value, $seen, $stored, $stored);
+            return $this->field_result('saved', 'unchanged', __('No change.', 'madebyhype-stock-management'), $value, $seen, $stored, $stored);
         }
 
         // A change that was planned and is not there afterwards was not saved
         if ($row !== 'applied') {
-            return $this->field_result('refused', 'save_failed', self::not_saved(__('Something went wrong while saving this product. Reload the page to see its current values.', 'madebyhype-stockmanagment')), $value, $seen, $stored, $stored);
+            return $this->field_result('refused', 'save_failed', self::not_saved(__('Something went wrong while saving this product. Reload the page to see its current values.', 'madebyhype-stock-management')), $value, $seen, $stored, $stored);
         }
 
         switch ($field) {
             case 'start_tracking':
                 /* translators: %s: quantity */
-                $message = sprintf(__('Stock tracking started at %s.', 'madebyhype-stockmanagment'), self::display_value('stock_quantity', $stored));
+                $message = sprintf(__('Stock tracking started at %s.', 'madebyhype-stock-management'), self::display_value('stock_quantity', $stored));
                 break;
             case 'stock_quantity':
                 // The value the write started from; it differs from the one the
@@ -1334,9 +1335,9 @@ class WriteService
                 $from = array_key_exists($log_field, $commit['old']) ? $commit['old'][$log_field] : $current;
 
                 if ($seen !== null && $stored != $value) {
-                    /* translators: 1: stored stock, 2: typed stock, 3: stock the user saw, 4: stock found, 5: the change, with its sign, 6: stock found */
                     $message = sprintf(
-                        __('Saved as %1$s, not %2$s. Stock changed from %3$s to %4$s while you were editing, so your change of %5$s was applied to %6$s.', 'madebyhype-stockmanagment'),
+                        /* translators: 1: stored stock, 2: typed stock, 3: stock the user saw, 4: stock found, 5: the change, with its sign, 6: stock found */
+                        __('Saved as %1$s, not %2$s. Stock changed from %3$s to %4$s while you were editing, so your change of %5$s was applied to %6$s.', 'madebyhype-stock-management'),
                         self::display_value('stock_quantity', $stored),
                         self::display_value('stock_quantity', $value),
                         self::display_value('stock_quantity', $seen === '' ? null : (int) $seen),
@@ -1349,18 +1350,18 @@ class WriteService
                 }
 
                 /* translators: %s: quantity */
-                $message = sprintf(__('Stock set to %s.', 'madebyhype-stockmanagment'), self::display_value('stock_quantity', $stored));
+                $message = sprintf(__('Stock set to %s.', 'madebyhype-stock-management'), self::display_value('stock_quantity', $stored));
                 $current = $from;
                 break;
             case 'sale_price':
                 $message = $stored === ''
-                    ? __('Sale ended.', 'madebyhype-stockmanagment')
+                    ? __('Sale ended.', 'madebyhype-stock-management')
                     /* translators: %s: price */
-                    : sprintf(__('Sale price set to %s.', 'madebyhype-stockmanagment'), self::display_value($field, $stored));
+                    : sprintf(__('Sale price set to %s.', 'madebyhype-stock-management'), self::display_value($field, $stored));
                 break;
             default:
                 /* translators: 1: field name, 2: value */
-                $message = sprintf(__('%1$s set to %2$s.', 'madebyhype-stockmanagment'), self::field_label($field), self::display_value($field, $stored));
+                $message = sprintf(__('%1$s set to %2$s.', 'madebyhype-stock-management'), self::field_label($field), self::display_value($field, $stored));
                 break;
         }
 
@@ -1383,7 +1384,7 @@ class WriteService
         // The earlier failure is repeated. Saving again from the screen (a new
         // token) is the way to retry.
         if ($row['status'] === ChangeLog::STATUS_FAILED) {
-            return $this->field_result('refused', 'save_failed', self::not_saved(__('Something went wrong while saving this product. Reload the page to see its current values.', 'madebyhype-stockmanagment')), $value, null, $current);
+            return $this->field_result('refused', 'save_failed', self::not_saved(__('Something went wrong while saving this product. Reload the page to see its current values.', 'madebyhype-stock-management')), $value, null, $current);
         }
 
         // Stock that was stored with another value than typed: the answer the
@@ -1396,9 +1397,9 @@ class WriteService
             $delta = $new - ($old === null ? 0 : $old);
             $seen = $value - $delta;
 
-            /* translators: 1: stored stock, 2: typed stock, 3: stock the user saw, 4: stock found, 5: the change, with its sign, 6: stock found */
             $message = sprintf(
-                __('Saved as %1$s, not %2$s. Stock changed from %3$s to %4$s while you were editing, so your change of %5$s was applied to %6$s.', 'madebyhype-stockmanagment'),
+                /* translators: 1: stored stock, 2: typed stock, 3: stock the user saw, 4: stock found, 5: the change, with its sign, 6: stock found */
+                __('Saved as %1$s, not %2$s. Stock changed from %3$s to %4$s while you were editing, so your change of %5$s was applied to %6$s.', 'madebyhype-stock-management'),
                 self::display_value('stock_quantity', $new),
                 self::display_value('stock_quantity', $value),
                 self::display_value('stock_quantity', $seen),
@@ -1410,7 +1411,7 @@ class WriteService
             return $this->field_result('adjusted', 'stock_adjusted', $message, $value, (string) $seen, $old, $new);
         }
 
-        return $this->field_result('saved', 'already_saved', __('Already saved.', 'madebyhype-stockmanagment'), $value, null, $current);
+        return $this->field_result('saved', 'already_saved', __('Already saved.', 'madebyhype-stock-management'), $value, null, $current);
     }
 
     /**
@@ -1502,7 +1503,7 @@ class WriteService
 
         if ($error !== '' && $written) {
             /* translators: %s: error message */
-            $messages[] = sprintf(__('Saved, but an error was reported afterwards: %s', 'madebyhype-stockmanagment'), $error);
+            $messages[] = sprintf(__('Saved, but an error was reported afterwards: %s', 'madebyhype-stock-management'), $error);
         }
 
         return [
@@ -1626,22 +1627,22 @@ class WriteService
 
             if (!$item) {
                 $change['code'] = 'not_found';
-                $change['message'] = __('This product no longer exists.', 'madebyhype-stockmanagment');
+                $change['message'] = __('This product no longer exists.', 'madebyhype-stock-management');
             } elseif (!$this->can($is_price ? 'prices' : 'stock')) {
                 $change['code'] = 'forbidden';
                 $change['message'] = $is_price
-                    ? __('You do not have permission to change prices.', 'madebyhype-stockmanagment')
-                    : __('You do not have permission to change stock.', 'madebyhype-stockmanagment');
+                    ? __('You do not have permission to change prices.', 'madebyhype-stock-management')
+                    : __('You do not have permission to change stock.', 'madebyhype-stock-management');
             } elseif ($field === 'manage_stock') {
                 if ($now['stock_mode'] !== 'own') {
                     $change['code'] = 'not_tracked';
-                    $change['message'] = __('Already not tracked.', 'madebyhype-stockmanagment');
+                    $change['message'] = __('Already not tracked.', 'madebyhype-stock-management');
                 } else {
                     $intent['stop'] = $status_before;
                     $typed[$field] = false;
                     $change = array_merge($change, ['outcome' => 'undo', 'code' => 'tracking', 'result' => false]);
                     /* translators: %s: quantity */
-                    $change['message'] = sprintf(__('Stops tracking again. The current quantity (%s) is discarded.', 'madebyhype-stockmanagment'), self::display_value('stock_quantity', $now['stock_quantity']));
+                    $change['message'] = sprintf(__('Stops tracking again. The current quantity (%s) is discarded.', 'madebyhype-stock-management'), self::display_value('stock_quantity', $now['stock_quantity']));
                 }
             } elseif ($field === 'stock_quantity') {
                 $delta = ($new === null ? 0 : $new) - ($old === null ? 0 : $old);
@@ -1650,26 +1651,26 @@ class WriteService
 
                 if ($now['stock_mode'] !== 'own') {
                     $change['code'] = 'not_tracked';
-                    $change['message'] = __('This product no longer tracks stock.', 'madebyhype-stockmanagment');
+                    $change['message'] = __('This product no longer tracks stock.', 'madebyhype-stock-management');
                 } elseif ($result < 0) {
                     $change['code'] = 'stock_conflict';
                     $change['message'] = $delta > 0
                         /* translators: 1: units the save added, 2: units in stock now */
-                        ? sprintf(__('This save added %1$s, but only %2$s are left.', 'madebyhype-stockmanagment'), $delta, self::display_value('stock_quantity', $stored))
+                        ? sprintf(__('This save added %1$s, but only %2$s are left.', 'madebyhype-stock-management'), $delta, self::display_value('stock_quantity', $stored))
                         /* translators: %s: units in stock now */
-                        : sprintf(__('Stock is now %s; undoing this change would still leave it below zero.', 'madebyhype-stockmanagment'), self::display_value('stock_quantity', $stored));
+                        : sprintf(__('Stock is now %s; undoing this change would still leave it below zero.', 'madebyhype-stock-management'), self::display_value('stock_quantity', $stored));
                 } else {
                     // An empty quantity cannot be adjusted in SQL: write the result
                     $intent += $current === null ? ['stock_set' => $result] : ['stock_delta' => -$delta];
                     $typed[$field] = $result;
                     $change = array_merge($change, ['outcome' => 'undo', 'code' => 'stock', 'result' => $result]);
                     /* translators: %s: the change the save made, with its sign */
-                    $change['message'] = sprintf(__('Removes the %s from this save.', 'madebyhype-stockmanagment'), self::signed($delta));
+                    $change['message'] = sprintf(__('Removes the %s from this save.', 'madebyhype-stock-management'), self::signed($delta));
 
                     $moved = $stored - ($new === null ? 0 : $new);
                     if ($moved != 0) {
                         /* translators: %s: how much the stock moved since the save, with its sign */
-                        $change['message'] .= ' ' . sprintf(__('Stock has changed by %s since; that is kept.', 'madebyhype-stockmanagment'), self::signed($moved));
+                        $change['message'] .= ' ' . sprintf(__('Stock has changed by %s since; that is kept.', 'madebyhype-stock-management'), self::signed($moved));
                     }
                 }
             } else {
@@ -1679,18 +1680,18 @@ class WriteService
                 if ($code !== '') {
                     $change['code'] = $code;
                     $change['message'] = $code === 'status_follows_stock'
-                        ? __('This product now tracks stock, so its status follows the quantity.', 'madebyhype-stockmanagment')
+                        ? __('This product now tracks stock, so its status follows the quantity.', 'madebyhype-stock-management')
                         : $this->placement_sentence($code, $field, $now, true);
                 } elseif (!$unchanged) {
                     $change['code'] = 'changed_since';
                     /* translators: 1: value the save set, 2: value now */
-                    $change['message'] = sprintf(__('Changed again since this save: it set %1$s, it is now %2$s.', 'madebyhype-stockmanagment'), self::display_value($field, $new), self::display_value($field, $current));
+                    $change['message'] = sprintf(__('Changed again since this save: it set %1$s, it is now %2$s.', 'madebyhype-stock-management'), self::display_value($field, $new), self::display_value($field, $current));
                 } else {
                     $intent[$field] = $old;
                     $typed[$field] = $old;
                     $change = array_merge($change, ['outcome' => 'undo', 'code' => 'restore', 'result' => $old]);
                     /* translators: %s: value the field goes back to */
-                    $change['message'] = sprintf(__('Back to %s.', 'madebyhype-stockmanagment'), self::display_value($field, $old));
+                    $change['message'] = sprintf(__('Back to %s.', 'madebyhype-stock-management'), self::display_value($field, $old));
                 }
             }
 
@@ -1709,7 +1710,7 @@ class WriteService
             unset($intent[$field], $typed[$field]);
             $changes[$field] = array_merge($changes[$field], ['outcome' => 'skip', 'code' => 'invalid_value', 'result' => $changes[$field]['current']]);
             /* translators: %s: regular price */
-            $changes[$field]['message'] = sprintf(__('Sale price must be lower than the regular price (%s).', 'madebyhype-stockmanagment'), self::display_value('regular_price', $regular));
+            $changes[$field]['message'] = sprintf(__('Sale price must be lower than the regular price (%s).', 'madebyhype-stock-management'), self::display_value('regular_price', $regular));
         }
 
         $values = null;
@@ -1758,17 +1759,17 @@ class WriteService
 
                 if ($commit['state'] === 'cancelled') {
                     $changes[$field]['code'] = 'already_undone';
-                    $changes[$field]['message'] = __('This change has already been undone.', 'madebyhype-stockmanagment');
+                    $changes[$field]['message'] = __('This change has already been undone.', 'madebyhype-stock-management');
                 } elseif ($commit['state'] === 'log_failed') {
                     $changes[$field]['code'] = 'log_failed';
-                    $changes[$field]['message'] = __('The change history could not be written, so this product was not changed.', 'madebyhype-stockmanagment');
+                    $changes[$field]['message'] = __('The change history could not be written, so this product was not changed.', 'madebyhype-stock-management');
                 } elseif ($row === 'reversed') {
                     $changes[$field]['code'] = 'stock_conflict';
                     /* translators: %s: units in stock now */
-                    $changes[$field]['message'] = sprintf(__('Stock is now %s; undoing this change would still leave it below zero.', 'madebyhype-stockmanagment'), self::display_value('stock_quantity', $commit['after']['stock_quantity']));
+                    $changes[$field]['message'] = sprintf(__('Stock is now %s; undoing this change would still leave it below zero.', 'madebyhype-stock-management'), self::display_value('stock_quantity', $commit['after']['stock_quantity']));
                 } else {
                     $changes[$field]['code'] = 'save_failed';
-                    $changes[$field]['message'] = __('Something went wrong while undoing this change. Reload the page to see the current values.', 'madebyhype-stockmanagment');
+                    $changes[$field]['message'] = __('Something went wrong while undoing this change. Reload the page to see the current values.', 'madebyhype-stock-management');
                 }
             }
 
@@ -1805,28 +1806,28 @@ class WriteService
             case 'set_on_variations':
                 // A variable product that holds the stock is edited for stock, never for prices
                 return $state['stock_mode'] === 'own'
-                    ? __('Prices of this product are set on its variations.', 'madebyhype-stockmanagment')
-                    : __('Stock and prices of this product are set on its variations.', 'madebyhype-stockmanagment');
+                    ? __('Prices of this product are set on its variations.', 'madebyhype-stock-management')
+                    : __('Stock and prices of this product are set on its variations.', 'madebyhype-stock-management');
             case 'no_price':
-                return __('This product type does not have a price of its own.', 'madebyhype-stockmanagment');
+                return __('This product type does not have a price of its own.', 'madebyhype-stock-management');
             case 'no_stock':
-                return __('This product type does not hold stock.', 'madebyhype-stockmanagment');
+                return __('This product type does not hold stock.', 'madebyhype-stock-management');
             case 'inherits_stock':
-                return __('This variation uses the stock of its product. Change the stock on the product itself.', 'madebyhype-stockmanagment');
+                return __('This variation uses the stock of its product. Change the stock on the product itself.', 'madebyhype-stock-management');
             case 'status_follows_stock':
-                return __('This product tracks stock, so its status follows the quantity. Change the quantity instead.', 'madebyhype-stockmanagment');
+                return __('This product tracks stock, so its status follows the quantity. Change the quantity instead.', 'madebyhype-stock-management');
             case 'already_tracked':
                 /* translators: %s: quantity */
-                return sprintf(__('Stock tracking was already switched on for this product. Current stock is %s.', 'madebyhype-stockmanagment'), self::display_value('stock_quantity', $state['stock_quantity']));
+                return sprintf(__('Stock tracking was already switched on for this product. Current stock is %s.', 'madebyhype-stock-management'), self::display_value('stock_quantity', $state['stock_quantity']));
             case 'not_tracked':
                 // A page that showed a quantity is now out of date; the 1.0.6
                 // screen shows a quantity field on every row
                 return $has_seen
-                    ? __('This product no longer tracks stock.', 'madebyhype-stockmanagment')
-                    : __('This product does not track stock.', 'madebyhype-stockmanagment');
+                    ? __('This product no longer tracks stock.', 'madebyhype-stock-management')
+                    : __('This product does not track stock.', 'madebyhype-stock-management');
         }
 
-        return __('This field cannot be edited here.', 'madebyhype-stockmanagment');
+        return __('This field cannot be edited here.', 'madebyhype-stock-management');
     }
 
     /**
@@ -1844,7 +1845,7 @@ class WriteService
     private static function not_saved($sentence)
     {
         /* translators: %s: the reason, a full sentence */
-        return sprintf(__('Not saved. %s', 'madebyhype-stockmanagment'), $sentence);
+        return sprintf(__('Not saved. %s', 'madebyhype-stock-management'), $sentence);
     }
 
     /**
@@ -1865,18 +1866,18 @@ class WriteService
     {
         switch ($field) {
             case 'stock_quantity':
-                return __('Stock', 'madebyhype-stockmanagment');
+                return __('Stock', 'madebyhype-stock-management');
             case 'stock_status':
-                return __('Stock status', 'madebyhype-stockmanagment');
+                return __('Stock status', 'madebyhype-stock-management');
             case 'regular_price':
-                return __('Regular price', 'madebyhype-stockmanagment');
+                return __('Regular price', 'madebyhype-stock-management');
             case 'sale_price':
-                return __('Sale price', 'madebyhype-stockmanagment');
+                return __('Sale price', 'madebyhype-stock-management');
             case 'start_tracking':
             case 'manage_stock':
-                return __('Stock tracking', 'madebyhype-stockmanagment');
+                return __('Stock tracking', 'madebyhype-stock-management');
             case 'backorders':
-                return __('Backorders', 'madebyhype-stockmanagment');
+                return __('Backorders', 'madebyhype-stock-management');
         }
 
         return (string) $field;
@@ -1894,32 +1895,32 @@ class WriteService
     {
         switch ($field) {
             case 'manage_stock':
-                return $value ? __('on', 'madebyhype-stockmanagment') : __('off', 'madebyhype-stockmanagment');
+                return $value ? __('on', 'madebyhype-stock-management') : __('off', 'madebyhype-stock-management');
             case 'stock_status':
                 $labels = [
-                    'instock' => __('In stock', 'madebyhype-stockmanagment'),
-                    'outofstock' => __('Out of stock', 'madebyhype-stockmanagment'),
-                    'onbackorder' => __('On backorder', 'madebyhype-stockmanagment'),
+                    'instock' => __('In stock', 'madebyhype-stock-management'),
+                    'outofstock' => __('Out of stock', 'madebyhype-stock-management'),
+                    'onbackorder' => __('On backorder', 'madebyhype-stock-management'),
                 ];
                 return isset($labels[$value]) ? $labels[$value] : (string) $value;
             case 'backorders':
                 $labels = [
-                    'no' => __('Not allowed', 'madebyhype-stockmanagment'),
-                    'notify' => __('Allowed, customer is told', 'madebyhype-stockmanagment'),
-                    'yes' => __('Allowed', 'madebyhype-stockmanagment'),
+                    'no' => __('Not allowed', 'madebyhype-stock-management'),
+                    'notify' => __('Allowed, customer is told', 'madebyhype-stock-management'),
+                    'yes' => __('Allowed', 'madebyhype-stock-management'),
                 ];
                 return isset($labels[$value]) ? $labels[$value] : (string) $value;
             case 'regular_price':
             case 'sale_price':
                 if ($value === null || $value === '') {
-                    return $field === 'sale_price' ? __('No sale', 'madebyhype-stockmanagment') : __('not set', 'madebyhype-stockmanagment');
+                    return $field === 'sale_price' ? __('No sale', 'madebyhype-stock-management') : __('not set', 'madebyhype-stock-management');
                 }
                 return number_format((float) $value, \wc_get_price_decimals(), \wc_get_price_decimal_separator(), \wc_get_price_thousand_separator());
         }
 
         // stock_quantity, start_tracking
         if ($value === null || $value === '') {
-            return __('not set', 'madebyhype-stockmanagment');
+            return __('not set', 'madebyhype-stock-management');
         }
 
         return str_replace('-', "\u{2212}", (string) (is_numeric($value) ? $value + 0 : $value));

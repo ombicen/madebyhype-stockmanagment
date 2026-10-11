@@ -6,6 +6,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery -- This class reads and writes the plugin's own two tables. WordPress has no API for them, and a log is read fresh, not from a cache.
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- The only things written into a query string in this class are the plugin's table names (Schema), its own status and kind constants, and integers cast with (int) or intval(). Every other value goes through $wpdb->prepare().
+
 /**
  * The change log: the only code that reads or writes the batches and changes
  * tables (definitions in Schema).
@@ -267,6 +270,7 @@ class ChangeLog
             $wpdb->suppress_errors($suppress);
 
             if (!$inserted) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- A failure the site owner needs in the error log; not debug output.
                 error_log('MadeByHype Stock Management - Could not record change: ' . $last_error);
 
                 foreach ($row_ids as $row_id) {

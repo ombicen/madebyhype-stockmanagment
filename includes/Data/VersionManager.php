@@ -6,6 +6,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery -- Reads the plugin's own table of the earlier version history.
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- The table name (Schema) is the only thing written into a query string here.
+
 /**
  * Read-only list of the saves made before the change log existed.
  *
@@ -49,6 +52,7 @@ class VersionManager
 
         // Check for database errors
         if ($wpdb->last_error) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- A failure the site owner needs in the error log; not debug output.
             error_log('MadeByHype Stock Management - Get versions error: ' . $wpdb->last_error);
             return [];
         }

@@ -76,7 +76,7 @@ class BulkPriceService
         if (count($targets['ids']) > $max) {
             return new \WP_Error('too_many', sprintf(
                 /* translators: 1: number of items matched, 2: most items one bulk change takes */
-                __('This would change %1$s items; one bulk change takes at most %2$s. Narrow the list with the search or the filters.', 'madebyhype-stockmanagment'),
+                __('This would change %1$s items; one bulk change takes at most %2$s. Narrow the list with the search or the filters.', 'madebyhype-stock-management'),
                 number_format_i18n(count($targets['ids'])),
                 number_format_i18n($max)
             ));
@@ -178,7 +178,7 @@ class BulkPriceService
 
         $ids = array_values(array_unique(array_filter(array_map('absint', array_filter((array) $ids, 'is_scalar')))));
         if (empty($ids) || count($ids) > self::MAX_APPLY || !is_string($save_token) || $save_token === '') {
-            return new \WP_Error('invalid_request', __('The bulk price change could not be read.', 'madebyhype-stockmanagment'));
+            return new \WP_Error('invalid_request', __('The bulk price change could not be read.', 'madebyhype-stock-management'));
         }
 
         $result = ['batch_id' => null, 'processed' => count($ids), 'changed' => 0, 'skip' => [], 'failed' => []];
@@ -189,7 +189,7 @@ class BulkPriceService
             $item = \wc_get_product($id);
 
             if (!$item) {
-                $result['failed'][] = ['id' => $id, 'name' => null, 'sku' => '', 'message' => __('This product no longer exists.', 'madebyhype-stockmanagment')];
+                $result['failed'][] = ['id' => $id, 'name' => null, 'sku' => '', 'message' => __('This product no longer exists.', 'madebyhype-stock-management')];
                 continue;
             }
 
@@ -273,49 +273,49 @@ class BulkPriceService
 
         switch ($rule['change']) {
             case BulkPriceRule::CHANGE_CLEAR_SALE:
-                return __('Sale prices removed', 'madebyhype-stockmanagment');
+                return __('Sale prices removed', 'madebyhype-stock-management');
 
             case BulkPriceRule::CHANGE_SALE_FROM_REGULAR:
                 $sentence = sprintf(
                     /* translators: %s: a percentage, without the sign */
-                    __('On sale at %s%% off the regular price', 'madebyhype-stockmanagment'),
+                    __('On sale at %s%% off the regular price', 'madebyhype-stock-management'),
                     $percent
                 );
 
                 if ($rule['skip_on_sale']) {
-                    $sentence .= __(', items already on sale left alone', 'madebyhype-stockmanagment');
+                    $sentence .= __(', items already on sale left alone', 'madebyhype-stock-management');
                 }
                 break;
 
             default:
                 $what = [
-                    BulkPriceRule::CHANGE_REGULAR => __('Regular price', 'madebyhype-stockmanagment'),
-                    BulkPriceRule::CHANGE_SALE => __('Sale price', 'madebyhype-stockmanagment'),
-                    BulkPriceRule::CHANGE_BOTH => __('Regular and sale price', 'madebyhype-stockmanagment'),
+                    BulkPriceRule::CHANGE_REGULAR => __('Regular price', 'madebyhype-stock-management'),
+                    BulkPriceRule::CHANGE_SALE => __('Sale price', 'madebyhype-stock-management'),
+                    BulkPriceRule::CHANGE_BOTH => __('Regular and sale price', 'madebyhype-stock-management'),
                 ][$rule['change']];
 
                 $how = [
                     /* translators: 1: which price, 2: a percentage, without the sign */
-                    'increase_percent' => __('%1$s increased by %2$s%%', 'madebyhype-stockmanagment'),
+                    'increase_percent' => __('%1$s increased by %2$s%%', 'madebyhype-stock-management'),
                     /* translators: 1: which price, 2: a percentage, without the sign */
-                    'decrease_percent' => __('%1$s decreased by %2$s%%', 'madebyhype-stockmanagment'),
+                    'decrease_percent' => __('%1$s decreased by %2$s%%', 'madebyhype-stock-management'),
                     /* translators: 1: which price, 2: an amount */
-                    'increase_amount' => __('%1$s increased by %2$s', 'madebyhype-stockmanagment'),
+                    'increase_amount' => __('%1$s increased by %2$s', 'madebyhype-stock-management'),
                     /* translators: 1: which price, 2: an amount */
-                    'decrease_amount' => __('%1$s decreased by %2$s', 'madebyhype-stockmanagment'),
+                    'decrease_amount' => __('%1$s decreased by %2$s', 'madebyhype-stock-management'),
                     /* translators: 1: which price, 2: an amount */
-                    'set' => __('%1$s set to %2$s', 'madebyhype-stockmanagment'),
+                    'set' => __('%1$s set to %2$s', 'madebyhype-stock-management'),
                 ][$rule['method']];
 
                 $sentence = sprintf($how, $what, strpos($rule['method'], 'percent') !== false ? $percent : $amount);
         }
 
         $rounding = [
-            'whole' => __(', rounded to a whole number', 'madebyhype-stockmanagment'),
-            'ten' => __(', rounded to the nearest 10', 'madebyhype-stockmanagment'),
-            'nine' => __(', rounded to end in 9', 'madebyhype-stockmanagment'),
+            'whole' => __(', rounded to a whole number', 'madebyhype-stock-management'),
+            'ten' => __(', rounded to the nearest 10', 'madebyhype-stock-management'),
+            'nine' => __(', rounded to end in 9', 'madebyhype-stock-management'),
             /* translators: %s: the decimal separator */
-            'ninety_nine' => sprintf(__(', rounded to end in %s99', 'madebyhype-stockmanagment'), \wc_get_price_decimal_separator()),
+            'ninety_nine' => sprintf(__(', rounded to end in %s99', 'madebyhype-stock-management'), \wc_get_price_decimal_separator()),
         ];
 
         return $sentence . (isset($rounding[$rule['rounding']]) ? $rounding[$rule['rounding']] : '');
@@ -334,13 +334,13 @@ class BulkPriceService
         }
 
         $messages = [
-            'value' => __('Enter a number above 0.', 'madebyhype-stockmanagment'),
-            'value_percent' => __('Enter a percentage that leaves a price: below 100 to take off, at most 1000 to add.', 'madebyhype-stockmanagment'),
+            'value' => __('Enter a number above 0.', 'madebyhype-stock-management'),
+            'value_percent' => __('Enter a percentage that leaves a price: below 100 to take off, at most 1000 to add.', 'madebyhype-stock-management'),
         ];
 
         return new \WP_Error(
             'invalid_rule',
-            isset($messages[$rule['error']]) ? $messages[$rule['error']] : __('The bulk price change could not be read.', 'madebyhype-stockmanagment'),
+            isset($messages[$rule['error']]) ? $messages[$rule['error']] : __('The bulk price change could not be read.', 'madebyhype-stock-management'),
             ['field' => $rule['error']]
         );
     }
@@ -360,9 +360,12 @@ class BulkPriceService
         foreach (array_chunk($ids, 2000) as $chunk) {
             $in = implode(',', array_map('intval', $chunk));
 
+            // The prices as stored, for thousands of items at once and read fresh: a product object each would not do.
+            // phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $in is a list of integers, made on the line above.
             $rows = $wpdb->get_results(
                 "SELECT post_id, meta_key, meta_value FROM {$wpdb->postmeta} WHERE post_id IN ({$in}) AND meta_key IN ('_regular_price', '_sale_price')"
             );
+            // phpcs:enable
 
             foreach ((array) $rows as $row) {
                 $id = (int) $row->post_id;

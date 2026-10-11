@@ -30,6 +30,8 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Included from a UIManager method: these are its local variables, not globals.
+
 $kinds = self::cell_kinds($row, $caps);
 $summary = $row['variation_summary'];
 $sku = $row['sku'] !== '' ? $row['sku'] : $row['parent_sku'];
@@ -70,7 +72,7 @@ $badge = function ($key, $title = '') use ($strings) {
     <td class="mbh-col-name">
         <div class="mbh-prod">
             <?php if ($expandable): ?>
-                <button type="button" class="mbh-expand" aria-expanded="false" aria-label="<?php echo esc_attr($this->t('variationsOf', $row['full_name'])); ?>"><?php echo self::icon('chevron'); ?></button>
+                <button type="button" class="mbh-expand" aria-expanded="false" aria-label="<?php echo esc_attr($this->t('variationsOf', $row['full_name'])); ?>"><?php echo wp_kses(self::icon('chevron'), self::icon_tags()); ?></button>
             <?php else: ?>
                 <span class="mbh-expand-space" aria-hidden="true"></span>
             <?php endif; ?>

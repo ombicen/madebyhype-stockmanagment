@@ -51,8 +51,7 @@ class Plugin
      *
      * On a storefront request (a page view, the cart, checkout, REST) this
      * plugin does two things and nothing else: the HPOS declaration and the
-     * schema version comparison. Everything else is decided in init_plugin();
-     * the updater is loaded where WordPress checks for updates.
+     * schema version comparison. Everything else is decided in init_plugin().
      */
     public function run()
     {
@@ -65,13 +64,6 @@ class Plugin
 
         add_action('init', [$this, 'init_plugin']);
 
-        // Updates from the releases on GitHub. Where WordPress checks for updates: wp-admin, cron
-        // and WP-CLI; with or without WooCommerce, so a broken set-up can still be updated.
-        if ($this->core_runs_here() || (defined('WP_CLI') && WP_CLI)) {
-            require_once plugin_dir_path(__FILE__) . 'Updater.php';
-            (new Updater($this->plugin_file))->init();
-        }
-
         // The menu, the assets and the settings page are wp-admin only
         if (is_admin()) {
             (new Settings($this->plugin_file))->init();
@@ -82,11 +74,6 @@ class Plugin
 
     public function init_plugin()
     {
-        // Translations, where this plugin shows words: wp-admin (with admin-ajax) and cron
-        if ($this->core_runs_here()) {
-            load_plugin_textdomain('madebyhype-stockmanagment', false, dirname(plugin_basename($this->plugin_file)) . '/languages');
-        }
-
         // Check if WooCommerce is active
         if (!class_exists('WooCommerce')) {
             if (is_admin()) {
@@ -272,7 +259,7 @@ class Plugin
     {
 ?>
         <div class="notice notice-error">
-            <p><?php _e('MadeByHype Stock Management requires WooCommerce to be installed and activated.', 'madebyhype-stockmanagment'); ?>
+            <p><?php esc_html_e('MadeByHype Stock Management requires WooCommerce to be installed and activated.', 'madebyhype-stock-management'); ?>
             </p>
         </div>
 <?php

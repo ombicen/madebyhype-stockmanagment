@@ -17,13 +17,15 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Included from a UIManager method: these are its local variables, not globals.
+
 $pager = $list['pager'];
 
 $page_link = function ($key, $icon, $label) use ($pager) {
     $flip = $key === 'prev' ? ' mbh-icon--flip' : '';
 
     if ($pager[$key] === null) {
-        echo '<span class="mbh-page-link is-disabled" aria-hidden="true">' . self::icon($icon, ltrim($flip)) . '</span>';
+        echo '<span class="mbh-page-link is-disabled" aria-hidden="true">' . wp_kses(self::icon($icon, ltrim($flip)), self::icon_tags()) . '</span>';
         return;
     }
 
@@ -32,7 +34,7 @@ $page_link = function ($key, $icon, $label) use ($pager) {
         esc_url($pager[$key]),
         esc_attr($key),
         esc_attr($label),
-        self::icon($icon, ltrim($flip))
+        wp_kses(self::icon($icon, ltrim($flip)), self::icon_tags())
     );
 };
 
@@ -55,7 +57,7 @@ $keys = [
 
     <?php if (!empty($caps['stock']) || !empty($caps['prices'])): ?>
         <details class="mbh-keys" id="mbh-keys">
-            <summary><?php echo self::icon('keyboard'); ?><span><?php echo esc_html($this->t('keysTitle')); ?></span></summary>
+            <summary><?php echo wp_kses(self::icon('keyboard'), self::icon_tags()); ?><span><?php echo esc_html($this->t('keysTitle')); ?></span></summary>
             <dl class="mbh-keys-pop">
                 <?php foreach ($keys as $entry): ?>
                     <div>
@@ -83,14 +85,16 @@ $keys = [
             esc_attr($this->t('pageNumber'))
         );
 
-        printf(
-            '<span class="mbh-paging-text">%s</span>',
-            sprintf(
-                esc_html($this->t('pageFieldOf', '%1$s', '%2$s')),
-                $field,
-                '<span class="mbh-total-pages">' . esc_html($pager['pagesLabel']) . '</span>'
-            )
+        $paging_text = sprintf(
+            esc_html($this->t('pageFieldOf', '%1$s', '%2$s')),
+            $field,
+            '<span class="mbh-total-pages">' . esc_html($pager['pagesLabel']) . '</span>'
         );
+
+        echo '<span class="mbh-paging-text">' . wp_kses($paging_text, [
+            'input' => ['class' => true, 'id' => true, 'type' => true, 'inputmode' => true, 'autocomplete' => true, 'value' => true, 'aria-label' => true],
+            'span' => ['class' => true],
+        ]) . '</span>';
 
         $page_link('next', 'chevron', $this->t('nextPage'));
         $page_link('last', 'last', $this->t('lastPage'));

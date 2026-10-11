@@ -6,6 +6,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery -- Creates, checks and removes the plugin's own tables; there is no WordPress API for that.
+
 /**
  * Lifecycle of the plugin's custom tables: create, upgrade, remove.
  *
@@ -90,6 +92,7 @@ class Schema
 
         foreach ([self::batches_table(), self::changes_table(), self::legacy_versions_table()] as $table) {
             if (!self::table_exists($table)) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- A failure the site owner needs in the error log; not debug output.
                 error_log('MadeByHype Stock Management - Could not create table ' . $table);
                 set_transient(self::RETRY_TRANSIENT, 1, HOUR_IN_SECONDS);
                 return false;
@@ -110,6 +113,7 @@ class Schema
         global $wpdb;
 
         foreach ([self::changes_table(), self::batches_table(), self::legacy_versions_table()] as $table) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- One of the plugin's own table names, from the list on the line above.
             $wpdb->query("DROP TABLE IF EXISTS {$table}");
         }
 

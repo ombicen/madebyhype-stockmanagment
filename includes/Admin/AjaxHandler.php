@@ -121,10 +121,11 @@ class AjaxHandler
 
         // The service checks each field against the permission it needs
         if (!Capabilities::can_edit_stock() && !Capabilities::can_edit_prices()) {
-            wp_send_json_error(__('You do not have permission to change stock or prices.', 'madebyhype-stockmanagment'));
+            wp_send_json_error(__('You do not have permission to change stock or prices.', 'madebyhype-stock-management'));
             return;
         }
 
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- WriteService::save() validates and types every field it takes from this.
         $data = isset($_POST['data']) && is_array($_POST['data']) ? wp_unslash($_POST['data']) : [];
 
         $outcome = $this->write_service->save($data);
@@ -173,7 +174,7 @@ class AjaxHandler
         check_ajax_referer(self::NONCE_UNDO);
 
         if (!Capabilities::can_undo()) {
-            wp_send_json_error(['code' => 'forbidden', 'message' => __('You do not have permission to undo saves.', 'madebyhype-stockmanagment')]);
+            wp_send_json_error(['code' => 'forbidden', 'message' => __('You do not have permission to undo saves.', 'madebyhype-stock-management')]);
             return;
         }
 
@@ -219,7 +220,7 @@ class AjaxHandler
         check_ajax_referer(self::NONCE_HISTORY);
 
         if (!Capabilities::can_view()) {
-            wp_send_json_error(['code' => 'forbidden', 'message' => __('You do not have permission to view stock history.', 'madebyhype-stockmanagment')]);
+            wp_send_json_error(['code' => 'forbidden', 'message' => __('You do not have permission to view stock history.', 'madebyhype-stock-management')]);
             return;
         }
 
@@ -234,7 +235,7 @@ class AjaxHandler
                 $save = $this->change_log->get_batch_summary(isset($_REQUEST['batch_id']) ? absint($_REQUEST['batch_id']) : 0);
 
                 if (!$save) {
-                    wp_send_json_error(['code' => 'not_found', 'message' => __('This save is no longer in History.', 'madebyhype-stockmanagment')]);
+                    wp_send_json_error(['code' => 'not_found', 'message' => __('This save is no longer in History.', 'madebyhype-stock-management')]);
                     return;
                 }
 
@@ -302,7 +303,7 @@ class AjaxHandler
     {
         check_ajax_referer(self::NONCE_LEGACY_REVERT);
 
-        wp_send_json_error(__('Saves made before this update can no longer be reverted. Saves made from now on can be undone one by one.', 'madebyhype-stockmanagment'));
+        wp_send_json_error(__('Saves made before this update can no longer be reverted. Saves made from now on can be undone one by one.', 'madebyhype-stock-management'));
     }
 
     /**

@@ -16,12 +16,14 @@
 if (! defined('ABSPATH')) {
     exit;
 }
+
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Included from a UIManager method: these are its local variables, not globals.
 ?>
 <aside id="mbh-filters" class="mbh-drawer" role="dialog" aria-modal="true" aria-labelledby="mbh-filters-title" tabindex="-1" hidden>
     <header class="mbh-drawer-head">
-        <h2 class="mbh-drawer-title" id="mbh-filters-title"><?php esc_html_e('Filters', 'madebyhype-stockmanagment'); ?></h2>
+        <h2 class="mbh-drawer-title" id="mbh-filters-title"><?php esc_html_e('Filters', 'madebyhype-stock-management'); ?></h2>
         <span class="mbh-drawer-count" id="mbh-filters-active" hidden></span>
-        <button type="button" class="mbh-icon-button" id="mbh-filters-close" aria-label="<?php esc_attr_e('Close filters', 'madebyhype-stockmanagment'); ?>"><?php echo self::icon('close'); ?></button>
+        <button type="button" class="mbh-icon-button" id="mbh-filters-close" aria-label="<?php esc_attr_e('Close filters', 'madebyhype-stock-management'); ?>"><?php echo wp_kses(self::icon('close'), self::icon_tags()); ?></button>
     </header>
 
     <div class="mbh-drawer-body" id="mbh-filters-body"></div>

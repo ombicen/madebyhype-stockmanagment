@@ -25,6 +25,9 @@ if (\MadeByHypeStockmanagment\Settings::keep_data()) {
 
 \MadeByHypeStockmanagment\Data\Schema::uninstall();
 
-foreach (\MadeByHypeStockmanagment\Settings::OPTIONS as $option) {
-    delete_option($option);
+// Left by the updater of versions before 1.4.0
+delete_transient('madebyhype_stock_latest_release');
+
+foreach (\MadeByHypeStockmanagment\Settings::OPTIONS as $madebyhype_stock_option) {
+    delete_option($madebyhype_stock_option);
 }

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-11
+
+### Changed
+- The text domain is `madebyhype-stock-management`, the plugin's name on WordPress.org
+- WordPress 5.3 or higher is required: the plugin uses the time zone functions that came with it
+- Tested with WordPress 7.1 and WooCommerce 11.2
+- Icons and the page number field are passed through `wp_kses()` where they are printed, and the notice shown without WooCommerce is escaped
+- Translator comments on every counted string
+
+### Removed
+- Updates from GitHub releases, and the `Update URI` header: WordPress.org does not allow a plugin it hosts to update from elsewhere. Updates come from WordPress.org from now on
+- The `Network` header, which may only say true
+
 ## [1.3.2] - 2026-10-11
 
 ### Fixed

@@ -55,11 +55,12 @@ class BulkAjaxHandler
             return;
         }
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- allowed(), above, checked the nonce.
         $request = wp_unslash($_POST);
         $query = isset($request['query']) && is_string($request['query']) ? ltrim($request['query'], '?') : null;
 
         if ($query === null || strlen($query) > ReadAjaxHandler::MAX_QUERY_LENGTH) {
-            $this->refuse(new \WP_Error('invalid_request', __('The list that was asked for could not be read.', 'madebyhype-stockmanagment')));
+            $this->refuse(new \WP_Error('invalid_request', __('The list that was asked for could not be read.', 'madebyhype-stock-management')));
             return;
         }
 
@@ -73,7 +74,7 @@ class BulkAjaxHandler
         $parsed = $admin_page->parse_request(wp_slash($args));
 
         if ($parsed['tab'] !== 'all') {
-            $this->refuse(new \WP_Error('invalid_request', __('Prices are changed in bulk from the All stock tab.', 'madebyhype-stockmanagment')));
+            $this->refuse(new \WP_Error('invalid_request', __('Prices are changed in bulk from the All stock tab.', 'madebyhype-stock-management')));
             return;
         }
 
@@ -105,6 +106,7 @@ class BulkAjaxHandler
             return;
         }
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- allowed(), above, checked the nonce.
         $request = wp_unslash($_POST);
 
         $outcome = $this->bulk_price_service->apply(
@@ -131,7 +133,7 @@ class BulkAjaxHandler
         check_ajax_referer(AjaxHandler::NONCE_SAVE);
 
         if (!Capabilities::can_edit_prices()) {
-            wp_send_json_error(['code' => 'forbidden', 'message' => __('You do not have permission to change prices.', 'madebyhype-stockmanagment')]);
+            wp_send_json_error(['code' => 'forbidden', 'message' => __('You do not have permission to change prices.', 'madebyhype-stock-management')]);
             return false;
         }
 
