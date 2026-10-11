@@ -6,7 +6,6 @@
  * Description: Advanced WooCommerce stock management plugin with version control, bulk editing, and comprehensive reporting. Features include real-time stock tracking, price management, variation support, and detailed sales analytics with customizable date filters.
  * Version: 1.4.0
  * Requires at least: 5.3
- * Tested up to: 7.1
  * Requires PHP: 7.4
  * Requires Plugins: woocommerce
  * Author: MadebyHype
